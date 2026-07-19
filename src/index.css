@@ -1,0 +1,333 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap');
+
+/* ==========================================================================
+   EDITORIAL PRODUCT DESIGN SYSTEM
+   ========================================================================== */
+
+:root {
+  /* ─── TYPOGRAPHY ─── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  /* Extreme typographic scale for editorial feel */
+  --text-micro: 11px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-2xl: 40px;
+  --text-3xl: 56px;
+  --text-4xl: 80px;
+  
+  --font-normal: 400;
+  --font-medium: 450; /* A very specific weight for premium editorial read */
+  --font-semibold: 500;
+  --font-bold: 600;
+
+  /* ─── SPACING (Generous, structural) ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ─── BORDER RADIUS ─── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ─── MOTION ─── */
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-smooth: 240ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* ─── LIGHT THEME ─── */
+:root[data-theme="light"], :root:not([data-theme="dark"]) {
+  /* Surfaces */
+  --bg-app: #FFFFFF;
+  --bg-subtle: #F9FAFB;
+  --bg-muted: #F3F4F6;
+  
+  /* Text */
+  --text-primary: #000000;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-inverse: #FFFFFF;
+  
+  /* Borders (Used sparingly) */
+  --border-light: rgba(0, 0, 0, 0.04);
+  --border-medium: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  
+  /* Accents */
+  --color-accent: #000000;
+  --color-accent-hover: #1F2937;
+  
+  /* Status Colors */
+  --color-success: #059669;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
+  --color-info: #2563EB;
+}
+
+/* ─── DARK THEME ─── */
+:root[data-theme="dark"] {
+  /* Surfaces */
+  --bg-app: #0A0A0A;
+  --bg-subtle: #121212;
+  --bg-muted: #1A1A1A;
+  
+  /* Text */
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #737373;
+  --text-inverse: #000000;
+  
+  /* Borders (Extremely subtle) */
+  --border-light: rgba(255, 255, 255, 0.04);
+  --border-medium: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  
+  /* Accents */
+  --color-accent: #FFFFFF;
+  --color-accent-hover: #E5E5E5;
+  
+  /* Status Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+}
+
+/* ==========================================================================
+   RESET & BASE STYLES
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  font-size: var(--text-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  letter-spacing: -0.01em; /* Tighten for editorial feel */
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input, textarea, select { font-family: inherit; outline: none; background: transparent; border: none; }
+ul, ol { list-style: none; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* ==========================================================================
+   TYPOGRAPHY HIERARCHY
+   ========================================================================== */
+
+.type-hero { font-size: var(--text-4xl); font-weight: var(--font-medium); letter-spacing: -0.03em; line-height: 1.1; color: var(--text-primary); }
+.type-title { font-size: var(--text-3xl); font-weight: var(--font-medium); letter-spacing: -0.03em; line-height: 1.1; color: var(--text-primary); }
+.type-subtitle { font-size: var(--text-2xl); font-weight: var(--font-medium); letter-spacing: -0.02em; line-height: 1.2; color: var(--text-primary); }
+.type-h1 { font-size: var(--text-xl); font-weight: var(--font-medium); letter-spacing: -0.02em; line-height: 1.2; color: var(--text-primary); }
+.type-h2 { font-size: var(--text-lg); font-weight: var(--font-medium); letter-spacing: -0.01em; color: var(--text-primary); }
+.type-body { font-size: var(--text-base); font-weight: var(--font-normal); color: var(--text-secondary); line-height: 1.6; }
+.type-ui { font-size: var(--text-sm); font-weight: var(--font-medium); color: var(--text-secondary); }
+.type-micro { font-size: var(--text-micro); font-weight: var(--font-bold); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ==========================================================================
+   LAYOUT PRIMITIVES
+   ========================================================================== */
+
+#root {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--bg-app);
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  height: 100%;
+}
+
+.workspace-sidebar {
+  width: 280px;
+  background-color: var(--bg-subtle);
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-4);
+  flex-shrink: 0;
+}
+
+.workspace-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+}
+
+.workspace-content {
+  flex: 1;
+  padding: var(--space-12) var(--space-16);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* For full bleed views like the pipeline */
+.workspace-bleed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ==========================================================================
+   COMPONENTS (Minimal, Typography Driven)
+   ========================================================================== */
+
+/* ─── BUTTONS ─── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  height: 36px;
+  border-radius: var(--radius-full); /* Apple/Linear pill style */
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+
+.btn-primary { background-color: var(--color-accent); color: var(--text-inverse); }
+.btn-primary:hover { background-color: var(--color-accent-hover); }
+
+.btn-secondary { background-color: transparent; color: var(--text-primary); border: 1px solid var(--border-medium); }
+.btn-secondary:hover { background-color: var(--bg-muted); }
+
+.btn-ghost { color: var(--text-secondary); }
+.btn-ghost:hover { background-color: var(--bg-subtle); color: var(--text-primary); }
+
+.btn-icon { padding: 0; width: 36px; height: 36px; color: var(--text-secondary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); }
+.btn-icon:hover { background-color: var(--bg-subtle); color: var(--text-primary); }
+
+/* ─── INPUTS ─── */
+.input {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-4);
+  background-color: var(--bg-subtle);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+.input:focus { background-color: var(--bg-app); border-color: var(--border-medium); }
+.input::placeholder { color: var(--text-tertiary); }
+
+/* Transparent massive inputs for editorial headers */
+.input-hero {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-size: var(--text-3xl);
+  font-weight: var(--font-medium);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  padding: 0;
+}
+.input-hero::placeholder { color: var(--text-tertiary); }
+
+/* ─── PANELS (No box shadow, pure luminance) ─── */
+.surface {
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  border: 1px solid var(--border-light);
+}
+
+.surface-elevated {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+}
+
+/* ─── LISTS & ROWS ─── */
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-light);
+  transition: background-color var(--transition-fast);
+  gap: var(--space-6);
+}
+.list-row:hover {
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  margin: 0 calc(var(--space-4) * -1);
+  padding: var(--space-4);
+  border-bottom-color: transparent;
+}
+.list-row:last-child { border-bottom: none; }
+
+/* ─── CHIPS (Minimal Badges) ─── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  background-color: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+/* ─── AVATARS ─── */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background-color: var(--bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
