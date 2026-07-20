@@ -22,7 +22,7 @@ type PaymentForm = z.infer<typeof paymentSchema>;
 
 export function PaymentsPage() {
   const { user } = useAuth();
-  const tenantId = user?.tenantId || '';
+  const tenantId = (user as any)?.tenantId || '';
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: paymentsData, isLoading } = usePayments(tenantId);
@@ -59,7 +59,7 @@ export function PaymentsPage() {
       </div>
 
       <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
-        <DataTable data={paymentsData?.data || []} columns={columns} isLoading={isLoading} />
+        <DataTable data={paymentsData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Record New Payment">

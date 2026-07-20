@@ -22,7 +22,7 @@ type InvoiceForm = z.infer<typeof invoiceSchema>;
 
 export function InvoicesPage() {
   const { user } = useAuth();
-  const tenantId = user?.tenantId || '';
+  const tenantId = (user as any)?.tenantId || '';
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: invoicesData, isLoading } = useInvoices(tenantId);
@@ -77,7 +77,7 @@ export function InvoicesPage() {
       </div>
 
       <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
-        <DataTable data={invoicesData?.data || []} columns={columns} isLoading={isLoading} />
+        <DataTable data={invoicesData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Invoice">

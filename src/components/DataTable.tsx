@@ -106,4 +106,4 @@ export const DataTable = React.memo(<T,>({
       </table>
     </div>
   );
-}) as <T>(props: DataTableProps<T>) => JSX.Element;
+}) as <T>(props: DataTableProps<T>) => React.ReactElement;
