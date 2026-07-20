@@ -14,12 +14,12 @@ export const leadService = {
     firstName: string; lastName: string; email?: string;
     phone?: string; company?: string; source?: string;
   }): Promise<Lead> {
-    const { data } = await api.post<Lead>('/api/v1/leads', input);
-    return data;
+    const { data } = await api.post<any>('/api/v1/leads', input);
+    return data?.data || data;
   },
 
   async update(id: string, input: Partial<Lead>): Promise<Lead> {
-    const { data } = await api.put<Lead>(`/api/v1/leads/${id}`, input);
-    return data;
+    const { data } = await api.put<any>(`/api/v1/leads/${id}`, input);
+    return data?.data || data;
   },
 };

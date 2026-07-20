@@ -14,12 +14,12 @@ export const opportunityService = {
     leadId: string; title: string; value: string;
     currency?: string; ownerId: string; expectedCloseDate?: string;
   }): Promise<Opportunity> {
-    const { data } = await api.post<Opportunity>('/api/v1/opportunities', input);
-    return data;
+    const { data } = await api.post<any>('/api/v1/opportunities', input);
+    return data?.data || data;
   },
 
   async advanceStage(id: string, stage: string, lostReason?: string): Promise<Opportunity> {
-    const { data } = await api.put<Opportunity>(`/api/v1/opportunities/${id}/stage`, { stage, lostReason });
-    return data;
+    const { data } = await api.put<any>(`/api/v1/opportunities/${id}/stage`, { stage, lostReason });
+    return data?.data || data;
   },
 };

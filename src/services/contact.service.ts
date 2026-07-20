@@ -11,7 +11,7 @@ export const contactService = {
     firstName: string; lastName: string; email?: string;
     phone?: string; title?: string; company?: string; leadId?: string;
   }): Promise<Contact> {
-    const { data } = await api.post<Contact>('/api/v1/contacts', input);
-    return data;
+    const { data } = await api.post<any>('/api/v1/contacts', input);
+    return data?.data || data;
   },
 };

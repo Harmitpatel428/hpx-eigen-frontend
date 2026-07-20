@@ -14,12 +14,12 @@ export const activityService = {
     opportunityId: string; type: string; subject: string;
     notes?: string; scheduledAt?: string;
   }): Promise<Activity> {
-    const { data } = await api.post<Activity>('/api/v1/activities', input);
-    return data;
+    const { data } = await api.post<any>('/api/v1/activities', input);
+    return data?.data || data;
   },
 
   async markComplete(id: string): Promise<Activity> {
-    const { data } = await api.put<Activity>(`/api/v1/activities/${id}/complete`, {});
-    return data;
+    const { data } = await api.put<any>(`/api/v1/activities/${id}/complete`, {});
+    return data?.data || data;
   },
 };
