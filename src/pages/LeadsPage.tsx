@@ -19,25 +19,13 @@ export function LeadsPage() {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      
-      {/* ─── ULTRA-COMPACT HEADER & TOOLBAR (< 64px) ────────────────────────── */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        paddingBottom: 'var(--space-3)', 
-        borderBottom: '1px solid var(--border-light)',
-        marginBottom: 'var(--space-3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-          <h1 className="type-h1" style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Leads</h1>
-          <div style={{ width: 1, height: 16, backgroundColor: 'var(--border-medium)' }} />
-          <div className="type-ui" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 'var(--space-3)' }}>
-            <span><strong style={{ color: 'var(--text-primary)' }}>{filteredLeads.length}</strong> Records</span>
-            <span><strong style={{ color: 'var(--text-primary)' }}>$1.2M</strong> Pipeline</span>
-            <span><strong style={{ color: 'var(--color-success)' }}>24%</strong> Conversion</span>
-          </div>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="type-title">Leads</h1>
+          <p className="type-body">
+            {filteredLeads.length} total &bull; {filteredLeads.filter(l => l.status === 'NEW').length} new
+          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>

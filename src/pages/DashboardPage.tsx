@@ -25,9 +25,9 @@ export function DashboardPage() {
   const STAGES = ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION'];
 
   return (
-    <>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
       {/* Massive Editorial Greeting */}
-      <div style={{ marginBottom: 'var(--space-24)', paddingTop: 'var(--space-8)' }}>
+      <div style={{ marginBottom: 'var(--space-24)' }}>
         <h1 className="type-hero" style={{ marginBottom: 'var(--space-6)', maxWidth: 800 }}>
           Good morning. Your active pipeline is currently sitting at <span style={{ color: 'var(--color-success)' }}>{formatCurrency(pipelineValue)}</span>.
         </h1>
@@ -131,6 +131,6 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

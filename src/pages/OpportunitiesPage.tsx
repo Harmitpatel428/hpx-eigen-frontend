@@ -25,10 +25,10 @@ export function OpportunitiesPage() {
   const BOARD_STAGES = STAGES.filter(s => s !== 'CLOSED_LOST');
 
   return (
-    <div className="workspace-bleed">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', padding: '0 var(--space-16)' }}>
-        <div>
-          <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Pipeline</h1>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="type-title">Pipeline</h1>
           <p className="type-body">{activeOpps.length} active opportunities</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

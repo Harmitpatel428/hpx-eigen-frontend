@@ -41,10 +41,10 @@ export function PipelineAnalyticsPage() {
   const wonValue      = wonDeals.reduce((s, o) => s + parseFloat(o.value||'0'), 0);
 
   return (
-    <div style={{ paddingBottom: 'var(--space-24)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-16)' }}>
-        <div>
-          <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Analytics</h1>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="type-title">Analytics</h1>
           <p className="type-body">Performance and Forecasting</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

@@ -67,10 +67,10 @@ export function ActivitiesPage() {
   const otherActs = sorted.filter(a => !a.completedAt && new Date(a.createdAt).toLocaleDateString() !== todayStr);
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-12)' }}>
-        <div>
-          <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Activities</h1>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="type-title">Activities</h1>
           <p className="type-body">Timeline of interactions</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

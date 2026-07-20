@@ -50,10 +50,10 @@ export function PaymentsPage() {
   ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-12)' }}>
-        <div>
-          <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Payments</h1>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="type-title">Payments</h1>
           <p className="type-body">Track and manage incoming transactions</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
