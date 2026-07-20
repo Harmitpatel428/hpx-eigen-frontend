@@ -140,6 +140,7 @@ export function OpportunitiesPage({ tenantId }: { tenantId: string }) {
       key: 'value',
       label: 'Value (₹)',
       sortable: true,
+      align: 'right',
       render: (val) => <span className="font-semibold text-green-400">{formatINR(val)}</span>,
     },
     {

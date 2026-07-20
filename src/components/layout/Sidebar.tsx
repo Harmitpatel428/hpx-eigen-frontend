@@ -1,3 +1,4 @@
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Search,
@@ -23,52 +24,39 @@ const mainNav = [
   { label: 'Payments', path: '/payments', icon: CreditCard },
 ];
 
-export function Sidebar() {
+export const Sidebar = React.memo(function Sidebar() {
   return (
-    <aside className="workspace-sidebar">
+    <aside className="w-64 bg-gray-950 text-white border-r border-[var(--border-light)] flex flex-col px-3 py-6 shrink-0 sticky top-0 h-screen">
       {/* Brand & Workspace */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-8)', padding: '0 var(--space-2)' }}>
-        <div style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-accent)', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="flex items-center gap-3 mb-6 px-2">
+        <div className="w-6 h-6 rounded-sm bg-white text-gray-950 flex items-center justify-center">
           <Command size={14} />
         </div>
-        <span className="type-ui" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>HPX EIGEN CRM</span>
+        <span className="text-sm font-semibold tracking-tight text-white">HPX EIGEN CRM</span>
       </div>
 
-      {/* Global Search Button (Linear Style) */}
-      <button style={{ 
-        display: 'flex', alignItems: 'center', gap: 'var(--space-2)', 
-        padding: '8px var(--space-3)', marginBottom: 'var(--space-6)',
-        backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-light)', 
-        borderRadius: 'var(--radius-md)', color: 'var(--text-tertiary)', 
-        transition: 'all var(--transition-fast)' 
-      }}>
-        <Search size={14} />
-        <span className="type-ui" style={{ flex: 1, textAlign: 'left', fontWeight: 400 }}>Search...</span>
-        <span className="type-micro" style={{ padding: '2px 4px', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-sm)' }}>⌘K</span>
+      {/* Global Search Button */}
+      <button className="flex items-center gap-2 px-3 py-2 mb-6 bg-gray-900 border border-gray-800 rounded-md text-gray-400 hover:text-white transition-all duration-150 group">
+        <Search size={14} className="group-hover:text-white transition-colors" />
+        <span className="text-sm font-normal text-left flex-1">Search...</span>
+        <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 bg-gray-800 rounded-sm">⌘K</span>
       </button>
 
       {/* Navigation */}
-      <nav style={{ flex: 1 }}>
-        <div className="type-micro" style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-2)' }}>Your Workspace</div>
-        <ul style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <nav className="flex-1">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 px-3 mb-2">Your Workspace</div>
+        <ul className="flex flex-col gap-0.5">
           {mainNav.map(item => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
                 end={item.path === '/'}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: '8px var(--space-3)',
-                  borderRadius: 'var(--radius-md)',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  backgroundColor: isActive ? 'var(--bg-app)' : 'transparent',
-                  fontWeight: isActive ? 500 : 400,
-                  fontSize: 'var(--text-sm)',
-                  boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
-                  transition: 'all var(--transition-fast)'
-                })}
+                className={({ isActive }) => `
+                  flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-150
+                  ${isActive 
+                    ? 'bg-gray-800 text-white font-medium shadow-sm' 
+                    : 'text-gray-400 hover:text-white hover:bg-gray-900 font-normal'}
+                `}
               >
                 {({ isActive }) => (
                   <>
@@ -84,17 +72,20 @@ export function Sidebar() {
 
       {/* Footer Navigation */}
       <nav>
-        <ul style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <ul className="flex flex-col gap-0.5">
           <li>
-            <NavLink to="/settings" style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: isActive ? 'var(--bg-app)' : 'transparent', fontWeight: isActive ? 500 : 400, fontSize: 'var(--text-sm)'
-              })}>
+            <NavLink 
+              to="/settings" 
+              className={({ isActive }) => `
+                flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-150
+                ${isActive ? 'bg-gray-800 text-white font-medium' : 'text-gray-400 hover:text-white hover:bg-gray-900'}
+              `}
+            >
               <Settings size={16} /> Settings
             </NavLink>
           </li>
           <li>
-            <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontWeight: 400, fontSize: 'var(--text-sm)' }}>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-normal text-gray-400 hover:text-white hover:bg-gray-900 transition-all duration-150">
               <CircleHelp size={16} /> Help & Documentation
             </a>
           </li>
@@ -102,4 +93,4 @@ export function Sidebar() {
       </nav>
     </aside>
   );
-}
+});

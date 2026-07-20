@@ -42,11 +42,11 @@ export function PaymentsPage() {
   };
 
   const columns: Column<Payment>[] = [
-    { key: 'id', header: 'Payment ID', cell: (val) => String(val).slice(0, 8) },
-    { key: 'invoiceId', header: 'Invoice ID', cell: (val) => String(val).slice(0, 8) },
-    { key: 'amount', header: 'Amount', cell: (val) => formatINR(Number(val)) },
-    { key: 'method', header: 'Method', cell: (val) => String(val).replace('_', ' ') },
-    { key: 'paidAt', header: 'Paid At', cell: (val) => val ? formatDate(String(val)) : '-' },
+    { key: 'id', label: 'Payment ID', render: (val) => String(val).slice(0, 8) },
+    { key: 'invoiceId', label: 'Invoice ID', render: (val) => String(val).slice(0, 8) },
+    { key: 'amount', label: 'Amount', align: 'right', render: (val) => formatINR(Number(val)) },
+    { key: 'method', label: 'Method', render: (val) => String(val).replace('_', ' ') },
+    { key: 'paidAt', label: 'Paid At', render: (val) => val ? formatDate(String(val)) : '-' },
   ];
 
   return (

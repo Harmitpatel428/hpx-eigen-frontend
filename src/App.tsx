@@ -1,24 +1,28 @@
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout/Layout';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { LeadsPage } from './pages/LeadsPage';
-import { ContactsPage } from './pages/ContactsPage';
-import { OpportunitiesPage } from './pages/OpportunitiesPage';
-import { ActivitiesPage } from './pages/ActivitiesPage';
-import { PipelineAnalyticsPage } from './pages/PipelineAnalyticsPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { InvoicesPage } from './pages/InvoicesPage';
-import { PaymentsPage } from './pages/PaymentsPage';
+
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const LeadsPage = lazy(() => import('./pages/LeadsPage').then(m => ({ default: m.LeadsPage })));
+const ContactsPage = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactsPage })));
+const OpportunitiesPage = lazy(() => import('./pages/OpportunitiesPage').then(m => ({ default: m.OpportunitiesPage })));
+const ActivitiesPage = lazy(() => import('./pages/ActivitiesPage').then(m => ({ default: m.ActivitiesPage })));
+const PipelineAnalyticsPage = lazy(() => import('./pages/PipelineAnalyticsPage').then(m => ({ default: m.PipelineAnalyticsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then(m => ({ default: m.InvoicesPage })));
+const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 60_000,
+      gcTime: 5 * 60_000, // 5 minutes
       retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
 });
@@ -43,58 +47,64 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen w-screen bg-[var(--bg-app)] text-[var(--text-tertiary)]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-accent)]" />
+      </div>
+    }>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
 
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Layout><DashboardPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/leads" element={
-        <ProtectedRoute>
-          <Layout><LeadsPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/contacts" element={
-        <ProtectedRoute>
-          <Layout><ContactsPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/opportunities" element={
-        <ProtectedRoute>
-          <Layout><OpportunitiesPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/activities" element={
-        <ProtectedRoute>
-          <Layout><ActivitiesPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/pipeline" element={
-        <ProtectedRoute>
-          <Layout><PipelineAnalyticsPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/invoices" element={
-        <ProtectedRoute>
-          <Layout><InvoicesPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/payments" element={
-        <ProtectedRoute>
-          <Layout><PaymentsPage /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Layout><SettingsPage /></Layout>
-        </ProtectedRoute>
-      } />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout><DashboardPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/leads" element={
+          <ProtectedRoute>
+            <Layout><LeadsPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/contacts" element={
+          <ProtectedRoute>
+            <Layout><ContactsPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/opportunities" element={
+          <ProtectedRoute>
+            <Layout><OpportunitiesPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/activities" element={
+          <ProtectedRoute>
+            <Layout><ActivitiesPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/pipeline" element={
+          <ProtectedRoute>
+            <Layout><PipelineAnalyticsPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/invoices" element={
+          <ProtectedRoute>
+            <Layout><InvoicesPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/payments" element={
+          <ProtectedRoute>
+            <Layout><PaymentsPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Layout><SettingsPage /></Layout>
+          </ProtectedRoute>
+        } />
 
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

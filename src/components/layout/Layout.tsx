@@ -7,15 +7,13 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <div id="root">
-      <div className="workspace">
-        <Sidebar />
-        <div className="workspace-main">
-          <Navbar />
-          <div className="workspace-content">
-            {children}
-          </div>
-        </div>
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-app)]">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
+        <Navbar />
+        <main className="flex-1 w-full px-6 py-8">
+          {children}
+        </main>
       </div>
     </div>
   );

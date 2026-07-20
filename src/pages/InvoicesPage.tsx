@@ -42,23 +42,29 @@ export function InvoicesPage() {
   };
 
   const columns: Column<Invoice>[] = [
-    { key: 'id', header: 'Invoice ID', cell: (val) => String(val).slice(0, 8) },
-    { key: 'opportunityId', header: 'Opportunity ID', cell: (val) => String(val).slice(0, 8) },
-    { key: 'amount', header: 'Amount', cell: (val) => formatINR(Number(val)) },
+    { key: 'id', label: 'Invoice ID', render: (val) => String(val).slice(0, 8) },
+    { key: 'opportunityId', label: 'Opportunity ID', render: (val) => String(val).slice(0, 8) },
+    { key: 'amount', label: 'Amount', align: 'right', render: (val) => formatINR(Number(val)) },
     { 
       key: 'status', 
-      header: 'Status',
-      cell: (val) => (
-        <span style={{ 
-          padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 500,
-          background: val === 'PAID' ? 'var(--color-success-bg)' : 'var(--bg-muted)',
-          color: val === 'PAID' ? 'var(--color-success)' : 'var(--text-secondary)'
-        }}>
-          {String(val)}
-        </span>
-      )
+      label: 'Status',
+      render: (val) => {
+        const status = String(val);
+        const isSuccess = status === 'PAID';
+        const isWarning = status === 'PENDING' || status === 'SENT';
+        
+        return (
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+            isSuccess ? 'bg-emerald-500/10 text-emerald-500' :
+            isWarning ? 'bg-amber-500/10 text-amber-500' :
+            'bg-[var(--bg-muted)] text-[var(--text-secondary)]'
+          }`}>
+            {status}
+          </span>
+        );
+      }
     },
-    { key: 'dueDate', header: 'Due Date', cell: (val) => val ? formatDate(String(val)) : '-' },
+    { key: 'dueDate', label: 'Due Date', render: (val) => val ? formatDate(String(val)) : '-' },
   ];
 
   return (
