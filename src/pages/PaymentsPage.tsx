@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Plus, X, ChevronDown } from 'lucide-react';
+import { Plus, X, ChevronDown, CreditCard } from 'lucide-react';
 
 const paymentSchema = z.object({
   invoiceId: z.string().min(1, 'Invoice ID required'),
@@ -50,23 +50,30 @@ export function PaymentsPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-6 lg:p-8">
-      <div className="flex justify-between items-end mb-8">
+    <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: 'var(--space-6)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-12)' }}>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">Payments</h1>
-          <p className="text-sm text-slate-500">Track and manage received payments</p>
+          <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Payments</h1>
+          <p className="type-body">Track and manage incoming transactions</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
-        >
-          <Plus size={16} /> Record Payment
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={16} /> Record Payment
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <DataTable data={paymentsData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
-      </div>
+      {paymentsData?.data && paymentsData.data.length === 0 && !isLoading ? (
+        <div style={{ padding: 'var(--space-24) 0', textAlign: 'center' }}>
+          <CreditCard size={32} style={{ margin: '0 auto var(--space-4)', color: 'var(--text-tertiary)' }} />
+          <div className="type-h2" style={{ marginBottom: 'var(--space-2)' }}>No payments recorded</div>
+          <div className="type-body" style={{ color: 'var(--text-tertiary)' }}>Record your first payment to keep track of revenue.</div>
+        </div>
+      ) : (
+        <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+          <DataTable data={paymentsData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
