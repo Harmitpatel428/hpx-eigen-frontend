@@ -6,20 +6,20 @@ export const leadService = {
     const params = new URLSearchParams();
     if (filters?.status && filters.status !== 'ALL') params.set('status', filters.status);
     if (filters?.source && filters.source !== 'ALL') params.set('source', filters.source);
-    const { data } = await api.get<any>('/api/leads', { params });
-    return Array.isArray(data) ? data : (data?.leads || []);
+    const { data } = await api.get<any>('/api/v1/leads', { params });
+    return Array.isArray(data) ? data : (data?.data || []);
   },
 
   async create(input: {
     firstName: string; lastName: string; email?: string;
     phone?: string; company?: string; source?: string;
   }): Promise<Lead> {
-    const { data } = await api.post<Lead>('/api/leads', input);
+    const { data } = await api.post<Lead>('/api/v1/leads', input);
     return data;
   },
 
   async update(id: string, input: Partial<Lead>): Promise<Lead> {
-    const { data } = await api.put<Lead>(`/api/leads/${id}`, input);
+    const { data } = await api.put<Lead>(`/api/v1/leads/${id}`, input);
     return data;
   },
 };
