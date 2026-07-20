@@ -11,6 +11,8 @@ import { OpportunitiesPage } from './pages/OpportunitiesPage';
 import { ActivitiesPage } from './pages/ActivitiesPage';
 import { PipelineAnalyticsPage } from './pages/PipelineAnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { InvoicesPage } from './pages/InvoicesPage';
+import { PaymentsPage } from './pages/PaymentsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +74,16 @@ function AppRoutes() {
       <Route path="/pipeline" element={
         <ProtectedRoute>
           <Layout><PipelineAnalyticsPage /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/invoices" element={
+        <ProtectedRoute>
+          <Layout><InvoicesPage /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/payments" element={
+        <ProtectedRoute>
+          <Layout><PaymentsPage /></Layout>
         </ProtectedRoute>
       } />
       <Route path="/settings" element={

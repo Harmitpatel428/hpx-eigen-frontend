@@ -8,7 +8,9 @@ import {
   Briefcase,
   Settings,
   CircleHelp,
-  Command
+  Command,
+  FileText,
+  CreditCard
 } from 'lucide-react';
 
 const mainNav = [
@@ -17,6 +19,8 @@ const mainNav = [
   { label: 'Contacts', path: '/contacts', icon: Building },
   { label: 'Pipeline', path: '/pipeline', icon: Briefcase },
   { label: 'Activities', path: '/activities', icon: ActivitySquare },
+  { label: 'Invoices', path: '/invoices', icon: FileText },
+  { label: 'Payments', path: '/payments', icon: CreditCard },
 ];
 
 export function Sidebar() {

@@ -121,3 +121,35 @@ export interface PaginationState {
   pageSize: number;
   total?: number;
 }
+
+// ============================================================================
+// S3 FINANCE DOMAIN
+// ============================================================================
+
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+
+export interface Invoice {
+  id: string;
+  tenantId: string;
+  opportunityId: string;
+  amount: number | string;
+  status: InvoiceStatus;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export type PaymentMethod = 'CREDIT_CARD' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CASH';
+
+export interface Payment {
+  id: string;
+  tenantId: string;
+  invoiceId: string;
+  amount: number | string;
+  method: PaymentMethod;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}

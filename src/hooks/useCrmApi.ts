@@ -406,3 +406,81 @@ export function usePipelineAnalytics(tenantId: string, filters?: { owner?: strin
     staleTime: 10 * 60 * 1000,
   });
 }
+
+// ============================================================================
+// INVOICES
+// ============================================================================
+
+export function useInvoices(tenantId: string, filters?: { status?: string; opportunityId?: string }) {
+  return useQuery({
+    queryKey: ['invoices', tenantId, filters],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        tenantId,
+        ...(filters?.status && { status: filters.status }),
+        ...(filters?.opportunityId && { opportunityId: filters.opportunityId }),
+      });
+      const res = await fetch(`${API_BASE}/api/v1/invoices?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch invoices');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateInvoice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (invoice: { opportunityId: string; amount: number | string; status?: string; dueDate?: string; tenantId: string }) => {
+      const res = await fetch(`${API_BASE}/api/v1/invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invoice),
+      });
+      if (!res.ok) throw new Error('Failed to create invoice');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+  });
+}
+
+// ============================================================================
+// PAYMENTS
+// ============================================================================
+
+export function usePayments(tenantId: string, filters?: { method?: string; invoiceId?: string }) {
+  return useQuery({
+    queryKey: ['payments', tenantId, filters],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        tenantId,
+        ...(filters?.method && { method: filters.method }),
+        ...(filters?.invoiceId && { invoiceId: filters.invoiceId }),
+      });
+      const res = await fetch(`${API_BASE}/api/v1/payments?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch payments');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreatePayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payment: { invoiceId: string; amount: number | string; method?: string; paidAt?: string; tenantId: string }) => {
+      const res = await fetch(`${API_BASE}/api/v1/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payment),
+      });
+      if (!res.ok) throw new Error('Failed to create payment');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+    },
+  });
+}
