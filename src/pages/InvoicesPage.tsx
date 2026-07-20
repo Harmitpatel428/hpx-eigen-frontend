@@ -54,10 +54,10 @@ export function InvoicesPage() {
         const isWarning = status === 'PENDING' || status === 'SENT';
         
         return (
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-            isSuccess ? 'bg-emerald-500/10 text-emerald-500' :
-            isWarning ? 'bg-amber-500/10 text-amber-500' :
-            'bg-[var(--bg-muted)] text-[var(--text-secondary)]'
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            isSuccess ? 'bg-green-100 text-green-700' :
+            isWarning ? 'bg-yellow-100 text-yellow-700' :
+            'bg-slate-100 text-slate-700'
           }`}>
             {status}
           </span>
@@ -68,15 +68,21 @@ export function InvoicesPage() {
   ];
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
-        <h1 className="type-h3">Invoices</h1>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+    <div className="max-w-7xl mx-auto w-full p-6 lg:p-8">
+      <div className="flex justify-between items-end mb-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">Invoices</h1>
+          <p className="text-sm text-slate-500">Manage and track customer invoices</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+        >
           <Plus size={16} /> New Invoice
         </button>
       </div>
 
-      <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable data={invoicesData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
       </div>
 

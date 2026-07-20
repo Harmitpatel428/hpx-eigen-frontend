@@ -50,15 +50,21 @@ export function PaymentsPage() {
   ];
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
-        <h1 className="type-h3">Payments</h1>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+    <div className="max-w-7xl mx-auto w-full p-6 lg:p-8">
+      <div className="flex justify-between items-end mb-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">Payments</h1>
+          <p className="text-sm text-slate-500">Track and manage received payments</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+        >
           <Plus size={16} /> Record Payment
         </button>
       </div>
 
-      <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable data={paymentsData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
       </div>
 

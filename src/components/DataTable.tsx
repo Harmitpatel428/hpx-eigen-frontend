@@ -37,15 +37,15 @@ export const DataTable = React.memo(<T,>({
 }: DataTableProps<T>) => {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[var(--color-accent)]" />
+      <div className="flex items-center justify-center h-64 bg-white">
+        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-slate-900" />
       </div>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-[var(--text-tertiary)] text-sm">
+      <div className="flex items-center justify-center h-64 text-slate-500 text-sm bg-white">
         {emptyMessage}
       </div>
     );
@@ -56,15 +56,15 @@ export const DataTable = React.memo(<T,>({
   };
 
   return (
-    <div className="overflow-x-auto w-full">
+    <div className="overflow-x-auto w-full bg-white">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-[var(--border-medium)]">
+          <tr className="border-b border-slate-200">
             {columns.map((col) => (
               <th
                 key={String(col.key)}
-                className={`px-4 py-3 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider bg-[var(--bg-subtle)] 
-                  ${col.sortable ? 'cursor-pointer hover:text-[var(--text-primary)] transition-colors' : ''}
+                className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50 
+                  ${col.sortable ? 'cursor-pointer hover:text-slate-900 transition-colors' : ''}
                   ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
                 style={{ width: col.width }}
                 onClick={() => col.sortable && onSort?.(String(col.key), sortKey === String(col.key) && sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -77,26 +77,26 @@ export const DataTable = React.memo(<T,>({
                 </div>
               </th>
             ))}
-            {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider bg-[var(--bg-subtle)]">Actions</th>}
+            {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">Actions</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[var(--border-light)] bg-[var(--bg-app)]">
+        <tbody className="divide-y divide-slate-100 bg-white">
           {data.map((row) => (
             <tr
               key={getRowKey(row)}
-              className={`transition-colors hover:bg-[var(--bg-subtle)] ${onRowClick ? 'cursor-pointer' : ''}`}
+              className={`transition-colors hover:bg-slate-50 ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick?.(row)}
             >
               {columns.map((col) => {
                 const alignClass = col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left';
                 return (
-                  <td key={String(col.key)} className={`px-4 py-2 text-sm text-[var(--text-primary)] ${alignClass}`}>
+                  <td key={String(col.key)} className={`px-4 py-3 text-sm text-slate-900 ${alignClass}`}>
                     {col.render ? col.render((row as any)[col.key], row) : String((row as any)[col.key] ?? '')}
                   </td>
                 );
               })}
               {rowActions && (
-                <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                   {rowActions(row)}
                 </td>
               )}
