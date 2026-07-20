@@ -3,22 +3,22 @@ import type { AuthTokens, User } from '../types';
 
 export const authService = {
   async login(tenantId: string, email: string, password: string): Promise<AuthTokens> {
-    const { data } = await api.post<AuthTokens>('/api/auth/login', { tenantId, email, password });
-    return data;
+    const { data } = await api.post<any>('/api/v1/auth/login', { tenantId, email, password });
+    return data?.data || data;
   },
 
   async logout(): Promise<void> {
-    await api.post('/api/auth/logout');
+    await api.post('/api/v1/auth/logout');
   },
 
   async me(): Promise<User> {
-    const { data } = await api.get<User>('/api/auth/me');
-    return data;
+    const { data } = await api.get<any>('/api/v1/auth/me');
+    return data?.data || data;
   },
 
   async refresh(_sessionId: string, refreshToken: string): Promise<{ accessToken: string }> {
-    const { data } = await api.post('/api/auth/refresh', { refreshToken });
-    return data;
+    const { data } = await api.post<any>('/api/v1/auth/refresh', { refreshToken });
+    return data?.data || data;
   },
 
   storeTokens(tokens: AuthTokens, tenantId: string): void {
