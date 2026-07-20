@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus, X, ChevronDown } from 'lucide-react';
 
 const paymentSchema = z.object({
   invoiceId: z.string().min(1, 'Invoice ID required'),
@@ -62,44 +62,61 @@ export function PaymentsPage() {
         <DataTable data={paymentsData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Record New Payment">
-        <form onSubmit={formMethods.handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div className="form-group">
-            <label className="type-micro">Invoice ID</label>
-            <input type="text" className="form-control" {...formMethods.register('invoiceId')} placeholder="Enter Invoice UUID..." />
-            {formMethods.formState.errors.invoiceId && <span style={{ color: 'var(--color-danger)', fontSize: 12 }}>{formMethods.formState.errors.invoiceId.message}</span>}
-          </div>
-          
-          <div className="form-group">
-            <label className="type-micro">Amount (INR)</label>
-            <input type="number" className="form-control" {...formMethods.register('amount', { valueAsNumber: true })} placeholder="0.00" />
-            {formMethods.formState.errors.amount && <span style={{ color: 'var(--color-danger)', fontSize: 12 }}>{formMethods.formState.errors.amount.message}</span>}
-          </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-slate-900">Record New Payment</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={formMethods.handleSubmit(onSubmit)}>
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Invoice ID</label>
+                  <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('invoiceId')} placeholder="Enter Invoice UUID..." />
+                  {formMethods.formState.errors.invoiceId && <p className="text-xs text-red-500 mt-1">{formMethods.formState.errors.invoiceId.message}</p>}
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Amount (INR)</label>
+                  <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('amount', { valueAsNumber: true })} placeholder="0.00" />
+                  {formMethods.formState.errors.amount && <p className="text-xs text-red-500 mt-1">{formMethods.formState.errors.amount.message}</p>}
+                </div>
 
-          <div className="form-group">
-            <label className="type-micro">Method</label>
-            <select className="form-control" {...formMethods.register('method')}>
-              <option value="CASH">Cash</option>
-              <option value="CREDIT_CARD">Credit Card</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-              <option value="UPI">UPI</option>
-              <option value="CHEQUE">Cheque</option>
-            </select>
-          </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Method</label>
+                  <div className="relative">
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('method')}>
+                      <option value="CASH">Cash</option>
+                      <option value="CREDIT_CARD">Credit Card</option>
+                      <option value="BANK_TRANSFER">Bank Transfer</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CHEQUE">Cheque</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
+                </div>
 
-          <div className="form-group">
-            <label className="type-micro">Paid At</label>
-            <input type="date" className="form-control" {...formMethods.register('paidAt')} />
-          </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Paid At</label>
+                  <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('paidAt')} />
+                </div>
+              </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-            <button type="button" className="btn btn-ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={createMut.isPending}>
-              {createMut.isPending ? 'Saving...' : 'Save Payment'}
-            </button>
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                <button type="button" className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-sm" disabled={createMut.isPending}>
+                  {createMut.isPending ? 'Saving...' : 'Save Payment'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }
