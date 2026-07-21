@@ -417,13 +417,11 @@ export function useInvoices(tenantId: string, filters?: { status?: string; oppor
     queryKey: ['invoices', tenantId, filters],
     queryFn: async () => {
       const params = new URLSearchParams({
-        tenantId,
         ...(filters?.status && { status: filters.status }),
         ...(filters?.opportunityId && { opportunityId: filters.opportunityId }),
       });
-      const res = await fetch(`${API_BASE}/api/v1/invoices?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch invoices');
-      return res.json();
+      const res = await api.get(`/api/v1/invoices?${params}`);
+      return res.data;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -432,14 +430,9 @@ export function useInvoices(tenantId: string, filters?: { status?: string; oppor
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (invoice: { opportunityId: string; amount: number | string; status?: string; dueDate?: string; tenantId: string }) => {
-      const res = await fetch(`${API_BASE}/api/v1/invoices`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invoice),
-      });
-      if (!res.ok) throw new Error('Failed to create invoice');
-      return res.json();
+    mutationFn: async ({ tenantId, ...invoice }: { opportunityId: string; amount: number | string; status?: string; dueDate?: string; tenantId: string }) => {
+      const res = await api.post(`/api/v1/invoices`, invoice);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -456,7 +449,6 @@ export function usePayments(tenantId: string, filters?: { method?: string; invoi
     queryKey: ['payments', tenantId, filters],
     queryFn: async () => {
       const params = new URLSearchParams({
-        tenantId,
         ...(filters?.method && { method: filters.method }),
         ...(filters?.invoiceId && { invoiceId: filters.invoiceId }),
       });
@@ -470,7 +462,7 @@ export function usePayments(tenantId: string, filters?: { method?: string; invoi
 export function useCreatePayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payment: { invoiceId: string; amount: number | string; method?: string; paidAt?: string; tenantId: string }) => {
+    mutationFn: async ({ tenantId, ...payment }: { invoiceId: string; amount: number | string; method?: string; paidAt?: string; tenantId: string }) => {
       const res = await api.post(`/api/v1/payments`, payment);
       return res.data;
     },
