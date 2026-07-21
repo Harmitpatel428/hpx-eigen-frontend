@@ -88,7 +88,7 @@ export function useOpportunities(tenantId: string, filters?: FilterState, pagina
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(pagination && { page: String(pagination.page), pageSize: String(pagination.pageSize) }),
-        ...(filters?.stage && { stage: Array.isArray(filters.stage) ? filters.stage.join(',') : filters.stage }),
+
         ...(filters?.owner && { owner: filters.owner }),
         ...(filters?.health && { health: filters.health }),
         ...(filters?.dateRange && { startDate: filters.dateRange[0], endDate: filters.dateRange[1] }),
