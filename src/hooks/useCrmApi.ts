@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState } from '../types/crm';
+import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState, Invoice, Payment } from '../types/crm';
 import { api } from '../services/api';
 
 // ============================================================================
@@ -353,7 +353,7 @@ export function useInvoices(tenantId: string, filters?: { status?: string; oppor
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ tenantId, ...invoice }: { opportunityId: string; amount: number | string; status?: string; dueDate?: string; tenantId: string }) => {
+    mutationFn: async ({ tenantId, ...invoice }: Partial<Invoice> & { tenantId: string }) => {
       const res = await api.post(`/api/v1/invoices`, invoice);
       return res.data;
     },
@@ -385,12 +385,13 @@ export function usePayments(tenantId: string, filters?: { method?: string; invoi
 export function useCreatePayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ tenantId, ...payment }: { invoiceId: string; amount: number | string; method?: string; paidAt?: string; tenantId: string }) => {
+    mutationFn: async ({ tenantId, ...payment }: Partial<Payment> & { tenantId: string }) => {
       const res = await api.post(`/api/v1/payments`, payment);
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] }); // Payment updates invoice status
     },
   });
 }

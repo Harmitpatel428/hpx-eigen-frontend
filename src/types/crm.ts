@@ -133,21 +133,34 @@ export interface PaginationState {
 // S3 FINANCE DOMAIN
 // ============================================================================
 
-export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
 export interface Invoice {
   id: string;
   tenantId: string;
   opportunityId: string;
   amount: number | string;
+  taxPercentage: number | string;
+  discount: number | string;
+  otherCharges: number | string;
+  taxAmount: number | string;
+  totalAmount: number | string;
+  paymentTerms: string | null;
+  internalNotes: string | null;
+  invoiceNotes: string | null;
+  termsConditions: string | null;
+  attachments: string[];
   status: InvoiceStatus;
   dueDate: string | null;
+  invoiceDate: string;
+  invoiceNumber: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
 }
 
-export type PaymentMethod = 'CREDIT_CARD' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CASH';
+export type PaymentMethod = 'CREDIT_CARD' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CASH' | 'NEFT' | 'RTGS' | 'IMPS' | 'OTHER';
+export type PaymentStatus = 'PENDING' | 'RECEIVED' | 'FAILED' | 'REFUNDED' | 'CANCELLED';
 
 export interface Payment {
   id: string;
@@ -155,6 +168,13 @@ export interface Payment {
   invoiceId: string;
   amount: number | string;
   method: PaymentMethod;
+  referenceNumber: string | null;
+  bankName: string | null;
+  chequeNumber: string | null;
+  status: PaymentStatus;
+  receivedBy: string | null;
+  notes: string | null;
+  attachmentUrl: string | null;
   paidAt: string | null;
   createdAt: string;
   updatedAt: string;
