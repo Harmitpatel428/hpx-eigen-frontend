@@ -32,7 +32,8 @@ export function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: invoicesData, isLoading } = useInvoices(tenantId);
-  const { data: oppsData } = useOpportunities();
+  const { data: oppsData, isLoading: oppsLoading } = useOpportunities();
+  const opportunities = Array.isArray(oppsData) ? oppsData : (oppsData?.data || []);
   
   const createMut = useCreateInvoice();
 
@@ -42,7 +43,7 @@ export function InvoicesPage() {
   });
 
   const selectedOppId = useWatch({ control: formMethods.control, name: 'opportunityId' });
-  const selectedOpp = (Array.isArray(oppsData) ? oppsData : (oppsData?.data || [])).find((opp: any) => opp.id === selectedOppId);
+  const selectedOpp = opportunities.find((opp: any) => opp.id === selectedOppId);
 
   const amount = useWatch({ control: formMethods.control, name: 'amount' }) || 0;
   const taxPercentage = useWatch({ control: formMethods.control, name: 'taxPercentage' }) || 0;
@@ -147,9 +148,13 @@ export function InvoicesPage() {
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">Select Opportunity</label>
                       {(() => { console.log("DROPDOWN DATA MAPPING:", oppsData); return null; })()}
                       <div className="relative">
-                        <select {...formMethods.register("opportunityId")} className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm">
-                          <option value="">Select Opportunity...</option>
-                          {(Array.isArray(oppsData) ? oppsData : (oppsData?.data || []))?.map((opp: any) => {
+                        <select 
+                          {...formMethods.register("opportunityId")} 
+                          className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm disabled:bg-slate-50 disabled:text-slate-500"
+                          disabled={opportunities.length === 0}
+                        >
+                          <option value="">{oppsLoading ? "Loading opportunities..." : "Select Opportunity..."}</option>
+                          {opportunities.map((opp: any) => {
                             return <option key={opp.id} value={opp.id}>{opp.title || opp.name}</option>;
                           })}
                         </select>
@@ -157,6 +162,9 @@ export function InvoicesPage() {
                           <ChevronDown size={16} />
                         </div>
                       </div>
+                      {!oppsLoading && opportunities.length === 0 && (
+                        <p className="text-xs text-red-500 mt-1 font-medium">No opportunities found. Please create an opportunity in the CRM first.</p>
+                      )}
                       {formMethods.formState.errors.opportunityId && <p className="text-xs text-red-500 mt-1.5 font-medium">{formMethods.formState.errors.opportunityId.message}</p>}
                     </div>
 
