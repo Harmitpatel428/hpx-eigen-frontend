@@ -32,11 +32,7 @@ export function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: invoicesData, isLoading } = useInvoices(tenantId);
-  const { data: oppsData, isLoading: oppsLoading } = useOpportunities();
-  
-  if (oppsData) {
-    console.log("Fetched Opportunities:", oppsData);
-  }
+  const { data: oppsData } = useOpportunities();
   
   const createMut = useCreateInvoice();
 
@@ -154,8 +150,7 @@ export function InvoicesPage() {
                         <select {...formMethods.register("opportunityId")} className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm">
                           <option value="">Select Opportunity...</option>
                           {(Array.isArray(oppsData) ? oppsData : (oppsData?.data || []))?.map((opp: any) => {
-                            const label = opp.title || opp.name || `Opportunity ${opp.id.substring(0, 8)}`;
-                            return <option key={opp.id} value={opp.id}>{label}</option>;
+                            return <option key={opp.id} value={opp.id}>{opp.title || opp.name}</option>;
                           })}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
