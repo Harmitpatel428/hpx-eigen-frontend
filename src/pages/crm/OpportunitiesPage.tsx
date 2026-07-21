@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity, useUpdateOpportunityStageMutation, useCloseOpportunity } from '../../hooks/useCrmApi';
+import { useOpportunityTypes } from '../../hooks/useOpportunityTypes';
 import { Modal } from '../../components/Modal';
 import { DataTable, Column } from '../../components/DataTable';
 import { KanbanBoard } from '../../components/KanbanBoard';
@@ -20,7 +21,12 @@ const oppSchema = z.object({
   expectedCloseValue: z.number().min(0),
   closeDate: z.string().min(1, 'Close date required'),
   ownerId: z.string().min(1, 'Owner required'),
+  opportunityTypeId: z.string().optional(),
+  customOpportunityType: z.string().optional(),
   description: z.string().optional(),
+}).superRefine((val, ctx) => {
+  // We'll validate the 'Other' logic in the component since we need access to the types list,
+  // or we can just let backend validate it for now to keep schema clean.
 });
 
 type OppForm = z.infer<typeof oppSchema>;
@@ -37,7 +43,8 @@ type CloseForm = z.infer<typeof closeSchema>;
 
 const stages: OpportunityStage[] = ['Initial Contact', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
-export function OpportunitiesPage({ tenantId }: { tenantId: string }) {
+export function OpportunitiesPage(props: { tenantId?: string }) {
+  const tenantId = props.tenantId || localStorage.getItem('tenantId') || '';
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [filterOpen, setFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -56,6 +63,9 @@ export function OpportunitiesPage({ tenantId }: { tenantId: string }) {
   const deleteMut = useDeleteOpportunity();
   const stageMut = useUpdateOpportunityStageMutation();
   const closeMut = useCloseOpportunity();
+  
+  const { data: oppTypes } = useOpportunityTypes(tenantId);
+  const activeOppTypes = oppTypes?.filter(t => t.isActive) || [];
 
   const formMethods = useForm<OppForm>({ resolver: zodResolver(oppSchema) });
   const closeMethods = useForm<CloseForm>({ resolver: zodResolver(closeSchema) });
@@ -126,7 +136,16 @@ export function OpportunitiesPage({ tenantId }: { tenantId: string }) {
       key: 'name',
       label: 'Opportunity',
       sortable: true,
-      render: (val) => <span className="font-medium text-blue-400">{val}</span>,
+      render: (val, opp) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-blue-400">{val}</span>
+          {opp.opportunityType ? (
+            <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{opp.opportunityType.isDefault && opp.opportunityType.name === 'Other' && opp.customOpportunityType ? opp.customOpportunityType : opp.opportunityType.name}</span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded w-max mt-1">Uncategorized</span>
+          )}
+        </div>
+      ),
     },
     { key: 'companyName', label: 'Company', sortable: true },
     {
@@ -384,6 +403,30 @@ export function OpportunitiesPage({ tenantId }: { tenantId: string }) {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-white mb-1">Opportunity Type</label>
+            <select
+              {...formMethods.register('opportunityTypeId')}
+              className="w-full px-3 py-2 bg-[#16213e] border border-[#16213e] rounded-lg text-white"
+            >
+              <option value="">Select a type (optional)</option>
+              {activeOppTypes.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {activeOppTypes.find(t => t.id === formMethods.watch('opportunityTypeId'))?.name === 'Other' && (
+            <div>
+              <label className="block text-sm font-medium text-white mb-1">Specify Opportunity *</label>
+              <input
+                {...formMethods.register('customOpportunityType')}
+                className="w-full px-3 py-2 bg-[#16213e] border border-[#16213e] rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter opportunity type"
+              />
+            </div>
+          )}
+
+          <div>
             <label className="block text-sm font-medium text-white mb-1">Stage *</label>
             <select
               {...formMethods.register('stage')}
@@ -620,6 +663,8 @@ export function OpportunitiesPage({ tenantId }: { tenantId: string }) {
                     closeDate: detailOpp.closeDate.split('T')[0],
                     ownerId: detailOpp.ownerId,
                     description: detailOpp.description,
+                    opportunityTypeId: detailOpp.opportunityTypeId || '',
+                    customOpportunityType: detailOpp.customOpportunityType || '',
                   });
                   setIsNewOppOpen(true);
                 }}

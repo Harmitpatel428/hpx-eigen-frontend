@@ -39,6 +39,13 @@ export interface Opportunity {
   health: OpportunityHealth;
   description: string;
   linkedLeadId: string | null;
+  opportunityTypeId: string | null;
+  customOpportunityType: string | null;
+  opportunityType?: {
+    id: string;
+    name: string;
+    isDefault: boolean;
+  };
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
