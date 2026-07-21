@@ -32,7 +32,12 @@ export function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: invoicesData, isLoading } = useInvoices(tenantId);
-  const { data: oppsData } = useOpportunities(tenantId, { stage: ['Initial Contact', 'Proposal', 'Negotiation', 'Closed Won'] } as any);
+  const { data: oppsData } = useOpportunities(tenantId);
+  
+  if (oppsData) {
+    console.log("Fetched Opportunities:", oppsData);
+  }
+  
   const createMut = useCreateInvoice();
 
   const formMethods = useForm<InvoiceForm>({ 
@@ -147,9 +152,14 @@ export function InvoicesPage() {
                       <div className="relative">
                         <select className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm" {...formMethods.register('opportunityId')}>
                           <option value="">Select Opportunity...</option>
-                          {oppsData?.data?.map((opp: any) => (
-                            <option key={opp.id} value={opp.id}>{opp.title}</option>
-                          ))}
+                          {oppsData?.data?.map((opp: any) => {
+                            const name = opp.contact ? `${opp.contact.firstName} ${opp.contact.lastName}` : (opp.lead?.firstName ? `${opp.lead.firstName} ${opp.lead.lastName}` : '');
+                            const company = opp.lead?.company || opp.contact?.company || '';
+                            const label = `${opp.title} • ${name}${company ? ` (${company})` : ''}`;
+                            return (
+                              <option key={opp.id} value={opp.id}>{label}</option>
+                            );
+                          })}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                           <ChevronDown size={16} />
@@ -159,13 +169,46 @@ export function InvoicesPage() {
                     </div>
 
                     {selectedOpp && (
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-semibold text-slate-900">{selectedOpp.title}</div>
-                          <div className="text-xs font-medium px-2 py-1 bg-slate-200 text-slate-700 rounded-md">{selectedOpp.stage}</div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 flex flex-col gap-4">
+                        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-slate-900">{selectedOpp.title}</span>
+                            <span className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                              <IndianRupee size={12}/> {formatINR(Number(selectedOpp.value))} • {selectedOpp.stage.replace('_', ' ')}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-600">
-                          <span className="flex items-center gap-1"><IndianRupee size={12}/> {formatINR(Number(selectedOpp.value))}</span>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <User size={14} className="text-slate-400" />
+                              <span className="font-medium text-slate-900">
+                                {selectedOpp.contact ? `${selectedOpp.contact.firstName} ${selectedOpp.contact.lastName}` : `${selectedOpp.lead?.firstName} ${selectedOpp.lead?.lastName}`}
+                              </span>
+                            </div>
+                            {(selectedOpp.lead?.company || selectedOpp.contact?.company) && (
+                              <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <Building size={14} className="text-slate-400" />
+                                <span>{selectedOpp.lead?.company || selectedOpp.contact?.company}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                            {(selectedOpp.contact?.email || selectedOpp.lead?.email) && (
+                              <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <Mail size={14} className="text-slate-400" />
+                                <span>{selectedOpp.contact?.email || selectedOpp.lead?.email}</span>
+                              </div>
+                            )}
+                            {(selectedOpp.contact?.phone || selectedOpp.lead?.phone) && (
+                              <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <Phone size={14} className="text-slate-400" />
+                                <span>{selectedOpp.contact?.phone || selectedOpp.lead?.phone}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
