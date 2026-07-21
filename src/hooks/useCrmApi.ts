@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState } from '../types/crm';
+import { api } from '../services/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -459,9 +460,8 @@ export function usePayments(tenantId: string, filters?: { method?: string; invoi
         ...(filters?.method && { method: filters.method }),
         ...(filters?.invoiceId && { invoiceId: filters.invoiceId }),
       });
-      const res = await fetch(`${API_BASE}/api/v1/payments?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch payments');
-      return res.json();
+      const res = await api.get(`/api/v1/payments?${params}`);
+      return res.data;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -471,13 +471,8 @@ export function useCreatePayment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payment: { invoiceId: string; amount: number | string; method?: string; paidAt?: string; tenantId: string }) => {
-      const res = await fetch(`${API_BASE}/api/v1/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payment),
-      });
-      if (!res.ok) throw new Error('Failed to create payment');
-      return res.json();
+      const res = await api.post(`/api/v1/payments`, payment);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
