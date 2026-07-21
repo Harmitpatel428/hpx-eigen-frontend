@@ -46,7 +46,7 @@ export function InvoicesPage() {
   });
 
   const selectedOppId = useWatch({ control: formMethods.control, name: 'opportunityId' });
-  const selectedOpp = oppsData?.data?.find((o: any) => o.id === selectedOppId);
+  const selectedOpp = (Array.isArray(oppsData) ? oppsData : (oppsData?.data || [])).find((opp: any) => opp.id === selectedOppId);
 
   const amount = useWatch({ control: formMethods.control, name: 'amount' }) || 0;
   const taxPercentage = useWatch({ control: formMethods.control, name: 'taxPercentage' }) || 0;
@@ -152,7 +152,7 @@ export function InvoicesPage() {
                       <div className="relative">
                         <select className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm" {...formMethods.register('opportunityId')}>
                           <option value="">Select Opportunity...</option>
-                          {oppsData?.data?.map((opp: any) => {
+                          {(Array.isArray(oppsData) ? oppsData : (oppsData?.data || [])).map((opp: any) => {
                             const name = opp.contact ? `${opp.contact.firstName} ${opp.contact.lastName}` : (opp.lead?.firstName ? `${opp.lead.firstName} ${opp.lead.lastName}` : '');
                             const company = opp.lead?.company || opp.contact?.company || '';
                             const label = `${opp.title} • ${name}${company ? ` (${company})` : ''}`;
