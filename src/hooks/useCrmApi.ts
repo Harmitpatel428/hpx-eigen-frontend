@@ -82,25 +82,17 @@ export function useConvertLeadToOpportunity() {
 // OPPORTUNITIES
 // ============================================================================
 
-export function useOpportunities(tenantId: string, filters?: FilterState, pagination?: PaginationState) {
+export const useOpportunities = (tenantId?: string, filters?: any, pagination?: any) => {
   return useQuery({
     queryKey: ['opportunities', tenantId, filters, pagination],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        ...(pagination && { page: String(pagination.page), pageSize: String(pagination.pageSize) }),
-
-        ...(filters?.owner && { owner: filters.owner }),
-        ...(filters?.health && { health: filters.health }),
-        ...(filters?.dateRange && { startDate: filters.dateRange[0], endDate: filters.dateRange[1] }),
-        ...(filters?.valueRange && { minValue: String(filters.valueRange[0]), maxValue: String(filters.valueRange[1]) }),
-        ...(filters?.searchQuery && { search: filters.searchQuery }),
-      });
-      const res = await api.get(`/api/v1/opportunities?${params}`);
-      return res.data;
-    },
-    staleTime: 5 * 60 * 1000,
+      const res = await api.get('/api/v1/opportunities');
+      console.log("RAW API RESPONSE IN HOOK:", res.data);
+      // Handle both { data: [...] } and bare [...] envelopes
+      return res.data?.data || res.data || [];
+    }
   });
-}
+};
 
 export function useCreateOpportunity() {
   const queryClient = useQueryClient();

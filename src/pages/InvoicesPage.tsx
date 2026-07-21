@@ -32,7 +32,7 @@ export function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: invoicesData, isLoading } = useInvoices(tenantId);
-  const { data: oppsData } = useOpportunities(tenantId);
+  const { data: oppsData, isLoading: oppsLoading } = useOpportunities();
   
   if (oppsData) {
     console.log("Fetched Opportunities:", oppsData);
@@ -149,16 +149,13 @@ export function InvoicesPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">Select Opportunity</label>
+                      {(() => { console.log("DROPDOWN DATA MAPPING:", oppsData); return null; })()}
                       <div className="relative">
-                        <select className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm" {...formMethods.register('opportunityId')}>
+                        <select {...formMethods.register("opportunityId")} className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm">
                           <option value="">Select Opportunity...</option>
-                          {(Array.isArray(oppsData) ? oppsData : (oppsData?.data || [])).map((opp: any) => {
-                            const name = opp.contact ? `${opp.contact.firstName} ${opp.contact.lastName}` : (opp.lead?.firstName ? `${opp.lead.firstName} ${opp.lead.lastName}` : '');
-                            const company = opp.lead?.company || opp.contact?.company || '';
-                            const label = `${opp.title} • ${name}${company ? ` (${company})` : ''}`;
-                            return (
-                              <option key={opp.id} value={opp.id}>{label}</option>
-                            );
+                          {(Array.isArray(oppsData) ? oppsData : (oppsData?.data || []))?.map((opp: any) => {
+                            const label = opp.title || opp.name || `Opportunity ${opp.id.substring(0, 8)}`;
+                            return <option key={opp.id} value={opp.id}>{label}</option>;
                           })}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">

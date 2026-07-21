@@ -26,7 +26,7 @@ type LeadForm = z.infer<typeof leadSchema>;
 
 const oppSchema = z.object({
   opportunityName: z.string().min(1, 'Opp name required'),
-  stage: z.string().default('Initial Contact'),
+  stage: z.string().default('PROSPECTING'),
   value: z.number().min(0),
   closeDate: z.string().min(1, 'Close date required'),
 });
@@ -463,9 +463,9 @@ export function LeadsPage({ tenantId }: { tenantId: string }) {
                 {...convertMethods.register('stage')}
                 className="w-full px-3 py-2 bg-[#16213e] border border-[#16213e] rounded-lg text-white"
               >
-                <option value="Initial Contact">Initial Contact</option>
-                <option value="Proposal">Proposal</option>
-                <option value="Negotiation">Negotiation</option>
+                <option value="PROSPECTING">Prospecting</option>
+                <option value="PROPOSAL">Proposal</option>
+                <option value="NEGOTIATION">Negotiation</option>
               </select>
             </div>
 

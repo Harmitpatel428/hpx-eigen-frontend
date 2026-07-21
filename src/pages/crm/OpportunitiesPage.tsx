@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 const oppSchema = z.object({
   name: z.string().min(1, 'Name required'),
   companyId: z.string().min(1, 'Company required'),
-  stage: z.enum(['Initial Contact', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']),
+  stage: z.enum(['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST']),
   value: z.number().min(0, 'Value must be positive'),
   expectedCloseValue: z.number().min(0),
   closeDate: z.string().min(1, 'Close date required'),
@@ -41,7 +41,7 @@ const closeSchema = z.object({
 
 type CloseForm = z.infer<typeof closeSchema>;
 
-const stages: OpportunityStage[] = ['Initial Contact', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+const stages: OpportunityStage[] = ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'];
 
 export function OpportunitiesPage(props: { tenantId?: string }) {
   const tenantId = props.tenantId || localStorage.getItem('tenantId') || '';

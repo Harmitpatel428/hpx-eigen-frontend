@@ -19,7 +19,7 @@ export interface Lead {
   deletedAt: string | null;
 }
 
-export type OpportunityStage = 'Initial Contact' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
+export type OpportunityStage = 'PROSPECTING' | 'QUALIFICATION' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
 export type OpportunityHealth = 'On-track' | 'At-risk' | 'Lost';
 export type CloseOutcome = 'Won' | 'Lost';
 
