@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useInvoices, useCreateInvoice } from '../hooks/useCrmApi';
+import { useInvoices, useCreateInvoice, useOpportunities } from '../hooks/useCrmApi';
 import { useAuth } from '../context/AuthContext';
 import { DataTable, Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
@@ -26,6 +26,7 @@ export function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: invoicesData, isLoading } = useInvoices(tenantId);
+  const { data: oppsData } = useOpportunities(tenantId);
   const createMut = useCreateInvoice();
 
   const formMethods = useForm<InvoiceForm>({ resolver: zodResolver(invoiceSchema) });
@@ -105,8 +106,18 @@ export function InvoicesPage() {
             <form onSubmit={formMethods.handleSubmit(onSubmit)}>
               <div className="p-6 space-y-5">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Opportunity ID</label>
-                  <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('opportunityId')} placeholder="Enter Opportunity UUID..." />
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Opportunity</label>
+                  <div className="relative">
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('opportunityId')}>
+                      <option value="">Select Opportunity...</option>
+                      {oppsData?.data?.map((opp: any) => (
+                        <option key={opp.id} value={opp.id}>{opp.title}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
                   {formMethods.formState.errors.opportunityId && <p className="text-xs text-red-500 mt-1">{formMethods.formState.errors.opportunityId.message}</p>}
                 </div>
                 

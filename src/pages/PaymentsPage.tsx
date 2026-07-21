@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { usePayments, useCreatePayment } from '../hooks/useCrmApi';
+import { usePayments, useCreatePayment, useInvoices } from '../hooks/useCrmApi';
 import { useAuth } from '../context/AuthContext';
 import { DataTable, Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
@@ -26,6 +26,7 @@ export function PaymentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: paymentsData, isLoading } = usePayments(tenantId);
+  const { data: invoicesData } = useInvoices(tenantId);
   const createMut = useCreatePayment();
 
   const formMethods = useForm<PaymentForm>({ resolver: zodResolver(paymentSchema) });
@@ -87,8 +88,18 @@ export function PaymentsPage() {
             <form onSubmit={formMethods.handleSubmit(onSubmit)}>
               <div className="p-6 space-y-5">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Invoice ID</label>
-                  <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('invoiceId')} placeholder="Enter Invoice UUID..." />
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Invoice</label>
+                  <div className="relative">
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all" {...formMethods.register('invoiceId')}>
+                      <option value="">Select Invoice...</option>
+                      {invoicesData?.data?.map((inv: any) => (
+                        <option key={inv.id} value={inv.id}>{inv.id.slice(0, 8)} - {formatINR(Number(inv.amount))}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
                   {formMethods.formState.errors.invoiceId && <p className="text-xs text-red-500 mt-1">{formMethods.formState.errors.invoiceId.message}</p>}
                 </div>
                 
