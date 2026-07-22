@@ -107,7 +107,6 @@ const HPXLoader = () => (
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [tenantId, setTenantId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -147,7 +146,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(tenantId.trim() || 'HPX-EIGEN', email.trim(), password);
+      await login(email.trim(), password);
       setSuccess(true);
       setTimeout(() => {
         navigate('/');
@@ -236,22 +235,7 @@ export function LoginPage() {
             )}
 
             <form id="login-form" onSubmit={handleSubmit} className="auth-form">
-              <div className="input-group auth-stagger-1">
-                <label htmlFor="tenant-id">Organization ID</label>
-                <div className="input-wrapper">
-                  <input
-                    id="tenant-id"
-                    type="text"
-                    className={`premium-input ${error ? 'input-error' : ''}`}
-                    placeholder="HPX-EIGEN"
-                    value={tenantId}
-                    onChange={e => setTenantId(e.target.value)}
-                    autoComplete="organization"
-                    spellCheck={false}
-                    required
-                  />
-                </div>
-              </div>
+
 
               <div className="input-group auth-stagger-2">
                 <label htmlFor="email">Email Address</label>

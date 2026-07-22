@@ -2,8 +2,8 @@ import { api } from './api';
 import type { AuthTokens, User } from '../types';
 
 export const authService = {
-  async login(tenantId: string, email: string, password: string): Promise<AuthTokens> {
-    const { data } = await api.post<any>('/api/v1/auth/login', { tenantId, email, password });
+  async login(email: string, password: string): Promise<AuthTokens> {
+    const { data } = await api.post<any>('/api/v1/auth/login', { email, password });
     return data?.data || data;
   },
 

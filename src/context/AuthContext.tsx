@@ -6,7 +6,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (tenantId: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -31,9 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (tenantId: string, email: string, password: string) => {
-    const tokens = await authService.login(tenantId, email, password);
-    authService.storeTokens(tokens, tenantId);
+  const login = useCallback(async (email: string, password: string) => {
+    const tokens = await authService.login(email, password);
+    // @ts-ignore - tenantId is now returned by backend in tokens
+    authService.storeTokens(tokens, tokens.tenantId);
     const me = await authService.me();
     setUser(me);
   }, []);
