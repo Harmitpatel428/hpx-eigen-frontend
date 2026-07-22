@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const location = useLocation();
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'waiting'>('loading');
   const [message, setMessage] = useState('');
   const token = searchParams.get('token');
+  const email = location.state?.email;
 
   useEffect(() => {
     if (!token) {
-      setStatus('error');
-      setMessage('No verification token found. Please check your email link.');
+      if (email) {
+        setStatus('waiting');
+      } else {
+        setStatus('error');
+        setMessage('No verification token found. Please check your email link.');
+      }
       return;
     }
 
@@ -78,6 +84,25 @@ export function VerifyEmailPage() {
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Verification Failed</h2>
             <p className="text-slate-600 mb-6">{message}</p>
+            <a href="/login" className="inline-block bg-slate-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-slate-800 transition">
+              Return to Login
+            </a>
+          </>
+        )}
+
+        {status === 'waiting' && (
+          <>
+            <div className="mb-4">
+              <div className="inline-block bg-blue-50 p-3 rounded-full">
+                <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Check your inbox</h2>
+            <p className="text-slate-600 mb-6">
+              A verification email has been sent to <strong>{email}</strong>. Please check your inbox.
+            </p>
             <a href="/login" className="inline-block bg-slate-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-slate-800 transition">
               Return to Login
             </a>
