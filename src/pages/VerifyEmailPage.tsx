@@ -19,7 +19,7 @@ export function VerifyEmailPage() {
 
     const verify = async () => {
       try {
-        await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/verify?token=${token}`);
+        await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify?token=${token}`);
         setStatus('success');
         setMessage('Email verified successfully! Redirecting to login...');
         toast.success('Email verified!');

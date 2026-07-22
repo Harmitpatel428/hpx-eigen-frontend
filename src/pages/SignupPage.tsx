@@ -26,7 +26,7 @@ export function SignupPage() {
 
   const onSubmit = async (data: SignupFormData) => {
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/signup`, {
+      await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/signup`, {
         email: data.email,
         password: data.password,
         companyName: data.companyName
