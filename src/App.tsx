@@ -7,6 +7,8 @@ import { Layout } from './components/layout/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const SignupPage = lazy(() => import('./pages/SignupPage').then(m => ({ default: m.SignupPage })));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const LeadsPage = lazy(() => import('./pages/LeadsPage').then(m => ({ default: m.LeadsPage })));
 const ContactsPage = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactsPage })));
@@ -55,6 +57,8 @@ function AppRoutes() {
     }>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route path="/" element={
           <ProtectedRoute>

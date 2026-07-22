@@ -324,6 +324,12 @@ export function LoginPage() {
                 )}
               </button>
             </form>
+
+            <div className="text-center mt-6 auth-stagger-5" style={{ marginTop: '24px', textAlign: 'center' }}>
+              <p style={{ color: 'var(--color-auth-muted)', fontSize: '14px' }}>
+                Don't have an account? <a href="/signup" style={{ color: 'var(--color-auth-text)', fontWeight: 500, textDecoration: 'none' }}>Sign up</a>
+              </p>
+            </div>
           </div>
 
           {loading && (
