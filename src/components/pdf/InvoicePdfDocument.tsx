@@ -1,7 +1,7 @@
-﻿import React from 'react';
+import React from 'react';
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import { formatINRFull } from '../../utils/crm';
-import { Invoice } from '../../types/crm';
+import { Invoice } from '../../types';
 
 interface InvoicePdfProps {
   invoice: Invoice;

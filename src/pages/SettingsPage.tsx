@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { User, Building2, Bell, Shield, Key, CreditCard, Camera, Tags } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Building2, Bell, Shield, Key, CreditCard, Camera, Tags, Users } from 'lucide-react';
 import { OpportunityTypesSettings } from './settings/OpportunityTypesSettings';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
+  const navigate = useNavigate();
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: 1000 }}>
@@ -36,10 +38,16 @@ export function SettingsPage() {
           ))}
           
           <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Workspace</div>
-          {['general', 'members', 'billing', 'opportunity-types'].map(tab => (
+          {['general', 'members', 'org-management', 'billing', 'opportunity-types'].map(tab => (
             <button 
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                if (tab === 'org-management') {
+                  navigate('/settings/org-management');
+                } else {
+                  setActiveTab(tab);
+                }
+              }}
               className="type-ui"
               style={{ 
                 display: 'flex', alignItems: 'center', gap: 'var(--space-3)', 
@@ -53,9 +61,12 @@ export function SettingsPage() {
             >
               {tab === 'general' && <Building2 size={16} />}
               {tab === 'members' && <Key size={16} />}
+              {tab === 'org-management' && <Users size={16} />}
               {tab === 'billing' && <CreditCard size={16} />}
               {tab === 'opportunity-types' && <Tags size={16} />}
-              {tab === 'opportunity-types' ? 'Opportunity Types' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'opportunity-types' ? 'Opportunity Types' : 
+               tab === 'org-management' ? 'Organization Management' : 
+               tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>

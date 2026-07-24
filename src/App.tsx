@@ -18,6 +18,7 @@ const PipelineAnalyticsPage = lazy(() => import('./pages/PipelineAnalyticsPage')
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then(m => ({ default: m.InvoicesPage })));
 const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
+const OrgManagement = lazy(() => import('./pages/settings/OrgManagement').then(m => ({ default: m.OrgManagement })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +104,11 @@ function AppRoutes() {
         <Route path="/settings" element={
           <ProtectedRoute>
             <Layout><SettingsPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/settings/org-management" element={
+          <ProtectedRoute>
+            <Layout><OrgManagement /></Layout>
           </ProtectedRoute>
         } />
 

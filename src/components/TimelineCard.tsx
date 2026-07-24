@@ -1,10 +1,14 @@
 import React, { ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Activity } from '../types/crm';
+import { Activity } from '../types';
 import { activityTypeColor, activityTypeBg, formatRelativeTime } from '../utils/crm';
 
 interface TimelineCardProps {
-  activity: Activity;
+  activity: Activity & {
+    ownerName?: string;
+    linkedLeadName?: string;
+    linkedOpportunityName?: string;
+  };
   icon: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
@@ -14,7 +18,7 @@ export function TimelineCard({ activity, icon, children, actions }: TimelineCard
   const [isExpanded, setIsExpanded] = React.useState(false);
 
   return (
-    <div className={`flex gap-4 ${activity.status === 'Completed' ? 'opacity-60' : ''}`}>
+    <div className={`flex gap-4 ${activity.completedAt ? 'opacity-60' : ''}`}>
       {/* Timeline dot and line */}
       <div className="flex flex-col items-center">
         <div className={`${activityTypeBg(activity.type)} p-2 rounded-full border border-current ${activityTypeColor(activity.type)}`}>
@@ -30,16 +34,17 @@ export function TimelineCard({ activity, icon, children, actions }: TimelineCard
           <div className="flex items-start justify-between mb-2">
             <div>
               <p className="font-semibold text-white">{activity.type}</p>
-              <p className="text-sm text-gray-400">{formatRelativeTime(activity.date)}</p>
+              <p className="text-sm text-gray-400">{formatRelativeTime(activity.scheduledAt || activity.createdAt)}</p>
             </div>
-            {activity.status === 'Completed' && (
+            {activity.completedAt && (
               <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">Completed</span>
             )}
           </div>
 
           {/* Description */}
-          <p className={`text-sm text-gray-300 ${activity.status === 'Completed' ? 'line-through' : ''}`}>
-            {activity.description}
+          <p className={`text-sm text-gray-300 ${activity.completedAt ? 'line-through' : ''}`}>
+            {activity.subject}
+            {activity.notes && <span className="block mt-1 text-gray-400 text-xs">{activity.notes}</span>}
           </p>
 
           {/* Related entities */}

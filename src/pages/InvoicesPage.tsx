@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useInvoices, useCreateInvoice, useOpportunities } from '../hooks/useCrmApi';
 import { useAuth } from '../context/AuthContext';
 import { DataTable, Column } from '../components/DataTable';
-import { Invoice } from '../types/crm';
+import { Invoice } from '../types';
 import { formatINR, formatDate } from '../utils/crm';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -173,7 +173,7 @@ export function InvoicesPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">Select Opportunity</label>
-                      {(() => { console.log("DROPDOWN DATA MAPPING:", oppsData); return null; })()}
+
                       <div className="relative">
                         <select 
                           {...formMethods.register("opportunityId")} 

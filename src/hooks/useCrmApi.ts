@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState, Invoice, Payment } from '../types/crm';
+import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState, Invoice, Payment } from '../types';
 import { api } from '../services/api';
 
 // ============================================================================
@@ -87,7 +87,6 @@ export const useOpportunities = (tenantId?: string, filters?: any, pagination?: 
     queryKey: ['opportunities', tenantId, filters, pagination],
     queryFn: async () => {
       const res = await api.get('/api/v1/opportunities');
-      console.log("RAW API RESPONSE IN HOOK:", res.data);
       // Handle both { data: [...] } and bare [...] envelopes
       return res.data?.data || res.data || [];
     }

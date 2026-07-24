@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Invoice } from '../types/crm';
+import type { Invoice } from '../types';
 
 export const invoiceService = {
   async findAll(filters?: { status?: string; opportunityId?: string }): Promise<Invoice[]> {

@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Payment } from '../types/crm';
+import type { Payment } from '../types';
 
 export const paymentService = {
   async findAll(filters?: { method?: string; invoiceId?: string }): Promise<Payment[]> {

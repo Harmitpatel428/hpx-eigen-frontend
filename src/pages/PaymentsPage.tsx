@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePayments, useCreatePayment, useInvoices } from '../hooks/useCrmApi';
 import { useAuth } from '../context/AuthContext';
 import { DataTable, Column } from '../components/DataTable';
-import { Payment } from '../types/crm';
+import { Payment } from '../types';
 import { formatINR, formatDate } from '../utils/crm';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
