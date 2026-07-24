@@ -8,7 +8,9 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Plus, X, ChevronDown, FileText, User, Building, Phone, Mail, IndianRupee } from 'lucide-react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { InvoicePdfDocument } from '../components/pdf/InvoicePdfDocument';
+import { Plus, X, ChevronDown, FileText, User, Building, Phone, Mail, IndianRupee, Download } from 'lucide-react';
 
 const invoiceSchema = z.object({
   opportunityId: z.string().min(1, 'Opportunity required'),
@@ -123,7 +125,32 @@ export function InvoicesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <DataTable data={invoicesData?.data || []} columns={columns} isLoading={isLoading} rowKey="id" />
+          <DataTable
+            data={invoicesData?.data || []}
+            columns={columns}
+            isLoading={isLoading}
+            rowKey="id"
+            rowActions={(invoice) => (
+              <PDFDownloadLink
+                document={<InvoicePdfDocument invoice={invoice} />}
+                fileName={`Invoice-${invoice.invoiceNumber || invoice.id.slice(0, 8)}.pdf`}
+              >
+                {({ loading }) => (
+                  <button
+                    className="inline-flex items-center justify-center p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={loading}
+                    title={loading ? 'Preparing PDF...' : 'Download Invoice PDF'}
+                  >
+                    {loading ? (
+                      <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                    ) : (
+                      <Download size={15} />
+                    )}
+                  </button>
+                )}
+              </PDFDownloadLink>
+            )}
+          />
         </div>
       )}
 

@@ -157,6 +157,20 @@ export interface Invoice {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  // Populated by backend when fetching invoice list (for PDF generation)
+  opportunity?: {
+    title?: string;
+    lead?: {
+      firstName?: string;
+      lastName?: string;
+      company?: string;
+    };
+    contact?: {
+      firstName?: string;
+      lastName?: string;
+      company?: string;
+    };
+  };
 }
 
 export type PaymentMethod = 'CREDIT_CARD' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CASH' | 'NEFT' | 'RTGS' | 'IMPS' | 'OTHER';

@@ -1,12 +1,22 @@
 import { ZodSchema } from 'zod';
 
-// Currency formatting (INR)
+// Currency formatting (INR) — UI display (no decimal)
 export function formatINR(value: number): string {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+  }).format(value);
+}
+
+// Currency formatting (INR) — PDF / audit display (2 decimal places)
+export function formatINRFull(value: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
