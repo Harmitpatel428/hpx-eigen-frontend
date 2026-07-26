@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState, Invoice, Payment } from '../types';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 // ============================================================================
 // LEADS
 // ============================================================================
 
 export function useLeads(tenantId: string, filters?: FilterState, pagination?: PaginationState) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['leads', tenantId, filters, pagination],
+    queryKey: ['leads', user?.id, tenantId, filters, pagination],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(pagination && { page: String(pagination.page), pageSize: String(pagination.pageSize) }),
@@ -26,6 +28,7 @@ export function useLeads(tenantId: string, filters?: FilterState, pagination?: P
 }
 
 export function useCreateLead() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (lead: Partial<Lead>) => {
@@ -33,12 +36,13 @@ export function useCreateLead() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads', user?.id] });
     },
   });
 }
 
 export function useUpdateLead() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...lead }: Partial<Lead> & { id: string }) => {
@@ -46,12 +50,13 @@ export function useUpdateLead() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads', user?.id] });
     },
   });
 }
 
 export function useDeleteLead() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
@@ -59,12 +64,13 @@ export function useDeleteLead() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads', user?.id] });
     },
   });
 }
 
 export function useConvertLeadToOpportunity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { leadId: string; opportunityName: string; stage: string; value: number; closeDate: string }) => {
@@ -72,8 +78,8 @@ export function useConvertLeadToOpportunity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['leads', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities', user?.id] });
     },
   });
 }
@@ -83,8 +89,9 @@ export function useConvertLeadToOpportunity() {
 // ============================================================================
 
 export const useOpportunities = (tenantId?: string, filters?: any, pagination?: any) => {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['opportunities', tenantId, filters, pagination],
+    queryKey: ['opportunities', user?.id, tenantId, filters, pagination],
     queryFn: async () => {
       const res = await api.get('/api/v1/opportunities');
       // Handle both { data: [...] } and bare [...] envelopes
@@ -94,6 +101,7 @@ export const useOpportunities = (tenantId?: string, filters?: any, pagination?: 
 };
 
 export function useCreateOpportunity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (opp: Partial<Opportunity>) => {
@@ -101,12 +109,13 @@ export function useCreateOpportunity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities', user?.id] });
     },
   });
 }
 
 export function useUpdateOpportunity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...opp }: Partial<Opportunity> & { id: string }) => {
@@ -114,12 +123,13 @@ export function useUpdateOpportunity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities', user?.id] });
     },
   });
 }
 
 export function useDeleteOpportunity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
@@ -127,12 +137,13 @@ export function useDeleteOpportunity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities', user?.id] });
     },
   });
 }
 
 export function useUpdateOpportunityStageMutation() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
@@ -140,12 +151,13 @@ export function useUpdateOpportunityStageMutation() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities', user?.id] });
     },
   });
 }
 
 export function useCloseOpportunity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { id: string; outcome: 'Won' | 'Lost'; actualCloseDate: string; actualCloseValue?: number; reason?: string; notes?: string }) => {
@@ -153,7 +165,7 @@ export function useCloseOpportunity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities', user?.id] });
     },
   });
 }
@@ -163,8 +175,9 @@ export function useCloseOpportunity() {
 // ============================================================================
 
 export function useActivities(tenantId: string, filters?: FilterState, pagination?: PaginationState) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['activities', tenantId, filters, pagination],
+    queryKey: ['activities', user?.id, tenantId, filters, pagination],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(pagination && { page: String(pagination.page), pageSize: String(pagination.pageSize) }),
@@ -181,6 +194,7 @@ export function useActivities(tenantId: string, filters?: FilterState, paginatio
 }
 
 export function useCreateActivity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (activity: Partial<Activity>) => {
@@ -188,12 +202,13 @@ export function useCreateActivity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['activities', user?.id] });
     },
   });
 }
 
 export function useUpdateActivity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...activity }: Partial<Activity> & { id: string }) => {
@@ -201,12 +216,13 @@ export function useUpdateActivity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['activities', user?.id] });
     },
   });
 }
 
 export function useDeleteActivity() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
@@ -214,12 +230,13 @@ export function useDeleteActivity() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['activities', user?.id] });
     },
   });
 }
 
 export function useMarkActivityComplete() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
@@ -227,7 +244,7 @@ export function useMarkActivityComplete() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['activities', user?.id] });
     },
   });
 }
@@ -237,8 +254,9 @@ export function useMarkActivityComplete() {
 // ============================================================================
 
 export function useContacts(tenantId: string, filters?: FilterState, pagination?: PaginationState) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['contacts', tenantId, filters, pagination],
+    queryKey: ['contacts', user?.id, tenantId, filters, pagination],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(pagination && { page: String(pagination.page), pageSize: String(pagination.pageSize) }),
@@ -252,6 +270,7 @@ export function useContacts(tenantId: string, filters?: FilterState, pagination?
 }
 
 export function useCreateContact() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (contact: Partial<Contact>) => {
@@ -259,12 +278,13 @@ export function useCreateContact() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', user?.id] });
     },
   });
 }
 
 export function useUpdateContact() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...contact }: Partial<Contact> & { id: string }) => {
@@ -272,12 +292,13 @@ export function useUpdateContact() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', user?.id] });
     },
   });
 }
 
 export function useDeleteContact() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
@@ -285,12 +306,13 @@ export function useDeleteContact() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', user?.id] });
     },
   });
 }
 
 export function useLinkContactToLead() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ contactId, leadId }: { contactId: string; leadId: string }) => {
@@ -298,7 +320,7 @@ export function useLinkContactToLead() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', user?.id] });
     },
   });
 }
@@ -308,8 +330,9 @@ export function useLinkContactToLead() {
 // ============================================================================
 
 export function usePipelineAnalytics(tenantId: string, filters?: { owner?: string; dateRange?: [string, string] }) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['analytics', 'pipeline', tenantId, filters],
+    queryKey: ['analytics', 'pipeline', user?.id, tenantId, filters],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(filters?.owner && { owner: filters.owner }),
@@ -327,8 +350,9 @@ export function usePipelineAnalytics(tenantId: string, filters?: { owner?: strin
 // ============================================================================
 
 export function useInvoices(tenantId: string, filters?: { status?: string; opportunityId?: string }) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['invoices', tenantId, filters],
+    queryKey: ['invoices', user?.id, tenantId, filters],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(filters?.status && { status: filters.status }),
@@ -342,6 +366,7 @@ export function useInvoices(tenantId: string, filters?: { status?: string; oppor
 }
 
 export function useCreateInvoice() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ tenantId, ...invoice }: Partial<Invoice> & { tenantId: string }) => {
@@ -349,7 +374,7 @@ export function useCreateInvoice() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', user?.id] });
     },
   });
 }
@@ -359,8 +384,9 @@ export function useCreateInvoice() {
 // ============================================================================
 
 export function usePayments(tenantId: string, filters?: { method?: string; invoiceId?: string }) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['payments', tenantId, filters],
+    queryKey: ['payments', user?.id, tenantId, filters],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(filters?.method && { method: filters.method }),
@@ -374,6 +400,7 @@ export function usePayments(tenantId: string, filters?: { method?: string; invoi
 }
 
 export function useCreatePayment() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ tenantId, ...payment }: Partial<Payment> & { tenantId: string }) => {
@@ -381,8 +408,8 @@ export function useCreatePayment() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payments'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] }); // Payment updates invoice status
+      queryClient.invalidateQueries({ queryKey: ['payments', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', user?.id] }); // Payment updates invoice status
     },
   });
 }

@@ -23,7 +23,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const MANIFEST_QUERY_KEY = ['auth', 'manifest'];
+
 
 async function fetchManifest(): Promise<PermissionManifest> {
   const accessToken = localStorage.getItem('accessToken');
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     data: permissions = {},
     isLoading: permissionsLoading,
   } = useQuery<PermissionManifest>({
-    queryKey: MANIFEST_QUERY_KEY,
+    queryKey: ['auth', 'manifest', user?.id],
     queryFn: fetchManifest,
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes — Redis cache is the source of truth
@@ -74,9 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const tokens = await authService.login(email, password);
     authService.storeTokens(tokens, (tokens as unknown as { tenantId: string }).tenantId);
     const me = await authService.me();
+    queryClient.clear();
     setUser(me);
     // Invalidate and refetch permission manifest after login
-    await queryClient.invalidateQueries({ queryKey: MANIFEST_QUERY_KEY });
+    await queryClient.invalidateQueries({ queryKey: ['auth', 'manifest', me.id] });
   }, [queryClient]);
 
   const logout = useCallback(async () => {
@@ -84,9 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authService.logout();
     } finally {
       authService.clearTokens();
+      queryClient.clear();
       setUser(null);
-      // Clear cached manifest on logout
-      queryClient.removeQueries({ queryKey: MANIFEST_QUERY_KEY });
     }
   }, [queryClient]);
 
