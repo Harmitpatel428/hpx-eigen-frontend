@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-let BASE_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
+let BASE_URL = import.meta.env.VITE_API_URL || 'https://hpx-eigen-backend.onrender.com' || 'http://127.0.0.1:3000';
 if (BASE_URL.includes('localhost')) {
   BASE_URL = BASE_URL.replace('localhost', '127.0.0.1');
 }
