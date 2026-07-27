@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { User } from '../types';
 import { authService } from '../services/auth.service';
+import { api } from '../services/api';
 
 /** Compiled permission manifest from /api/v1/auth/manifest */
 export type PermissionManifest = Record<string, string>;
@@ -26,15 +27,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 
 async function fetchManifest(): Promise<PermissionManifest> {
-  const accessToken = localStorage.getItem('accessToken');
-  if (!accessToken) return {};
-
-  const response = await fetch('/api/v1/auth/manifest', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) return {};
-  return response.json() as Promise<PermissionManifest>;
+  const { data } = await api.get<PermissionManifest>('/api/v1/auth/manifest');
+  return data;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
