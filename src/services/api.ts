@@ -1,16 +1,11 @@
 import axios from 'axios';
 
-let BASE_URL = 'http://127.0.0.1:3000'; // Default to local dev
+// Hardcoded to bypass Vercel env var caching issues
+const PROD_API_URL = 'https://hpx-eigen-backend.onrender.com';
+const DEV_API_URL = 'http://127.0.0.1:3000';
 
-// If in production, hardcode the Render backend URL
-if (import.meta.env.PROD) {
-  BASE_URL = 'https://hpx-eigen-backend.onrender.com';
-}
-
-// Allow explicit local override if needed
-if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.startsWith('http')) {
-  BASE_URL = import.meta.env.VITE_API_URL;
-}
+// Deterministic check: if we are in production, use Render. Otherwise, use local.
+const BASE_URL = import.meta.env.PROD ? PROD_API_URL : DEV_API_URL;
 
 export const api = axios.create({
   baseURL: BASE_URL,
