@@ -1,8 +1,15 @@
 import axios from 'axios';
 
-let BASE_URL = import.meta.env.VITE_API_URL || 'https://hpx-eigen-backend.onrender.com' || 'http://127.0.0.1:3000';
-if (BASE_URL.includes('localhost')) {
-  BASE_URL = BASE_URL.replace('localhost', '127.0.0.1');
+let BASE_URL = 'http://127.0.0.1:3000'; // Default to local dev
+
+// If in production, hardcode the Render backend URL
+if (import.meta.env.PROD) {
+  BASE_URL = 'https://hpx-eigen-backend.onrender.com';
+}
+
+// Allow explicit local override if needed
+if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.startsWith('http')) {
+  BASE_URL = import.meta.env.VITE_API_URL;
 }
 
 export const api = axios.create({
