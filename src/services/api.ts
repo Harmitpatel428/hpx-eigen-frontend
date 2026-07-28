@@ -39,10 +39,4 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-localStorage.removeItem('userId');
-window.location.href = '/login';
-      }
-    }
-return Promise.reject(err);
-  }
-);
+
