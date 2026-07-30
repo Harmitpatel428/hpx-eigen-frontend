@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { GripVertical, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import {
   useOpportunityTypes,
   useCreateOpportunityType,

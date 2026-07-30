@@ -27,9 +27,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { permissionService } from '../../services/permission.service';
-import type { Role, Permission, Department, Team, ScopeType, UserRoleAssignment } from '../../types';
-import { authService } from '../../services/auth.service';
-import type { User } from '../../types';
+import type { Role, Department, Team, ScopeType, UserRoleAssignment } from '../../types';
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
 const S = {

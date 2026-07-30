@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useInvoices, useCreateInvoice, useOpportunities } from '../hooks/useCrmApi';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../auth/public';
 import { DataTable, Column } from '../components/DataTable';
 import { Invoice } from '../types';
 import { formatINR, formatDate } from '../utils/crm';

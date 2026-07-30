@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../auth/public';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Settings, LogOut, Sun, Moon } from 'lucide-react';

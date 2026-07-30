@@ -1,6 +1,6 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../auth/public';
 import { 
   Eye, EyeOff, Command, Users, Lock, Globe, Check
 } from 'lucide-react';

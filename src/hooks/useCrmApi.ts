@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Lead, Opportunity, Activity, Contact, FilterState, PaginationState, Invoice, Payment } from '../types';
 import { api } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../auth/public';
 
 // ============================================================================
 // LEADS
