@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const baseURL = import.meta.env.VITE_API_BASE_URL 
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1` 
+  : '/api/v1';
 
-export const api = axios.create({
-  baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+export const api = axios.create({ 
+  baseURL,
+  headers: { 'Content-Type': 'application/json' }
 });
 
 // ─── Request interceptor: inject auth + tenant headers ─────────────
