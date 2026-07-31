@@ -27,7 +27,7 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     // Fetch user's assigned departments
     const fetchDepartments = async () => {
       try {
-        const response = await api.get('/api/auth/me/departments');
+        const response = await api.get('/api/v1/auth/me/departments');
         
         // Extract the array safely whether the backend returned [...] or { data: [...] }
         const rawDepartments = response.data?.data || response.data || [];
