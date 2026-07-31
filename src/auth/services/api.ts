@@ -1,140 +1,94 @@
-import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import { tokenStorage } from '../storage/tokenStorage';
-import { authEventBus, AUTH_EVENTS } from '../events/authEvents';
-import { AuthenticationError, RateLimitError, ServerError, NetworkError } from '../errors';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const BASE_URL = import.meta.env?.VITE_API_URL || '';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
+/**
+ * Production-grade API client for HPX Eigen CRM.
+ * Integrates with existing tokenStorage for accessToken management.
+ */
 export const api = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  timeout: 15000,
 });
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: any) => void;
-}> = [];
+// ─── Request Interceptor: Attach Bearer + Department Context ───────
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // Use your existing tokenStorage if available, fallback to localStorage
+    const token = typeof window !== 'undefined'
+      ? (window as any).tokenStorage?.getAccessToken?.() 
+        || localStorage.getItem('hpx:access-token')
+      : null;
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token as string);
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  });
-  failedQueue = [];
-};
 
-// --- Request Interceptor ---
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const tokens = tokenStorage.get();
-  const tenantId = tokenStorage.getTenantId();
+    // Inject active department for backend middleware
+    const activeDepartment = localStorage.getItem('hpx:active-department');
+    if (activeDepartment && config.headers) {
+      config.headers['X-Department-Id'] = activeDepartment;
+    }
 
-  if (tokens?.accessToken) {
-    config.headers.set('Authorization', `Bearer ${tokens.accessToken}`);
-  }
-  if (tenantId) {
-    config.headers.set('x-tenant-id', tenantId);
-  }
-  
-  if (!config.headers.has('X-Correlation-ID')) {
-    // Basic fallback for crypto.randomUUID if not in a secure context
-    const correlationId = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : `cid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    config.headers.set('X-Correlation-ID', correlationId);
-  }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-  return config;
-});
-
-// --- Response Interceptor ---
+// ─── Response Interceptor: Unified 401 Handling ────────────────────
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
-    // Network Errors (Offline, DNS, etc.)
-    if (!error.response) {
-      return Promise.reject(new NetworkError(error.message));
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // Clear auth state
+      if (typeof window !== 'undefined') {
+        (window as any).tokenStorage?.clear?.();
+        localStorage.removeItem('hpx:access-token');
+        localStorage.removeItem('hpx:active-department');
+      }
+      window.location.href = '/login';
+      return Promise.reject(new Error('Session expired. Please log in again.'));
     }
 
-    const status = error.response.status;
-
-    if (status >= 500) {
-      return Promise.reject(new ServerError(`Server Error: ${status}`, status.toString()));
+    if (error.response?.status === 403) {
+      return Promise.reject(new Error('Insufficient permissions.'));
     }
 
-    if (status === 401 && originalRequest && !originalRequest._retry) {
-      const isAuthEndpoint = originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/login');
-      
-      // Do not attempt to refresh if the failure came from the auth endpoints themselves
-      if (isAuthEndpoint) {
-        return Promise.reject(new AuthenticationError('Authentication failed', '401'));
-      }
+    const message = (error.response?.data as any)?.error?.message 
+      || (error.response?.data as any)?.message 
+      || error.message 
+      || 'Request failed.';
 
-      if (isRefreshing) {
-        return new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.set('Authorization', `Bearer ${token}`);
-            return api(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-      authEventBus.dispatch(AUTH_EVENTS.REFRESH_STARTED);
-
-      try {
-        const currentTokens = tokenStorage.get();
-        if (!currentTokens?.refreshToken) {
-          throw new AuthenticationError('No refresh token available');
-        }
-
-        // We use a separate axios instance/call to bypass interceptors
-        // so we don't accidentally enter an infinite loop
-        const res = await axios.post(`${BASE_URL}/api/v1/auth/refresh`, {
-          refreshToken: currentTokens.refreshToken,
-        });
-
-        const newTokens = res.data;
-        tokenStorage.set({
-          ...currentTokens,
-          accessToken: newTokens.accessToken,
-          refreshToken: newTokens.refreshToken || currentTokens.refreshToken,
-        });
-
-        authEventBus.dispatch(AUTH_EVENTS.REFRESH_SUCCESS);
-        
-        originalRequest.headers.set('Authorization', `Bearer ${newTokens.accessToken}`);
-        
-        processQueue(null, newTokens.accessToken);
-        return api(originalRequest);
-        
-      } catch (err: any) {
-        processQueue(err, null);
-        
-        tokenStorage.clear();
-        authEventBus.dispatch(AUTH_EVENTS.REFRESH_FAILED, err);
-        authEventBus.dispatch(AUTH_EVENTS.LOGOUT);
-        
-        if (err.response?.status === 429) {
-          return Promise.reject(new RateLimitError('Too many refresh attempts', '429'));
-        }
-        
-        return Promise.reject(new AuthenticationError('Session expired', '401'));
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    return Promise.reject(error);
+    return Promise.reject(new Error(message));
   }
 );
+
+// ─── Typed HTTP Helpers ────────────────────────────────────────────
+export async function get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+  const response = await api.get<{ success: boolean; data: T }>(path, { params });
+  return response.data.data;
+}
+
+export async function post<T>(path: string, body: unknown): Promise<T> {
+  const response = await api.post<{ success: boolean; data: T }>(path, body);
+  return response.data.data;
+}
+
+export async function put<T>(path: string, body: unknown): Promise<T> {
+  const response = await api.put<{ success: boolean; data: T }>(path, body);
+  return response.data.data;
+}
+
+export async function patch<T>(path: string, body: unknown): Promise<T> {
+  const response = await api.patch<{ success: boolean; data: T }>(path, body);
+  return response.data.data;
+}
+
+export async function del<T>(path: string): Promise<T> {
+  const response = await api.delete<{ success: boolean; data: T }>(path);
+  return response.data.data;
+}

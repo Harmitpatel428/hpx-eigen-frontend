@@ -1,103 +1,109 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { get } from '../auth/services/api';
+
+export type DepartmentType = 'SALES' | 'PROCESS' | 'DOCUMENTATION';
 
 export interface Department {
   id: string;
+  type: DepartmentType;
   name: string;
-  isPrimary: boolean;
 }
 
-interface DepartmentContextValue {
+interface DepartmentContextType {
+  activeDepartment: Department | null;
   departments: Department[];
-  activeDepartmentId: string | null;
-  loading: boolean;
-  setDepartmentFromSlug: (slug: string) => void;
-  getSlugFromDepartmentId: (id: string) => string | null;
-  primaryDepartmentSlug: string | null;
+  isLoading: boolean;
+  error: Error | null;
+  switchDepartment: (deptId: string) => void;
+  isReady: boolean;
 }
 
-const DepartmentContext = createContext<DepartmentContextValue | undefined>(undefined);
+const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
+const STORAGE_KEY = 'hpx:active-department';
+
+function isAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
+  const token = (window as any).tokenStorage?.getAccessToken?.() 
+    || localStorage.getItem('hpx:access-token');
+  return !!token;
+}
 
 export function DepartmentProvider({ children }: { children: React.ReactNode }) {
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [activeDepartmentId, setActiveDepartmentId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const hasAuth = isAuthenticated();
+
+  const [activeDepartmentId, setActiveDepartmentId] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEY);
+  });
+
+  const {
+    data: departments,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['auth', 'me', 'departments'],
+    queryFn: async () => {
+      return get<Department[]>('/api/v1/auth/me/departments');
+    },
+    enabled: hasAuth,
+    retry: (failureCount, err: any) => {
+      if (err?.response?.status === 401) return false;
+      if (err?.response?.status === 404) return false;
+      return failureCount < 2;
+    },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+  });
+
+  const activeDepartment = departments?.find(d => d.id === activeDepartmentId) 
+    ?? departments?.[0] 
+    ?? null;
+
+  const switchDepartment = useCallback((deptId: string) => {
+    if (deptId === activeDepartmentId) return;
+    
+    setActiveDepartmentId(deptId);
+    localStorage.setItem(STORAGE_KEY, deptId);
+    
+    const invalidateKeys = [
+      'dashboard', 'leads', 'contacts', 'opportunities',
+      'activities', 'invoices', 'payments', 'process-tasks', 'documents'
+    ];
+    invalidateKeys.forEach(key => {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    });
+    
+    navigate('/overview', { replace: true });
+  }, [activeDepartmentId, queryClient, navigate]);
 
   useEffect(() => {
-    // Fetch user's assigned departments
-    const fetchDepartments = async () => {
-      try {
-        const response = await api.get('/api/v1/auth/me/departments');
-        
-        // Extract the array safely whether the backend returned [...] or { data: [...] }
-        const rawDepartments = response.data?.data || response.data || [];
-
-        // Defensive check: ensure it's an array before calling .find()
-        if (!Array.isArray(rawDepartments)) {
-          console.error('Departments response is not an array:', rawDepartments);
-          return; // Abort to prevent crash
-        }
-
-        setDepartments(rawDepartments);
-        
-        // Now safely use .find()
-        if (!activeDepartmentId && rawDepartments.length > 0) {
-          const primaryDept = rawDepartments.find((d: Department) => d.isPrimary) || rawDepartments[0];
-          setActiveDepartmentId(primaryDept.id);
-          // Set in localStorage for the api interceptor to pick it up synchronously
-          localStorage.setItem('activeDepartmentId', primaryDept.id);
-        }
-      } catch (err) {
-        console.error('Failed to fetch departments:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDepartments();
-  }, []);
-
-  const setDepartmentFromSlug = (slug: string) => {
-    // slug is typically 'sales', 'process', 'docs'
-    // For this simple mock, we match by name prefix
-    const match = departments.find(d => d.name.toLowerCase().startsWith(slug.toLowerCase()));
-    if (match) {
-      setActiveDepartmentId(match.id);
-      localStorage.setItem('activeDepartmentId', match.id);
+    if (departments?.length && !activeDepartmentId) {
+      setActiveDepartmentId(departments[0].id);
+      localStorage.setItem(STORAGE_KEY, departments[0].id);
     }
-  };
-
-  const getSlugFromDepartmentId = (id: string) => {
-    const match = departments.find(d => d.id === id);
-    if (!match) return null;
-    if (match.name.toLowerCase().includes('sales')) return 'sales';
-    if (match.name.toLowerCase().includes('process')) return 'process';
-    if (match.name.toLowerCase().includes('docs') || match.name.toLowerCase().includes('documentation')) return 'docs';
-    return match.name.toLowerCase();
-  };
-
-  const primaryDepartmentSlug = departments.length > 0 
-    ? getSlugFromDepartmentId(departments.find(d => d.isPrimary)?.id || departments[0].id) 
-    : null;
+  }, [departments, activeDepartmentId]);
 
   return (
-    <DepartmentContext.Provider value={{
-      departments,
-      activeDepartmentId,
-      loading,
-      setDepartmentFromSlug,
-      getSlugFromDepartmentId,
-      primaryDepartmentSlug
-    }}>
+    <DepartmentContext.Provider
+      value={{
+        activeDepartment,
+        departments: departments ?? [],
+        isLoading,
+        error: error as Error | null,
+        switchDepartment,
+        isReady: !isLoading && (!!departments || !hasAuth),
+      }}
+    >
       {children}
     </DepartmentContext.Provider>
   );
 }
 
-export function useDepartments() {
-  const context = useContext(DepartmentContext);
-  if (context === undefined) {
-    throw new Error('useDepartments must be used within a DepartmentProvider');
-  }
-  return context;
-}
+export const useDepartment = () => {
+  const ctx = useContext(DepartmentContext);
+  if (!ctx) throw new Error('useDepartment must be used within DepartmentProvider');
+  return ctx;
+};

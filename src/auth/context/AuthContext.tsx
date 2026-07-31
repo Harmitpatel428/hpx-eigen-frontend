@@ -122,23 +122,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Public API
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post('/api/v1/auth/login', { email, password });
-    
-    tokenStorage.set({
-      accessToken: res.data.accessToken,
-      refreshToken: res.data.refreshToken,
-      sessionId: res.data.sessionId,
-      userId: res.data.user.id,
-    });
-    
-    setUser(res.data.user);
-    
-    const perms = (res.data.user as any).permissions || {};
-    const roles = res.data.user.roles || [];
-    permissionService.current.setManifest(perms, roles);
+    try {
+      const res = await api.post('/api/v1/auth/login', { email, password });
+      // Depending on whether api.ts intercepts this or not, res.data may already be the payload
+      // But we just updated backend to return { success, data }
+      const data = res.data.data || res.data;
+      
+      if (typeof window !== 'undefined' && (window as any).tokenStorage?.setAccessToken) {
+        (window as any).tokenStorage.setAccessToken(data.accessToken);
+        (window as any).tokenStorage.setRefreshToken?.(data.refreshToken);
+      } else {
+        localStorage.setItem('hpx:access-token', data.accessToken);
+        if (data.refreshToken) localStorage.setItem('hpx:refresh-token', data.refreshToken);
+      }
+      
+      tokenStorage.set({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        sessionId: data.sessionId,
+        userId: data.user.id,
+      });
+      
+      setUser(data.user);
+      
+      const perms = (data.user as any).permissions || {};
+      const roles = data.user.roles || [];
+      permissionService.current.setManifest(perms, roles);
 
-    if (fsm.current.state !== 'AUTHENTICATED') {
-      fsm.current.transition('AUTHENTICATED');
+      if (fsm.current.state !== 'AUTHENTICATED') {
+        fsm.current.transition('AUTHENTICATED');
+      }
+
+      // Hard reload to bootstrap DepartmentContext with auth state
+      window.location.href = '/overview';
+    } catch (error: any) {
+      if (error.response?.status === 401 || error.message?.includes('Invalid credentials')) {
+        throw new Error('Invalid email or password.');
+      }
+      if (error.response?.status === 404) {
+        throw new Error('Login service unavailable. Contact support.');
+      }
+      throw new Error(error.message || 'Login failed. Please try again.');
     }
   }, []);
 
