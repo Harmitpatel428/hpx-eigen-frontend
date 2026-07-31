@@ -28,12 +28,17 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     const fetchDepartments = async () => {
       try {
         const res = await api.get('/api/auth/me/departments');
-        const deps = res.data as Department[];
-        setDepartments(deps);
+        const departments = res.data?.data || res.data || [];
+        if (!Array.isArray(departments)) {
+          console.error('Expected departments to be an array, got:', departments);
+          return;
+        }
+
+        setDepartments(departments);
         
         // If there's no active ID but we have departments, default to primary
-        if (!activeDepartmentId && deps.length > 0) {
-          const primary = deps.find(d => d.isPrimary) || deps[0];
+        if (!activeDepartmentId && departments.length > 0) {
+          const primary = departments.find((d: Department) => d.isPrimary) || departments[0];
           setActiveDepartmentId(primary.id);
           // Set in localStorage for the api interceptor to pick it up synchronously
           localStorage.setItem('activeDepartmentId', primary.id);
