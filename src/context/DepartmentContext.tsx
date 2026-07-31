@@ -27,21 +27,25 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     // Fetch user's assigned departments
     const fetchDepartments = async () => {
       try {
-        const res = await api.get('/api/auth/me/departments');
-        const departments = res.data?.data || res.data || [];
-        if (!Array.isArray(departments)) {
-          console.error('Expected departments to be an array, got:', departments);
-          return;
+        const response = await api.get('/api/auth/me/departments');
+        
+        // Extract the array safely whether the backend returned [...] or { data: [...] }
+        const rawDepartments = response.data?.data || response.data || [];
+
+        // Defensive check: ensure it's an array before calling .find()
+        if (!Array.isArray(rawDepartments)) {
+          console.error('Departments response is not an array:', rawDepartments);
+          return; // Abort to prevent crash
         }
 
-        setDepartments(departments);
+        setDepartments(rawDepartments);
         
-        // If there's no active ID but we have departments, default to primary
-        if (!activeDepartmentId && departments.length > 0) {
-          const primary = departments.find((d: Department) => d.isPrimary) || departments[0];
-          setActiveDepartmentId(primary.id);
+        // Now safely use .find()
+        if (!activeDepartmentId && rawDepartments.length > 0) {
+          const primaryDept = rawDepartments.find((d: Department) => d.isPrimary) || rawDepartments[0];
+          setActiveDepartmentId(primaryDept.id);
           // Set in localStorage for the api interceptor to pick it up synchronously
-          localStorage.setItem('activeDepartmentId', primary.id);
+          localStorage.setItem('activeDepartmentId', primaryDept.id);
         }
       } catch (err) {
         console.error('Failed to fetch departments:', err);
