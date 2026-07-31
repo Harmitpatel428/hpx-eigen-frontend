@@ -13,6 +13,7 @@ import { InvoicesPage } from './pages/InvoicesPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
+import { AuthProvider } from './auth/context/AuthContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,7 +78,8 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ErrorBoundary>
-          <DepartmentProvider>
+          <AuthProvider>
+            <DepartmentProvider>
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 {/* Public */}
@@ -104,8 +106,9 @@ export const App: React.FC = () => {
               </Routes>
             </Suspense>
           </DepartmentProvider>
-        </ErrorBoundary>
-      </BrowserRouter>
+        </AuthProvider>
+      </ErrorBoundary>
+    </BrowserRouter>
     </QueryClientProvider>
   );
 };
