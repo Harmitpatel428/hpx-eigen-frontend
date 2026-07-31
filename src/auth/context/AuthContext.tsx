@@ -156,13 +156,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Hard reload to bootstrap DepartmentContext with auth state
       window.location.href = '/overview';
     } catch (error: any) {
-      if (error.response?.status === 401 || error.message?.includes('Invalid credentials')) {
-        throw new Error('Invalid email or password.');
+      // Extract real error message from backend response
+      let message = 'Login failed. Please try again.';
+      if (error?.response?.data?.error?.message) {
+        message = error.response.data.error.message;
+      } else if (error?.message) {
+        message = error.message;
       }
-      if (error.response?.status === 404) {
-        throw new Error('Login service unavailable. Contact support.');
-      }
-      throw new Error(error.message || 'Login failed. Please try again.');
+      
+      console.error('[AuthContext] Login error:', error);
+      throw new Error(message);
     }
   }, []);
 
