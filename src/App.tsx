@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, ProtectedRoute } from './auth/public';
 import { ThemeProvider } from './context/ThemeContext';
-import { Layout } from './components/layout/Layout';
+import { DepartmentProvider } from './context/DepartmentContext';
+import { AppShell } from './components/layout/AppShell';
+import { DepartmentRouter } from './components/layout/DepartmentRouter';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -20,18 +22,19 @@ const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then(m => ({ defa
 const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
 const OrgManagement = lazy(() => import('./pages/settings/OrgManagement').then(m => ({ default: m.OrgManagement })));
 
+const ProcessDashboard = lazy(() => import('./pages/ProcessDashboard').then(m => ({ default: m.ProcessDashboard })));
+const DocsDashboard = lazy(() => import('./pages/DocsDashboard').then(m => ({ default: m.DocsDashboard })));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
-      gcTime: 5 * 60_000, // 5 minutes
+      gcTime: 5 * 60_000,
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
-
-
 
 function AppRoutes() {
   return (
@@ -45,56 +48,33 @@ function AppRoutes() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Layout><DashboardPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/leads" element={
-          <ProtectedRoute>
-            <Layout><LeadsPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/contacts" element={
-          <ProtectedRoute>
-            <Layout><ContactsPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/opportunities" element={
-          <ProtectedRoute>
-            <Layout><OpportunitiesPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/activities" element={
-          <ProtectedRoute>
-            <Layout><ActivitiesPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/pipeline" element={
-          <ProtectedRoute>
-            <Layout><PipelineAnalyticsPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/invoices" element={
-          <ProtectedRoute>
-            <Layout><InvoicesPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/payments" element={
-          <ProtectedRoute>
-            <Layout><PaymentsPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Layout><SettingsPage /></Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/settings/org-management" element={
-          <ProtectedRoute>
-            <Layout><OrgManagement /></Layout>
-          </ProtectedRoute>
-        } />
+        {/* Dynamic Root */}
+        <Route path="/" element={<ProtectedRoute><DepartmentRouter /></ProtectedRoute>} />
+
+        {/* Sales Branch */}
+        <Route path="/sales">
+          <Route path="leads" element={<ProtectedRoute><AppShell><LeadsPage /></AppShell></ProtectedRoute>} />
+          <Route path="contacts" element={<ProtectedRoute><AppShell><ContactsPage /></AppShell></ProtectedRoute>} />
+          <Route path="opportunities" element={<ProtectedRoute><AppShell><OpportunitiesPage /></AppShell></ProtectedRoute>} />
+          <Route path="activities" element={<ProtectedRoute><AppShell><ActivitiesPage /></AppShell></ProtectedRoute>} />
+          <Route path="pipeline" element={<ProtectedRoute><AppShell><PipelineAnalyticsPage /></AppShell></ProtectedRoute>} />
+          <Route path="invoices" element={<ProtectedRoute><AppShell><InvoicesPage /></AppShell></ProtectedRoute>} />
+          <Route path="payments" element={<ProtectedRoute><AppShell><PaymentsPage /></AppShell></ProtectedRoute>} />
+        </Route>
+
+        {/* Process Branch */}
+        <Route path="/process">
+          <Route path="projects" element={<ProtectedRoute><AppShell><ProcessDashboard /></AppShell></ProtectedRoute>} />
+        </Route>
+
+        {/* Docs Branch */}
+        <Route path="/docs">
+          <Route path="templates" element={<ProtectedRoute><AppShell><DocsDashboard /></AppShell></ProtectedRoute>} />
+        </Route>
+
+        {/* Settings Branch */}
+        <Route path="/settings" element={<ProtectedRoute><AppShell><SettingsPage /></AppShell></ProtectedRoute>} />
+        <Route path="/settings/org-management" element={<ProtectedRoute><AppShell><OrgManagement /></AppShell></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -109,9 +89,11 @@ export function App() {
       <ThemeProvider defaultTheme="system" storageKey="hpx-ui-theme">
         <ErrorBoundary>
           <AuthProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
+            <DepartmentProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </DepartmentProvider>
           </AuthProvider>
         </ErrorBoundary>
       </ThemeProvider>
