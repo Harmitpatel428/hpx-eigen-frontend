@@ -5,15 +5,14 @@ import { DepartmentProvider } from './context/DepartmentContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { OverviewPage } from './pages/OverviewPage';
 
-// Lazy-loaded pages for performance
-const LeadsPage = React.lazy(() => import('./pages/LeadsPage'));
-const ContactsPage = React.lazy(() => import('./pages/ContactsPage'));
-const PipelinePage = React.lazy(() => import('./pages/PipelinePage'));
-const ActivitiesPage = React.lazy(() => import('./pages/ActivitiesPage'));
-const InvoicesPage = React.lazy(() => import('./pages/InvoicesPage'));
-const PaymentsPage = React.lazy(() => import('./pages/PaymentsPage'));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+import { LeadsPage } from './pages/LeadsPage';
+import { ContactsPage } from './pages/ContactsPage';
+import { PipelineAnalyticsPage as PipelinePage } from './pages/PipelineAnalyticsPage';
+import { ActivitiesPage } from './pages/ActivitiesPage';
+import { InvoicesPage } from './pages/InvoicesPage';
+import { PaymentsPage } from './pages/PaymentsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { LoginPage } from './pages/LoginPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
