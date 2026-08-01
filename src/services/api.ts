@@ -9,9 +9,13 @@ export const api = axios.create({
 
 // ─── Request interceptor: inject auth + tenant headers ─────────────
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  const tenantId = localStorage.getItem('tenantId');
-  const departmentId = localStorage.getItem('activeDepartmentId');
+  // First try the new unified tokenStorage (if available globally) or hpx token, then fallback to old
+  const token = typeof window !== 'undefined' && (window as any).tokenStorage?.getAccessToken?.() 
+    ? (window as any).tokenStorage.getAccessToken()
+    : localStorage.getItem('hpx:access-token') || localStorage.getItem('accessToken');
+    
+  const tenantId = localStorage.getItem('auth:tenant') || localStorage.getItem('tenantId');
+  const departmentId = localStorage.getItem('hpx:active-department') || localStorage.getItem('activeDepartmentId');
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -34,6 +38,11 @@ api.interceptors.response.use(
       // Prevent redirect loop: never redirect when already on the login page
       const isLoginPage = window.location.pathname.includes('/login');
       if (!isLoginPage) {
+        if (typeof window !== 'undefined') {
+          (window as any).tokenStorage?.clear?.();
+        }
+        localStorage.removeItem('hpx:access-token');
+        localStorage.removeItem('auth:tokens');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('tenantId');
         localStorage.removeItem('sessionId');
