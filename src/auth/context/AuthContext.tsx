@@ -129,35 +129,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (email: string, password: string) => {
     try {
       const res = await api.post('/api/v1/auth/login', { email, password });
-      // Depending on whether api.ts intercepts this or not, res.data may already be the payload
-      // But we just updated backend to return { success, data }
-      const data = res.data.data || res.data;
-      // Forcefully bypass abstractions to ensure token is saved for interceptors
-      const token = data?.accessToken || data?.token;
-      if (token) {
-        localStorage.setItem('hpx:access-token', token);
-        localStorage.setItem('accessToken', token); // dual-save for safety
+      const accessToken = res.data?.data?.accessToken;
+      const refreshToken = res.data?.data?.refreshToken;
+      const user = res.data?.data?.user;
+
+      if (!accessToken) {
+        console.error('Token missing from response!', res.data);
+        throw new Error('Login failed: No token received.');
       }
-      
-      if (data?.refreshToken) {
-        localStorage.setItem('hpx:refresh-token', data.refreshToken);
+
+      // Save to localStorage
+      localStorage.setItem('hpx:access-token', accessToken);
+      localStorage.setItem('accessToken', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('hpx:refresh-token', refreshToken);
       }
-      
+
       try {
         tokenStorage.set({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken,
-          sessionId: data.sessionId,
-          userId: data.userId || data.user?.id,
+          accessToken,
+          refreshToken,
+          sessionId: res.data?.data?.sessionId,
+          userId: user?.id,
         });
       } catch (e) {
         console.warn('Failed to sync to tokenStorage class', e);
       }
       
-      if (data.user) {
-        setUser(data.user);
-        const perms = (data.user as any).permissions || {};
-        const roles = data.user.roles || [];
+      if (user) {
+        setUser(user);
+        const perms = (user as any).permissions || {};
+        const roles = user.roles || [];
         permissionService.current.setManifest(perms, roles);
       }
 
