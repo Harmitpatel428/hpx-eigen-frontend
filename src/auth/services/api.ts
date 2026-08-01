@@ -44,13 +44,16 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Clear auth state
-      if (typeof window !== 'undefined') {
-        (window as any).tokenStorage?.clear?.();
-        localStorage.removeItem('hpx:access-token');
-        localStorage.removeItem('hpx:active-department');
+      // Prevent redirect loop when already on login page
+      const isLoginPage = window.location.pathname.includes('/login');
+      if (!isLoginPage) {
+        if (typeof window !== 'undefined') {
+          (window as any).tokenStorage?.clear?.();
+          localStorage.removeItem('hpx:access-token');
+          localStorage.removeItem('hpx:active-department');
+        }
+        window.location.href = '/login';
       }
-      window.location.href = '/login';
       return Promise.reject(new Error('Session expired. Please log in again.'));
     }
 

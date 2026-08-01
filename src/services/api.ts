@@ -31,8 +31,9 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      const code = err.response?.data?.code;
-      if (code === 'SESSION_EXPIRED' || code === 'SESSION_REVOKED') {
+      // Prevent redirect loop: never redirect when already on the login page
+      const isLoginPage = window.location.pathname.includes('/login');
+      if (!isLoginPage) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('tenantId');
         localStorage.removeItem('sessionId');

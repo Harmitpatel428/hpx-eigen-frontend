@@ -56,6 +56,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const restoreSession = async () => {
       if (fsm.current.state !== 'UNINITIALIZED') return;
 
+      // Skip restore on login page to prevent 401 loop
+      if (window.location.pathname.includes('/login')) {
+        fsm.current.transition('UNAUTHENTICATED');
+        return;
+      }
+
       const tokens = tokenStorage.get();
       if (!tokens) {
         fsm.current.transition('UNAUTHENTICATED');
@@ -67,17 +73,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const res = await api.get<User>('/api/v1/users/me');
         if (isMounted) {
           setUser(res.data);
-          
+
           // Seed permissions cache
           const perms = (res.data as any).permissions || {};
           const roles = res.data.roles || [];
           permissionService.current.setManifest(perms, roles);
-          
+
           fsm.current.transition('AUTHENTICATED');
         }
       } catch (error) {
         if (isMounted) {
-          // Transition to RESTORE_ERROR briefly, then unauthenticated
           fsm.current.transition('RESTORE_ERROR');
           fsm.current.transition('UNAUTHENTICATED');
         }
@@ -140,14 +145,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
         sessionId: data.sessionId,
-        userId: data.user.id,
+        userId: data.userId || data.user?.id,
       });
       
-      setUser(data.user);
-      
-      const perms = (data.user as any).permissions || {};
-      const roles = data.user.roles || [];
-      permissionService.current.setManifest(perms, roles);
+      if (data.user) {
+        setUser(data.user);
+        const perms = (data.user as any).permissions || {};
+        const roles = data.user.roles || [];
+        permissionService.current.setManifest(perms, roles);
+      }
 
       if (fsm.current.state !== 'AUTHENTICATED') {
         fsm.current.transition('AUTHENTICATED');

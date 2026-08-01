@@ -1,33 +1,11 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DepartmentProvider } from './context/DepartmentContext';
-import { AppLayout } from './components/layout/AppLayout';
-import { OverviewPage } from './pages/OverviewPage';
-
-import { LeadsPage } from './pages/LeadsPage';
-import { ContactsPage } from './pages/ContactsPage';
-import { PipelineAnalyticsPage as PipelinePage } from './pages/PipelineAnalyticsPage';
-import { ActivitiesPage } from './pages/ActivitiesPage';
-import { InvoicesPage } from './pages/InvoicesPage';
-import { PaymentsPage } from './pages/PaymentsPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './auth/context/AuthContext';
+import { LoginPage } from './pages/LoginPage';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 30,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-// ─── Error Boundary ────────────────────────────────────────────────
-class ErrorBoundary extends React.Component<
+// ─── Error Boundary that wraps EVERYTHING ──────────────────────────
+class GlobalErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {
@@ -40,18 +18,60 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
   
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[GlobalErrorBoundary]', error, errorInfo);
+  }
+  
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
-          <div className="max-w-lg rounded-3xl bg-white p-8 shadow-lg ring-1 ring-gray-100">
-            <h1 className="text-xl font-semibold text-red-600">Application Error</h1>
-            <p className="mt-2 text-sm font-mono text-gray-700 bg-gray-100 p-3 rounded-xl overflow-auto">
+        <div style={{ 
+          display: 'flex', 
+          minHeight: '100vh', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: '#f9fafb',
+          padding: '2rem',
+          fontFamily: 'system-ui, sans-serif'
+        }}>
+          <div style={{ 
+            maxWidth: '500px', 
+            background: 'white', 
+            padding: '2rem', 
+            borderRadius: '24px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+          }}>
+            <h1 style={{ color: '#dc2626', fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>
+              Critical Error
+            </h1>
+            <pre style={{ 
+              background: '#f3f4f6', 
+              padding: '1rem', 
+              borderRadius: '12px', 
+              fontSize: '0.875rem',
+              overflow: 'auto',
+              color: '#374151'
+            }}>
               {this.state.error?.message}
+            </pre>
+            <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              Open DevTools Console for full stack trace.
             </p>
-            <p className="mt-4 text-xs text-gray-400">
-              Check DevTools Console for full stack trace.
-            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1.5rem',
+                background: '#111827',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontSize: '0.875rem'
+              }}
+            >
+              Reload Page
+            </button>
           </div>
         </div>
       );
@@ -60,56 +80,45 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-const PageFallback = () => (
-  <div className="flex h-full items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900" />
-  </div>
-);
+// ─── Protected App Shell (lazy loaded) ─────────────────────────────
+const ProtectedApp = React.lazy(() => import('./ProtectedApp'));
 
-// Simple auth guard — replace with your actual auth check
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const token = localStorage.getItem('hpx:access-token');
-  if (!token) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-};
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorBoundary>
+    <GlobalErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
           <AuthProvider>
-            <DepartmentProvider>
-            <Suspense fallback={<PageFallback />}>
-              <Routes>
-                {/* Public */}
-                <Route path="/login" element={<LoginPage />} />
-                
-                {/* Protected App Shell */}
-                <Route element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
+            <Routes>
+              {/* Login is completely isolated — no DepartmentProvider */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Everything else loads the full app shell with providers */}
+              <Route path="/*" element={
+                <React.Suspense fallback={
+                  <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '32px', height: '32px', border: '2px solid #e5e7eb', borderTopColor: '#111827', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  </div>
                 }>
-                  <Route path="/overview" element={<OverviewPage />} />
-                  <Route path="/leads" element={<LeadsPage />} />
-                  <Route path="/contacts" element={<ContactsPage />} />
-                  <Route path="/pipeline" element={<PipelinePage />} />
-                  <Route path="/activities" element={<ActivitiesPage />} />
-                  <Route path="/invoices" element={<InvoicesPage />} />
-                  <Route path="/payments" element={<PaymentsPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Route>
-
-                <Route path="/" element={<Navigate to="/overview" replace />} />
-                <Route path="*" element={<Navigate to="/overview" replace />} />
-              </Routes>
-            </Suspense>
-          </DepartmentProvider>
-        </AuthProvider>
-      </ErrorBoundary>
-    </BrowserRouter>
-    </QueryClientProvider>
+                  <ProtectedApp />
+                </React.Suspense>
+              } />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </GlobalErrorBoundary>
   );
 };
 
