@@ -9,24 +9,26 @@ export const api = axios.create({
 
 // ─── Request interceptor: inject auth + tenant headers ─────────────
 api.interceptors.request.use((config) => {
-  // First try the new unified tokenStorage (if available globally) or hpx token, then fallback to old
-  const token = typeof window !== 'undefined' && (window as any).tokenStorage?.getAccessToken?.() 
-    ? (window as any).tokenStorage.getAccessToken()
-    : localStorage.getItem('hpx:access-token') || localStorage.getItem('accessToken');
+  // Check all known token storage keys
+  const token = 
+    localStorage.getItem('hpx:access-token') || 
+    localStorage.getItem('accessToken') || 
+    localStorage.getItem('token');
     
-  const tenantId = localStorage.getItem('auth:tenant') || localStorage.getItem('tenantId');
-  const departmentId = localStorage.getItem('hpx:active-department') || localStorage.getItem('activeDepartmentId');
-
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  const tenantId = localStorage.getItem('auth:tenant') || localStorage.getItem('tenantId');
+  const departmentId = localStorage.getItem('hpx:active-department') || localStorage.getItem('activeDepartmentId');
+  
   if (tenantId) {
     config.headers['x-tenant-id'] = tenantId;
   }
   if (departmentId) {
     config.headers['x-department-context'] = departmentId;
   }
-
+  
   return config;
 });
 

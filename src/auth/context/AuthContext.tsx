@@ -132,21 +132,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Depending on whether api.ts intercepts this or not, res.data may already be the payload
       // But we just updated backend to return { success, data }
       const data = res.data.data || res.data;
-      
-      if (typeof window !== 'undefined' && (window as any).tokenStorage?.setAccessToken) {
-        (window as any).tokenStorage.setAccessToken(data.accessToken);
-        (window as any).tokenStorage.setRefreshToken?.(data.refreshToken);
-      } else {
-        localStorage.setItem('hpx:access-token', data.accessToken);
-        if (data.refreshToken) localStorage.setItem('hpx:refresh-token', data.refreshToken);
+      // Forcefully bypass abstractions to ensure token is saved for interceptors
+      const token = data?.accessToken || data?.token;
+      if (token) {
+        localStorage.setItem('hpx:access-token', token);
+        localStorage.setItem('accessToken', token); // dual-save for safety
       }
       
-      tokenStorage.set({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        sessionId: data.sessionId,
-        userId: data.userId || data.user?.id,
-      });
+      if (data?.refreshToken) {
+        localStorage.setItem('hpx:refresh-token', data.refreshToken);
+      }
+      
+      try {
+        tokenStorage.set({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          sessionId: data.sessionId,
+          userId: data.userId || data.user?.id,
+        });
+      } catch (e) {
+        console.warn('Failed to sync to tokenStorage class', e);
+      }
       
       if (data.user) {
         setUser(data.user);

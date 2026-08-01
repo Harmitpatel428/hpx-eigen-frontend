@@ -18,12 +18,12 @@ export const api = axios.create({
 // ─── Request Interceptor: Attach Bearer + Department Context ───────
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Use your existing tokenStorage if available, fallback to localStorage
-    const token = typeof window !== 'undefined'
-      ? (window as any).tokenStorage?.getAccessToken?.() 
-        || localStorage.getItem('hpx:access-token')
-      : null;
-
+    // Check all known token storage keys
+    const token = 
+      localStorage.getItem('hpx:access-token') || 
+      localStorage.getItem('accessToken') || 
+      localStorage.getItem('token');
+      
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
