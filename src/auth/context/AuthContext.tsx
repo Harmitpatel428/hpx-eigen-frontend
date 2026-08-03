@@ -5,6 +5,7 @@ import { authEventBus, AUTH_EVENTS } from '../events/authEvents';
 import { tokenStorage } from '../storage/tokenStorage';
 import { api } from '../services/api';
 import { PermissionServiceImpl } from '../services/PermissionServiceImpl';
+import * as Sentry from '@sentry/react';
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -136,7 +137,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Public API
   const login = useCallback(async (email: string, password: string) => {
     try {
+      Sentry.addBreadcrumb({ category: 'auth', message: 'Login attempt started', level: 'info' });
       const res = await api.post('/api/v1/auth/login', { email, password });
+      
+      Sentry.addBreadcrumb({ category: 'auth', message: 'Login API success', level: 'info', data: res.data });
       const accessToken = res.data?.data?.accessToken;
       const refreshToken = res.data?.data?.refreshToken;
       const user = res.data?.data?.user;
@@ -149,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Save to localStorage
       localStorage.setItem('hpx:access-token', accessToken);
       localStorage.setItem('accessToken', accessToken);
+      Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to localStorage', level: 'info' });
       if (refreshToken) {
         localStorage.setItem('hpx:refresh-token', refreshToken);
       }
@@ -160,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionId: res.data?.data?.sessionId,
           userId: user?.id,
         });
+        Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
       } catch (e) {
         console.warn('Failed to sync to tokenStorage class', e);
       }
@@ -175,9 +181,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fsm.current.transition('AUTHENTICATED');
       }
 
+      Sentry.addBreadcrumb({ category: 'auth', message: 'State updated, preparing to redirect', level: 'info' });
       // Hard reload to bootstrap DepartmentContext with auth state
       window.location.href = '/overview';
     } catch (error: any) {
+      Sentry.captureException(error);
       // Extract real error message from backend response
       let message = 'Login failed. Please try again.';
       if (error?.response?.data?.error?.message) {
