@@ -181,9 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fsm.current.transition('AUTHENTICATED');
       }
 
-      Sentry.addBreadcrumb({ category: 'auth', message: 'State updated, preparing to redirect', level: 'info' });
-      // Hard reload to bootstrap DepartmentContext with auth state
-      window.location.href = '/overview';
+      Sentry.addBreadcrumb({ category: 'auth', message: 'State updated, login complete', level: 'info' });
+      // Navigation is handled by the caller (e.g., LoginPage)
     } catch (error: any) {
       Sentry.captureException(error);
       // Extract real error message from backend response
@@ -194,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message = error.message;
       }
       
-      console.error('[AuthContext] Login error:', error);
+      console.error('[AuthContext] Login error thrown to UI:', message);
       throw new Error(message);
     }
   }, []);

@@ -153,8 +153,12 @@ export function LoginPage() {
       }, 1500); // Wait for the progress line animation
     } catch (err: unknown) {
       let msg = 'Login failed. Check your credentials.';
-      if (err instanceof Error && 'code' in err && err.code === 'ERR_NETWORK') {
-        msg = 'Cannot connect to server. Is the backend running?';
+      if (err instanceof Error) {
+        if ('code' in err && (err as any).code === 'ERR_NETWORK') {
+          msg = 'Cannot connect to server. Is the backend running?';
+        } else {
+          msg = err.message;
+        }
       } else {
         msg = (err as { response?: { data?: { message?: string } } })
           ?.response?.data?.message ?? msg;
