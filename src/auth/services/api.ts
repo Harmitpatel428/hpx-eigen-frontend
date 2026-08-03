@@ -57,9 +57,14 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Prevent redirect loop when already on login page
-      const isLoginPage = window.location.pathname.includes('/login');
-      if (!isLoginPage) {
+      // Prevent redirect loop on any public auth route
+      const currentPath = window.location.pathname;
+      const isPublicAuthRoute =
+        currentPath.includes('/login') ||
+        currentPath.includes('/signup') ||
+        currentPath.includes('/register');
+
+      if (!isPublicAuthRoute) {
         if (typeof window !== 'undefined') {
           (window as any).tokenStorage?.clear?.();
           localStorage.removeItem('hpx:access-token');

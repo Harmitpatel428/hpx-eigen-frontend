@@ -56,8 +56,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const restoreSession = async () => {
       if (fsm.current.state !== 'UNINITIALIZED') return;
 
-      // Skip restore on login page to prevent 401 loop
-      if (window.location.pathname.includes('/login')) {
+      // Skip restore on all public auth pages to prevent a 401 loop:
+      // AuthContext fires /users/me with no token → 401 → interceptor redirects
+      // to /login → appears as an unexpected page refresh on /signup.
+      const currentPath = window.location.pathname;
+      const isPublicAuthRoute =
+        currentPath.includes('/login') ||
+        currentPath.includes('/signup') ||
+        currentPath.includes('/register');
+
+      if (isPublicAuthRoute) {
         fsm.current.transition('UNAUTHENTICATED');
         return;
       }
