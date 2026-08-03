@@ -1,5 +1,16 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
+/**
+ * Typed error that carries the HTTP status code so callers can distinguish
+ * 403 Forbidden from 500 Internal Server Error, etc.
+ */
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 /**
@@ -58,7 +69,11 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 403) {
-      return Promise.reject(new Error('Insufficient permissions.'));
+      return Promise.reject(new ApiError('Insufficient permissions.', 403));
+    }
+
+    if (error.response?.status === 500) {
+      return Promise.reject(new ApiError('A server error occurred. Please try again later.', 500));
     }
 
     const message = (error.response?.data as any)?.error?.message 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { DepartmentProvider } from './context/DepartmentContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { OverviewPage } from './pages/OverviewPage';
 
@@ -23,25 +24,27 @@ const PageFallback = () => (
 
 export default function ProtectedApp() {
   return (
-    <DepartmentProvider>
-      <Routes>
-        <Route element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }>
-          <Route path="/overview" element={<OverviewPage />} />
-          <Route path="/leads" element={<React.Suspense fallback={<PageFallback />}><LeadsPage /></React.Suspense>} />
-          <Route path="/contacts" element={<React.Suspense fallback={<PageFallback />}><ContactsPage /></React.Suspense>} />
-          <Route path="/pipeline" element={<React.Suspense fallback={<PageFallback />}><PipelinePage /></React.Suspense>} />
-          <Route path="/activities" element={<React.Suspense fallback={<PageFallback />}><ActivitiesPage /></React.Suspense>} />
-          <Route path="/invoices" element={<React.Suspense fallback={<PageFallback />}><InvoicesPage /></React.Suspense>} />
-          <Route path="/payments" element={<React.Suspense fallback={<PageFallback />}><PaymentsPage /></React.Suspense>} />
-          <Route path="/settings" element={<React.Suspense fallback={<PageFallback />}><SettingsPage /></React.Suspense>} />
-        </Route>
-        <Route path="/" element={<Navigate to="/overview" replace />} />
-        <Route path="*" element={<Navigate to="/overview" replace />} />
-      </Routes>
-    </DepartmentProvider>
+    <ThemeProvider defaultTheme="system" storageKey="hpx-ui-theme">
+      <DepartmentProvider>
+        <Routes>
+          <Route element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }>
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/leads" element={<React.Suspense fallback={<PageFallback />}><LeadsPage /></React.Suspense>} />
+            <Route path="/contacts" element={<React.Suspense fallback={<PageFallback />}><ContactsPage /></React.Suspense>} />
+            <Route path="/pipeline" element={<React.Suspense fallback={<PageFallback />}><PipelinePage /></React.Suspense>} />
+            <Route path="/activities" element={<React.Suspense fallback={<PageFallback />}><ActivitiesPage /></React.Suspense>} />
+            <Route path="/invoices" element={<React.Suspense fallback={<PageFallback />}><InvoicesPage /></React.Suspense>} />
+            <Route path="/payments" element={<React.Suspense fallback={<PageFallback />}><PaymentsPage /></React.Suspense>} />
+            <Route path="/settings" element={<React.Suspense fallback={<PageFallback />}><SettingsPage /></React.Suspense>} />
+          </Route>
+          <Route path="/" element={<Navigate to="/overview" replace />} />
+          <Route path="*" element={<Navigate to="/overview" replace />} />
+        </Routes>
+      </DepartmentProvider>
+    </ThemeProvider>
   );
 }

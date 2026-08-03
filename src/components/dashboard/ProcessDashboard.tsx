@@ -1,7 +1,9 @@
 import React from 'react';
 import { useDashboardMetrics } from '../../hooks/useDashboardMetrics';
 import { KpiCard } from './KpiCard';
+import { ShieldOff, AlertCircle } from 'lucide-react';
 import type { ProcessMetrics } from '../../hooks/useDashboardMetrics';
+import { ApiError } from '../../auth/services/api';
 
 export const ProcessDashboard: React.FC = () => {
   const { data: metrics, isLoading, error } = useDashboardMetrics<ProcessMetrics>();
@@ -9,10 +11,31 @@ export const ProcessDashboard: React.FC = () => {
   if (isLoading) return <DashboardSkeleton />;
   
   if (error) {
+    const is403 = error instanceof ApiError && error.status === 403;
+    if (is403) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-3xl bg-amber-50 p-12 text-center">
+          <ShieldOff className="mb-4 h-10 w-10 text-amber-400" strokeWidth={1.5} />
+          <p className="text-base font-medium text-amber-900">Department Access Required</p>
+          <p className="mt-1 max-w-sm text-sm text-amber-700">
+            Your account is not yet assigned to this department. Contact your administrator to request access.
+          </p>
+        </div>
+      );
+    }
     return (
-      <div className="rounded-3xl bg-rose-50 p-6 text-rose-700">
-        <p className="font-medium">Failed to load dashboard</p>
-        <p className="text-sm opacity-80">{error.message}</p>
+      <div className="flex flex-col items-center justify-center rounded-3xl bg-rose-50 p-12 text-center">
+        <AlertCircle className="mb-4 h-10 w-10 text-rose-400" strokeWidth={1.5} />
+        <p className="text-base font-medium text-rose-900">Dashboard Unavailable</p>
+        <p className="mt-1 max-w-sm text-sm text-rose-700">
+          Could not load your metrics. This is likely a temporary issue.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
