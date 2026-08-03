@@ -1,7 +1,7 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/public';
-import { 
+import {
   Eye, EyeOff, Command, Users, Lock, Globe, Check
 } from 'lucide-react';
 
@@ -9,7 +9,7 @@ const LivingBlueprintExperience = () => {
   return (
     <div className="blueprint-container blueprint-entrance">
       <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" className="blueprint-svg">
-        
+
         {/* Base Grid Pattern */}
         <defs>
           <pattern id="blueprint-grid" width="50" height="50" patternUnits="userSpaceOnUse">
@@ -72,14 +72,14 @@ const FeatureSequence = () => {
   }, [isHovered]);
 
   return (
-    <div 
+    <div
       className="feature-sequence-container"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {featureList.map((feature, i) => (
-        <div 
-          key={feature} 
+        <div
+          key={feature}
           className={`feature-card ${i === index ? 'active' : ''}`}
         >
           <div className="feature-icon-wrapper">
@@ -130,7 +130,7 @@ export function LoginPage() {
     } else {
       setOsShortcut('');
     }
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         const form = document.getElementById('login-form') as HTMLFormElement;
@@ -153,12 +153,8 @@ export function LoginPage() {
       }, 1500); // Wait for the progress line animation
     } catch (err: unknown) {
       let msg = 'Login failed. Check your credentials.';
-      if (err instanceof Error) {
-        if ('code' in err && (err as any).code === 'ERR_NETWORK') {
-          msg = 'Cannot connect to server. Is the backend running?';
-        } else {
-          msg = err.message;
-        }
+      if (err instanceof Error && 'code' in err && err.code === 'ERR_NETWORK') {
+        msg = 'Cannot connect to server. Is the backend running?';
       } else {
         msg = (err as { response?: { data?: { message?: string } } })
           ?.response?.data?.message ?? msg;
@@ -191,7 +187,7 @@ export function LoginPage() {
           <p className="hero-subtitle entrance-stagger-3">
             The most powerful CRM built to capture, analyze, and leverage your organizational network.
           </p>
-          
+
           <div className="entrance-stagger-4">
             <FeatureSequence />
           </div>
@@ -287,8 +283,8 @@ export function LoginPage() {
 
               <div className="remember-me-wrapper auth-stagger-4">
                 <label className="checkbox-container">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
                   />

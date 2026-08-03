@@ -137,22 +137,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Public API
   const login = useCallback(async (email: string, password: string) => {
     try {
+      console.log('1. LOGIN START — email:', email);
       Sentry.addBreadcrumb({ category: 'auth', message: 'Login attempt started', level: 'info' });
       const res = await api.post('/api/v1/auth/login', { email, password });
-      
+
+      console.log('2. API RESPONSE — status:', res.status, 'data:', res.data);
       Sentry.addBreadcrumb({ category: 'auth', message: 'Login API success', level: 'info', data: res.data });
       const accessToken = res.data?.data?.accessToken;
       const refreshToken = res.data?.data?.refreshToken;
       const user = res.data?.data?.user;
 
+      console.log('3. TOKEN EXTRACTED:', accessToken ? 'YES (' + accessToken.substring(0, 20) + '...)' : 'NO — res.data was:', JSON.stringify(res.data));
+
       if (!accessToken) {
-        console.error('Token missing from response!', res.data);
+        console.error('3a. FATAL: No access token in response', res.data);
         throw new Error('Login failed: No token received.');
       }
 
       // Save to localStorage
       localStorage.setItem('hpx:access-token', accessToken);
       localStorage.setItem('accessToken', accessToken);
+      console.log('4. TOKEN SAVED TO localStorage');
       Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to localStorage', level: 'info' });
       if (refreshToken) {
         localStorage.setItem('hpx:refresh-token', refreshToken);
@@ -165,25 +170,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionId: res.data?.data?.sessionId,
           userId: user?.id,
         });
+        console.log('5. TOKEN SAVED TO tokenStorage');
         Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
       } catch (e) {
-        console.warn('Failed to sync to tokenStorage class', e);
+        console.warn('5a. WARN: Failed to sync to tokenStorage class', e);
       }
-      
+
+      console.log('6. USER FROM RESPONSE:', user);
       if (user) {
         setUser(user);
         const perms = (user as any).permissions || {};
         const roles = user.roles || [];
         permissionService.current.setManifest(perms, roles);
+        console.log('6a. setUser + permissions SET');
+      } else {
+        console.warn('6b. WARN: No user object in login response — skipping setUser');
       }
 
+      console.log('7. FSM STATE BEFORE TRANSITION:', fsm.current.state);
       if (fsm.current.state !== 'AUTHENTICATED') {
         fsm.current.transition('AUTHENTICATED');
+        console.log('7a. FSM transitioned → AUTHENTICATED');
+      } else {
+        console.log('7b. FSM was already AUTHENTICATED — no transition');
       }
 
-      Sentry.addBreadcrumb({ category: 'auth', message: 'State updated, login complete', level: 'info' });
-      // Navigation is handled by the caller (e.g., LoginPage)
+      console.log('8. STATE UPDATED, PREPARING REDIRECT → /overview');
+      Sentry.addBreadcrumb({ category: 'auth', message: 'State updated, preparing to redirect', level: 'info' });
+      // Hard reload to bootstrap DepartmentContext with auth state
+      console.log('9. CALLING window.location.href = /overview');
+      window.location.href = '/overview';
+      console.log('10. REDIRECT CALLED (should not see this if navigation fired)');
     } catch (error: any) {
+      console.error('LOGIN CATCH BLOCK ERROR — raw error:', error);
+      console.error('LOGIN CATCH — response data:', error?.response?.data);
+      console.error('LOGIN CATCH — status:', error?.response?.status);
       Sentry.captureException(error);
       // Extract real error message from backend response
       let message = 'Login failed. Please try again.';
@@ -192,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (error?.message) {
         message = error.message;
       }
-      
+
       console.error('[AuthContext] Login error thrown to UI:', message);
       throw new Error(message);
     }

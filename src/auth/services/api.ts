@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-
+import * as Sentry from '@sentry/react';
 /**
  * Typed error that carries the HTTP status code so callers can distinguish
  * 403 Forbidden from 500 Internal Server Error, etc.
@@ -87,6 +87,11 @@ api.interceptors.response.use(
       || (error.response?.data as any)?.message 
       || error.message 
       || 'Request failed.';
+
+    // Capture API errors in Sentry, but ignore 401s (session expirations) to reduce noise
+    if (error.response && error.response.status !== 401) {
+      Sentry.captureException(error);
+    }
 
     return Promise.reject(new Error(message));
   }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import * as Sentry from '@sentry/react';
 const baseURL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const api = axios.create({ 
@@ -52,6 +52,12 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+
+    // Capture API errors in Sentry, but ignore 401s (session expirations) to reduce noise
+    if (err.response && err.response.status !== 401) {
+      Sentry.captureException(err);
+    }
+
     return Promise.reject(err);
   }
 );
