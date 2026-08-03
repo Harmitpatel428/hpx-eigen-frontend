@@ -5,9 +5,11 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
  * 403 Forbidden from 500 Internal Server Error, etc.
  */
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) {
+  public status: number;
+  constructor(message: string, status: number) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
   }
 }
 
