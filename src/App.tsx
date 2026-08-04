@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
@@ -100,7 +101,8 @@ export const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
+            <Sentry.ErrorBoundary fallback={<p>An unexpected error occurred. Please refresh.</p>} showDialog>
+              <Routes>
               {/* Login is completely isolated — no DepartmentProvider */}
               <Route path="/login" element={<LoginPage />} />
               
@@ -114,7 +116,8 @@ export const App: React.FC = () => {
                   <ProtectedApp />
                 </React.Suspense>
               } />
-            </Routes>
+              </Routes>
+            </Sentry.ErrorBoundary>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

@@ -56,6 +56,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    if (error.response) {
+      // Capture the exact API error, including 401s, 403s, and 500s
+      Sentry.captureException(error);
+      
+      // Add context about the request
+      Sentry.setTag('api.url', error.config?.url || 'unknown');
+      Sentry.setTag('api.status', error.response.status);
+      Sentry.setContext('api_payload', error.config?.data || {});
+    }
+
     if (error.response?.status === 401) {
       // Prevent redirect loop on any public auth route
       const currentPath = window.location.pathname;
@@ -87,11 +97,6 @@ api.interceptors.response.use(
       || (error.response?.data as any)?.message 
       || error.message 
       || 'Request failed.';
-
-    // Capture API errors in Sentry, but ignore 401s (session expirations) to reduce noise
-    if (error.response && error.response.status !== 401) {
-      Sentry.captureException(error);
-    }
 
     return Promise.reject(new Error(message));
   }

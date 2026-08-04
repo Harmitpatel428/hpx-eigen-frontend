@@ -36,6 +36,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err.response) {
+      // Capture the exact API error, including 401s, 403s, and 500s
+      Sentry.captureException(err);
+      
+      // Add context about the request
+      Sentry.setTag('api.url', err.config?.url || 'unknown');
+      Sentry.setTag('api.status', err.response.status);
+      Sentry.setContext('api_payload', err.config?.data || {});
+    }
+
     if (err.response?.status === 401) {
       // Prevent redirect loop: never redirect when already on the login page
       const isLoginPage = window.location.pathname.includes('/login');
@@ -51,11 +61,6 @@ api.interceptors.response.use(
         localStorage.removeItem('userId');
         window.location.href = '/login';
       }
-    }
-
-    // Capture API errors in Sentry, but ignore 401s (session expirations) to reduce noise
-    if (err.response && err.response.status !== 401) {
-      Sentry.captureException(err);
     }
 
     return Promise.reject(err);
