@@ -25,12 +25,22 @@ export function VerifyEmailPage() {
 
     const verify = async () => {
       try {
-        await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify?token=${token}`);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify?token=${token}`);
+        
+        // Save JWT to local storage for AuthContext to pick up
+        if (response.data.jwt) {
+          localStorage.setItem('hpx:access-token', response.data.jwt);
+          localStorage.setItem('accessToken', response.data.jwt);
+        }
+
         setStatus('success');
-        setMessage('Email verified successfully! Redirecting to login...');
+        setMessage('Email verified successfully! Redirecting to workspace...');
         toast.success('Email verified!');
         
-        setTimeout(() => navigate('/login'), 2000);
+        // Redirect to overview where AuthContext will load user data
+        setTimeout(() => {
+          window.location.href = '/overview';
+        }, 1500);
       } catch (error: any) {
         setStatus('error');
         const errorMsg = error.response?.data?.message || 'Verification failed. Link may be expired.';
