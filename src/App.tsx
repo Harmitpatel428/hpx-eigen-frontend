@@ -4,6 +4,8 @@ import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 
 // ─── Error Boundary that wraps EVERYTHING ──────────────────────────
 class GlobalErrorBoundary extends React.Component<
@@ -105,6 +107,8 @@ export const App: React.FC = () => {
               <Routes>
               {/* Login is completely isolated — no DepartmentProvider */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               
               {/* Everything else loads the full app shell with providers */}
               <Route path="/*" element={
