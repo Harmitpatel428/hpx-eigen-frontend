@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { LoadingSessionScreen } from '../../components/LoadingSession';
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -29,7 +30,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAnyPermission,
   requireAllPermissions,
   fallback = null,
-  loadingFallback = <div data-testid="auth-loading">Loading session...</div>,
+  loadingFallback = <LoadingSessionScreen />,
   errorFallback = <div data-testid="auth-error">Authentication error.</div>,
   redirectTo = '/login',
 }) => {
