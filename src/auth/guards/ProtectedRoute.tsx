@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LoadingSessionScreen } from '../../components/LoadingSession';
 import { AppLayout } from '../../components/layout/AppLayout';
 
 export interface ProtectedRouteProps {
