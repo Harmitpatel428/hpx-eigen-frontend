@@ -38,7 +38,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 1. FSM States - In Progress
   if (status === 'UNINITIALIZED' || status === 'RESTORING' || status === 'REFRESHING') {
-    return <>{loadingFallback}</>;
+    return null;
   }
 
   // 2. FSM States - Logged Out
