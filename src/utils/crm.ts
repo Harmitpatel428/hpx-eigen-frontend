@@ -44,15 +44,17 @@ export function formatDateTime(isoDate: string): string {
 export function formatRelativeTime(isoDate: string): string {
   const now = new Date();
   const date = new Date(isoDate);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
+  const diffMs = date.getTime() - now.getTime();
+  const diffMins = Math.round(diffMs / 60000);
+  const diffHours = Math.round(diffMs / 3600000);
+  const diffDays = Math.round(diffMs / 86400000);
 
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+  if (Math.abs(diffMins) < 1) return 'just now';
+  if (Math.abs(diffMins) < 60) return rtf.format(diffMins, 'minute');
+  if (Math.abs(diffHours) < 24) return rtf.format(diffHours, 'hour');
+  if (Math.abs(diffDays) < 7) return rtf.format(diffDays, 'day');
   return formatDate(isoDate);
 }
 

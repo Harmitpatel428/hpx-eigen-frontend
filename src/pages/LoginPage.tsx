@@ -1,6 +1,7 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/public';
+import { VerificationPendingUI } from './VerificationPendingUI';
 import {
   Eye, EyeOff, Command, Users, Lock, Globe, Check
 } from 'lucide-react';
@@ -116,6 +117,7 @@ export function LoginPage() {
   const [success, setSuccess] = useState(false);
   const [osShortcut, setOsShortcut] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(false);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -151,13 +153,18 @@ export function LoginPage() {
       setTimeout(() => {
         navigate('/');
       }, 1500); // Wait for the progress line animation
-    } catch (err: unknown) {
+    } catch (err: any) {
+      if (err?.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        setVerificationPending(true);
+        setLoading(false);
+        return;
+      }
+      
       let msg = 'Login failed. Check your credentials.';
       if (err instanceof Error && 'code' in err && err.code === 'ERR_NETWORK') {
         msg = 'Cannot connect to server. Is the backend running?';
       } else {
-        msg = (err as { response?: { data?: { message?: string } } })
-          ?.response?.data?.message ?? msg;
+        msg = err?.response?.data?.message ?? msg;
       }
       setError(msg);
       setLoading(false);

@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSessionScreen } from '../../components/LoadingSession';
+import { AppLayout } from '../../components/layout/AppLayout';
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -30,7 +31,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAnyPermission,
   requireAllPermissions,
   fallback = null,
-  loadingFallback = <LoadingSessionScreen />,
+  loadingFallback = <AppLayout isLoading={true} />,
   errorFallback = <div data-testid="auth-error">Authentication error.</div>,
   redirectTo = '/login',
 }) => {
