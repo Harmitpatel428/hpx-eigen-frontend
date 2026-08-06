@@ -43,13 +43,15 @@ export function useDashboardMetrics<T extends DashboardMetrics>() {
 
   return useQuery({
     queryKey: ['dashboard', 'metrics', activeDepartment?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<T> => {
       if (!activeDepartment) throw new Error('No active department');
-      const response = await get<DashboardResponse>('/api/v1/dashboard/metrics');
-      return response.data as T;
+      // get() already unwraps response.data.data — returns DashboardMetrics directly
+      const data = await get<T>('/api/v1/dashboard/metrics');
+      if (!data) throw new Error('Empty metrics response');
+      return data;
     },
     enabled: isReady && !!activeDepartment,
-    staleTime: 1000 * 60 * 2, // 2 minutes — dashboard data is relatively static
+    staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 10,
   });
 }
