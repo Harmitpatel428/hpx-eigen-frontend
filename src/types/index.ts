@@ -255,3 +255,188 @@ export interface Payment {
   updatedAt: string;
   deletedAt: string | null;
 }
+
+// ============================================================================
+// S4 DOCUMENTATION TRACKER DOMAIN
+// ============================================================================
+
+export type DocPresetCategory = 'GOVERNMENT' | 'FINANCIAL' | 'LEGAL' | 'OPERATIONAL' | 'COMPLIANCE' | 'CUSTOM';
+export type DocDocumentStatus =
+  | 'REQUESTED' | 'PENDING_COLLECTION' | 'RECEIVED' | 'UNDER_VERIFICATION'
+  | 'APPROVED' | 'REJECTED' | 'RE_REQUESTED' | 'EXPIRED'
+  | 'NOT_APPLICABLE' | 'WAIVED' | 'MANAGER_APPROVED';
+export type DocCaseStatus = 'ACTIVE' | 'DOCUMENTATION_READY' | 'TRANSFERRED_TO_PROCESS' | 'CLOSED' | 'CANCELLED';
+export type DocNoteType   = 'INTERNAL' | 'CUSTOMER';
+export type DocStorageType =
+  | 'GOOGLE_DRIVE' | 'ONEDRIVE' | 'DROPBOX' | 'SHAREPOINT' | 'NAS_PATH'
+  | 'LOCAL_FOLDER' | 'PHYSICAL_CABINET' | 'REFERENCE_NUMBER' | 'EMAIL'
+  | 'EXTERNAL_PORTAL' | 'STORED_OFFLINE' | 'OTHER';
+export type DocEventType =
+  | 'CASE_CREATED' | 'PRESET_APPLIED' | 'DOCUMENT_STATUS_CHANGED' | 'DOCUMENT_RECEIVED'
+  | 'DOCUMENT_VERIFIED' | 'DOCUMENT_REJECTED' | 'DOCUMENT_WAIVED' | 'DOCUMENT_APPROVED'
+  | 'REMINDER_SENT' | 'NOTE_ADDED' | 'STORAGE_REF_ADDED' | 'MANAGER_OVERRIDE'
+  | 'TRANSFERRED_TO_PROCESS' | 'CASE_CLOSED' | 'CASE_CANCELLED' | 'EXPIRY_WARNING';
+
+export interface DocPresetItem {
+  id: string;
+  presetId: string;
+  tenantId: string;
+  name: string;
+  description: string | null;
+  isMandatory: boolean;
+  isBlocking: boolean;
+  displayOrder: number;
+  verificationRequired: boolean;
+  expiryTrackingEnabled: boolean;
+  expiryDays: number | null;
+  metadataFields: unknown[];
+  notes: string | null;
+  conditionRule: unknown | null;
+  createdAt: string;
+}
+
+export interface DocPreset {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string | null;
+  category: DocPresetCategory;
+  color: string | null;
+  icon: string | null;
+  isActive: boolean;
+  version: number;
+  usageCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  items: DocPresetItem[];
+  _count?: { cases: number };
+}
+
+export interface DocStorageRef {
+  id: string;
+  tenantId: string;
+  documentId: string;
+  storageType: DocStorageType;
+  reference: string;
+  label: string | null;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface DocCaseDocument {
+  id: string;
+  tenantId: string;
+  caseId: string;
+  presetItemId: string | null;
+  name: string;
+  description: string | null;
+  isMandatory: boolean;
+  isBlocking: boolean;
+  displayOrder: number;
+  verificationRequired: boolean;
+  expiryTrackingEnabled: boolean;
+  expiryDate: string | null;
+  status: DocDocumentStatus;
+  receivedAt: string | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  verificationRemarks: string | null;
+  rejectionReason: string | null;
+  isWaived: boolean;
+  waivedBy: string | null;
+  waivedReason: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  storageRefs: DocStorageRef[];
+}
+
+export interface DocCaseEvent {
+  id: string;
+  tenantId: string;
+  caseId: string;
+  documentId: string | null;
+  eventType: DocEventType;
+  actorUserId: string | null;
+  actorDepartment: string | null;
+  fromStatus: DocDocumentStatus | null;
+  toStatus: DocDocumentStatus | null;
+  remarks: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface DocCaseNote {
+  id: string;
+  tenantId: string;
+  caseId: string;
+  noteType: DocNoteType;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface DocManagerOverride {
+  id: string;
+  tenantId: string;
+  caseId: string;
+  overriddenBy: string;
+  reason: string;
+  allowedAt: string;
+  expiresAt: string | null;
+}
+
+export interface DocCase {
+  id: string;
+  tenantId: string;
+  leadId: string;
+  presetId: string | null;
+  presetVersion: number | null;
+  assignedTo: string | null;
+  status: DocCaseStatus;
+  priority: number;
+  totalDocs: number;
+  receivedDocs: number;
+  verifiedDocs: number;
+  approvedDocs: number;
+  rejectedDocs: number;
+  mandatoryDocs: number;
+  mandatoryApproved: number;
+  completionPercent: number;
+  isReady: boolean;
+  dueDate: string | null;
+  transferredAt: string | null;
+  transferredBy: string | null;
+  closedAt: string | null;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  lead: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    company: string | null;
+    email: string | null;
+    phone: string | null;
+    status?: string;
+  };
+  preset: { id: string; name: string; category: DocPresetCategory; color: string | null; icon: string | null } | null;
+  documents?: DocCaseDocument[];
+  events?: DocCaseEvent[];
+  caseNotes?: DocCaseNote[];
+  overrides?: DocManagerOverride[];
+  _count?: { documents: number };
+}
+
+export interface DocDashboardKPIs {
+  totalCases: number;
+  activeCases: number;
+  readyCases: number;
+  transferredCases: number;
+  pendingVerification: number;
+  overdueDocCount: number;
+  rejectedDocs: number;
+  todayActivity: number;
+}
