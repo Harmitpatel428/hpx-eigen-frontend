@@ -4,10 +4,10 @@ import { Bell, Moon, User } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-100 bg-white/80 px-6 backdrop-blur-xl">
+    <header className="flex h-16 items-center border-b border-gray-100 bg-white/80 px-6 backdrop-blur-xl">
       <DepartmentSwitcher />
-      
-      <div className="flex items-center gap-2">
+
+      <div className="ml-auto flex items-center gap-2">
         <button className="rounded-full p-2.5 text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700">
           <Moon className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </button>
