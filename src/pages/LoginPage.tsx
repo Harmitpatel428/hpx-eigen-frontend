@@ -1,7 +1,7 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/public';
-import { VerificationPendingUI } from './VerificationPendingUI';
+import { VerificationModal } from './VerificationModal';
 import {
   Eye, EyeOff, Command, Users, Lock, Globe, Check
 } from 'lucide-react';
@@ -222,13 +222,20 @@ export function LoginPage() {
         </div>
       </div>
 
+      {/* Verification Modal - Overlays everything */}
+      <VerificationModal
+        email={email}
+        isOpen={verificationPending}
+        onClose={() => setVerificationPending(false)}
+      />
+
       <div className="auth-right-panel">
         <div className="secure-indicator">
           <Globe size={14} /> Secure Login
         </div>
 
         <div className="auth-card-container">
-          <div className={`auth-form-wrapper ${loading || success ? 'is-hidden' : ''}`}>
+          <div className={`auth-form-wrapper ${loading || success || verificationPending ? 'is-hidden' : ''}`}>
             <div className="auth-header">
               <h2>Welcome back</h2>
               <p>Enter your details to access your workspace.</p>
