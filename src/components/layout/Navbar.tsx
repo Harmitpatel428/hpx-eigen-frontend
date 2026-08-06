@@ -6,7 +6,7 @@ import { Bell, Settings, LogOut, Sun, Moon } from 'lucide-react';
 
 export function Navbar() {
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -40,7 +40,7 @@ export function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <button 
             className="btn-icon" 
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={toggle}
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
