@@ -143,9 +143,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('2. API RESPONSE — status:', res.status, 'data:', res.data);
       Sentry.addBreadcrumb({ category: 'auth', message: 'Login API success', level: 'info', data: res.data });
+
+      // Extract from standardized response format: { success, data: { accessToken, refreshToken, user, sessionId, permissions } }
       const accessToken = res.data?.data?.accessToken;
       const refreshToken = res.data?.data?.refreshToken;
       const user = res.data?.data?.user;
+      const sessionId = res.data?.data?.sessionId;
+      const permissions = res.data?.data?.permissions;
 
       console.log('3. TOKEN EXTRACTED:', accessToken ? 'YES (' + accessToken.substring(0, 20) + '...)' : 'NO — res.data was:', JSON.stringify(res.data));
 
@@ -179,7 +183,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('6. USER FROM RESPONSE:', user);
       if (user) {
         setUser(user);
-        const perms = (user as any).permissions || {};
+        // Use permissions from response data or fallback to user object
+        const perms = permissions || (user as any).permissions || {};
         const roles = user.roles || [];
         permissionService.current.setManifest(perms, roles);
         console.log('6a. setUser + permissions SET');
