@@ -26,17 +26,18 @@ export function VerifyEmailPage() {
     const verify = async () => {
       try {
         const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify-email`, { token });
-        
-        // Save JWT to local storage for AuthContext to pick up
-        if (response.data.jwt) {
-          localStorage.setItem('hpx:access-token', response.data.jwt);
-          localStorage.setItem('accessToken', response.data.jwt);
+
+        // Extract from standardized response format
+        const accessToken = response.data?.data?.accessToken || response.data?.jwt;
+        if (accessToken) {
+          localStorage.setItem('hpx:access-token', accessToken);
+          localStorage.setItem('accessToken', accessToken);
         }
 
         setStatus('success');
         setMessage('Email verified successfully! Redirecting to workspace...');
         toast.success('Email verified!');
-        
+
         // Redirect to overview where AuthContext will load user data
         setTimeout(() => {
           window.location.href = '/overview';
@@ -53,8 +54,8 @@ export function VerifyEmailPage() {
   }, [token, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center bg-white py-12 px-8 shadow sm:rounded-lg border border-slate-100">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md text-center bg-white py-12 px-8 shadow-lg rounded-2xl border border-slate-100">
         
         {status === 'loading' && (
           <>
