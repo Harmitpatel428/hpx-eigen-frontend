@@ -237,7 +237,7 @@ function DocumentRow({
         <StatusChip status={doc.status} />
 
         {doc.storageRefs.length > 0 && (
-          <FolderOpen size={14} style={{ color: 'var(--text-tertiary)' }} title={`${doc.storageRefs.length} storage ref`} />
+          <FolderOpen size={14} style={{ color: 'var(--text-tertiary)' }} />
         )}
 
         <ChevronRight size={14} style={{ color: 'var(--text-tertiary)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -396,7 +396,7 @@ const createCaseSchema = z.object({
   leadId:     z.string().min(1, 'Lead is required'),
   presetId:   z.string().optional(),
   dueDate:    z.string().optional(),
-  priority:   z.coerce.number().min(0).max(2).optional(),
+  priority:   z.number().min(0).max(2).optional(),
   notes:      z.string().optional(),
 });
 type CreateCaseForm = z.infer<typeof createCaseSchema>;
@@ -542,7 +542,7 @@ function CaseDetailPanel({
 
   const sm = CASE_STATUS_META[docCase.status] ?? CASE_STATUS_META.ACTIVE;
   const missingMandatory = (docCase.documents ?? []).filter(d =>
-    d.isMandatory && !['APPROVED', 'MANAGER_APPROVED', 'WAIVED', 'NOT_APPLICABLE'].includes(d.status) && !d.deletedAt
+    d.isMandatory && !['APPROVED', 'MANAGER_APPROVED', 'WAIVED', 'NOT_APPLICABLE'].includes(d.status)
   );
   const rejected = (docCase.documents ?? []).filter(d => d.status === 'REJECTED');
   const canTransfer = docCase.isReady && docCase.status !== 'TRANSFERRED_TO_PROCESS';
