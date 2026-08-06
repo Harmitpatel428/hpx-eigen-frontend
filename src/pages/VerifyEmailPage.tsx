@@ -25,7 +25,7 @@ export function VerifyEmailPage() {
 
     const verify = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify?token=${token}`);
+        const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify-email`, { token });
         
         // Save JWT to local storage for AuthContext to pick up
         if (response.data.jwt) {

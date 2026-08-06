@@ -34,15 +34,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   errorFallback = <div data-testid="auth-error">Authentication error.</div>,
   redirectTo = '/login',
 }) => {
-  const { status, permissions } = useAuth();
+  const { status, permissions, user } = useAuth();
 
   // 1. FSM States - In Progress
   if (status === 'UNINITIALIZED' || status === 'RESTORING' || status === 'REFRESHING') {
     return null;
   }
 
-  // 2. FSM States - Logged Out
-  if (status === 'UNAUTHENTICATED') {
+  // 2. FSM States - Logged Out or Missing User
+  if (status === 'UNAUTHENTICATED' || !user) {
     return <Navigate to={redirectTo} replace />;
   }
   
