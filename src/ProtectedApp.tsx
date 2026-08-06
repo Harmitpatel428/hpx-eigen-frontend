@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { DepartmentProvider } from './context/DepartmentContext';
-import { ThemeProvider } from './context/ThemeContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { OverviewPage } from './pages/OverviewPage';
 
@@ -24,8 +23,7 @@ const PageFallback = () => (
 
 export default function ProtectedApp() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="hpx-ui-theme">
-      <DepartmentProvider>
+    <DepartmentProvider>
         <Routes>
           <Route element={
             <ProtectedRoute>
@@ -45,6 +43,5 @@ export default function ProtectedApp() {
           <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>
       </DepartmentProvider>
-    </ThemeProvider>
   );
 }
