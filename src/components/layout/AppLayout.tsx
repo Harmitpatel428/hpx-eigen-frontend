@@ -5,15 +5,22 @@ import { TopBar } from './TopBar';
 
 export const AppLayout: React.FC<{ isLoading?: boolean }> = ({ isLoading }) => {
   return (
-    <div className="flex h-screen w-full bg-[#fafafa] antialiased">
+    <div
+      style={{ display: 'flex', height: '100vh', width: '100%', backgroundColor: 'var(--bg-app)' }}
+      className="antialiased"
+    >
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+
+      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'hidden' }}>
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-8">
+
+        <main
+          style={{ flex: 1, overflowY: 'auto', padding: 32, backgroundColor: 'var(--bg-app)' }}
+        >
           {isLoading ? (
-            <div className="animate-pulse flex flex-col space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-64 bg-gray-200 rounded w-full"></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ height: 32, borderRadius: 12, backgroundColor: 'var(--bg-muted)', animation: 'pulse 1.5s infinite', width: '25%' }} />
+              <div style={{ height: 256, borderRadius: 12, backgroundColor: 'var(--bg-muted)', animation: 'pulse 1.5s infinite' }} />
             </div>
           ) : (
             <Outlet />

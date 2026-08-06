@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -100,6 +101,7 @@ const queryClient = new QueryClient({
 export const App: React.FC = () => {
   return (
     <GlobalErrorBoundary>
+      <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
@@ -125,6 +127,7 @@ export const App: React.FC = () => {
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>
+      </ThemeProvider>
     </GlobalErrorBoundary>
   );
 };
