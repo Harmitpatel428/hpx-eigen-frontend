@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { DepartmentSwitcher } from '../ui/DepartmentSwitcher';
 import { Bell, Sun, Moon, LogOut, CheckCheck } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../auth/context/AuthContext';
-import type { User } from '../../auth/contracts/AuthContext';
+import { useAuth } from '../../auth/public';
+import type { User } from '../../auth/public';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

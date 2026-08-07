@@ -83,12 +83,21 @@ export interface Session {
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
 export type LeadSource = 'WEBSITE' | 'REFERRAL' | 'COLD_CALL' | 'EMAIL_CAMPAIGN' | 'SOCIAL_MEDIA' | 'TRADE_SHOW' | 'OTHER';
 export type LeadStage = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
+export type LeadPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type OpportunityStage = 'PROSPECTING' | 'QUALIFICATION' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
 export type ActivityType = 'CALL' | 'EMAIL' | 'MEETING' | 'NOTE' | 'TASK';
 
 // ============================================================================
 // CRM DOMAIN — MODELS
 // ============================================================================
+
+export interface LeadTag {
+  id: string;
+  tenantId: string;
+  name: string;
+  color: string | null;
+  usageCount: number;
+}
 
 export interface Lead {
   id: string;
@@ -102,10 +111,72 @@ export interface Lead {
   score: number | null;
   stage: LeadStage | null;
   expectedValue: string | null; // Decimal comes back as string from JSON
+  priority: LeadPriority;
+  expectedCloseDate: string | null;
+  country: string | null;
+  state: string | null;
+  city: string | null;
+  area: string | null;
+  postalCode: string | null;
   ownerId: string | null;
   notes: string | null;
+  tags: LeadTag[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================================================
+// DYNAMIC FORM ENGINE — Architecture foundation for configurable forms
+// ============================================================================
+
+export type FormFieldType =
+  | 'text' | 'email' | 'phone' | 'number' | 'currency' | 'percentage'
+  | 'dropdown' | 'multi-select' | 'checkbox' | 'radio' | 'textarea'
+  | 'date' | 'datetime' | 'url'
+  | 'user-picker' | 'department-picker' | 'tag-selector';
+
+export interface FormFieldOption {
+  value: string;
+  label: string;
+}
+
+export interface VisibilityCondition {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: unknown;
+}
+
+export interface FormFieldConfig {
+  key: string;
+  label: string;
+  type: FormFieldType;
+  placeholder?: string;
+  helperText?: string;
+  required?: boolean;
+  defaultValue?: unknown;
+  options?: FormFieldOption[];
+  visible?: boolean;
+  displayOrder: number;
+  visibilityCondition?: VisibilityCondition;
+  width?: 'full' | 'half';
+}
+
+export interface FormSectionConfig {
+  id: string;
+  label: string;
+  description?: string;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+  displayOrder: number;
+  visible?: boolean;
+  fields: FormFieldConfig[];
+}
+
+export interface FormConfig {
+  id: string;
+  module: string;
+  tenantId?: string;
+  sections: FormSectionConfig[];
 }
 
 export interface Contact {
@@ -115,6 +186,8 @@ export interface Contact {
   email: string | null;
   phone: string | null;
   title: string | null;
+  role: string | null;
+  isMain: boolean;
   company: string | null;
   leadId: string | null;
   createdAt: string;

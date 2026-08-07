@@ -6,20 +6,31 @@ interface ContextPanelProps {
   onClose: () => void;
   children: React.ReactNode;
   width?: number | string;
+  hideCloseButton?: boolean;
 }
 
-export function ContextPanel({ isOpen, onClose, children, width = 600 }: ContextPanelProps) {
-  // Prevent scrolling on body when panel is open
+export function ContextPanel({ isOpen, onClose, children, width = 600, hideCloseButton = false }: ContextPanelProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
+
+  // ESC to close — only when no input is focused
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -59,20 +70,22 @@ export function ContextPanel({ isOpen, onClose, children, width = 600 }: Context
           animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         }}
       >
-        <button 
-          onClick={onClose}
-          className="btn-icon"
-          style={{
-            position: 'absolute',
-            top: 'var(--space-4)',
-            right: 'var(--space-4)',
-            zIndex: 10,
-            backgroundColor: 'var(--bg-app)',
-            border: '1px solid var(--border-light)'
-          }}
-        >
-          <X size={16} />
-        </button>
+        {!hideCloseButton && (
+          <button
+            onClick={onClose}
+            className="btn-icon"
+            style={{
+              position: 'absolute',
+              top: 'var(--space-4)',
+              right: 'var(--space-4)',
+              zIndex: 10,
+              backgroundColor: 'var(--bg-app)',
+              border: '1px solid var(--border-light)',
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {children}

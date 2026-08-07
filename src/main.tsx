@@ -20,9 +20,7 @@ Sentry.init({
 });
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Sentry.ErrorBoundary fallback={<p>An error occurred.</p>}>
-      <App />
-    </Sentry.ErrorBoundary>
-  </StrictMode>,
+  <Sentry.ErrorBoundary fallback={<p>An error occurred.</p>}>
+    <App />
+  </Sentry.ErrorBoundary>,
 )

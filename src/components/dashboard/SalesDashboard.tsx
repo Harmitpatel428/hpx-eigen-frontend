@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDashboardMetrics } from '../../hooks/useDashboardMetrics';
 import { KpiCard } from './KpiCard';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency } from '../../utils/crm';
 import { ArrowUpRight, ArrowRight } from 'lucide-react';
 import { opportunityService } from '../../services/opportunity.service';
 import type { SalesMetrics } from '../../hooks/useDashboardMetrics';

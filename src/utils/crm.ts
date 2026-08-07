@@ -1,5 +1,3 @@
-import { ZodSchema } from 'zod';
-
 // Currency formatting (INR) — UI display (no decimal)
 export function formatINR(value: number): string {
   return new Intl.NumberFormat('en-IN', {
@@ -139,6 +137,23 @@ export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), delay);
   };
+}
+
+// Generic currency formatting (configurable currency, up to 1 decimal)
+export function formatCurrency(value: number | string, currency: string = 'INR'): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '—';
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(num);
+}
+
+// Number formatting (en-IN locale)
+export function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-IN').format(value);
 }
 
 // CSV export helper

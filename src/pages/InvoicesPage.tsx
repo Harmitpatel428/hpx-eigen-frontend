@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useInvoices, useCreateInvoice, useOpportunities } from '../hooks/useCrmApi';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../services/api';
 import { useAuth } from '../auth/public';
 import { DataTable, Column } from '../components/DataTable';
 import { Invoice } from '../types';
@@ -33,11 +34,20 @@ export function InvoicesPage() {
   const tenantId = (user as any)?.tenantId || localStorage.getItem('tenantId') || '';
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: invoicesData, isLoading } = useInvoices(tenantId);
-  const { data: oppsData, isLoading: oppsLoading } = useOpportunities();
+  const queryClient = useQueryClient();
+  const { data: invoicesData, isLoading } = useQuery({
+    queryKey: ['invoices', tenantId],
+    queryFn: () => api.get('/api/v1/invoices').then(r => r.data),
+  });
+  const { data: oppsData, isLoading: oppsLoading } = useQuery({
+    queryKey: ['opportunities'],
+    queryFn: () => api.get('/api/v1/opportunities').then(r => r.data?.data || r.data || []),
+  });
   const opportunities = Array.isArray(oppsData) ? oppsData : (oppsData?.data || []);
-  
-  const createMut = useCreateInvoice();
+  const createMut = useMutation({
+    mutationFn: ({ tenantId: _tid, ...invoice }: any) => api.post('/api/v1/invoices', invoice).then(r => r.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+  });
 
   const formMethods = useForm<InvoiceForm>({ 
     resolver: zodResolver(invoiceSchema),

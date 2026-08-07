@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { usePayments, useCreatePayment, useInvoices } from '../hooks/useCrmApi';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../services/api';
 import { useAuth } from '../auth/public';
 import { DataTable, Column } from '../components/DataTable';
 import { Payment } from '../types';
@@ -30,9 +31,22 @@ export function PaymentsPage() {
   const tenantId = (user as any)?.tenantId || localStorage.getItem('tenantId') || '';
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: paymentsData, isLoading } = usePayments(tenantId);
-  const { data: invoicesData } = useInvoices(tenantId, { status: 'SENT' } as any); // Or fetch all open invoices
-  const createMut = useCreatePayment();
+  const queryClient = useQueryClient();
+  const { data: paymentsData, isLoading } = useQuery({
+    queryKey: ['payments', tenantId],
+    queryFn: () => api.get('/api/v1/payments').then(r => r.data),
+  });
+  const { data: invoicesData } = useQuery({
+    queryKey: ['invoices', tenantId, 'SENT'],
+    queryFn: () => api.get('/api/v1/invoices?status=SENT').then(r => r.data),
+  });
+  const createMut = useMutation({
+    mutationFn: ({ tenantId: _tid, ...payment }: any) => api.post('/api/v1/payments', payment).then(r => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+  });
 
   const formMethods = useForm<PaymentForm>({ 
     resolver: zodResolver(paymentSchema),

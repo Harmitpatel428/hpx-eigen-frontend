@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Lead, LeadSource, LeadStage } from '../types';
+import type { Lead, LeadSource, LeadStage, LeadPriority } from '../types';
 
 export interface CreateLeadPayload {
   firstName: string;
@@ -12,6 +12,15 @@ export interface CreateLeadPayload {
   score?: number;
   stage?: LeadStage;
   expectedValue?: number | string;
+  priority?: LeadPriority;
+  expectedCloseDate?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  area?: string;
+  postalCode?: string;
+  ownerId?: string;
+  tagNames?: string[];
 }
 
 export interface UpdateLeadPayload {
@@ -25,6 +34,15 @@ export interface UpdateLeadPayload {
   score?: number;
   stage?: LeadStage;
   expectedValue?: number | string;
+  priority?: LeadPriority;
+  expectedCloseDate?: string | null;
+  country?: string;
+  state?: string;
+  city?: string;
+  area?: string;
+  postalCode?: string;
+  ownerId?: string | null;
+  tagNames?: string[];
 }
 
 export interface LeadsResponse {
@@ -32,6 +50,19 @@ export interface LeadsResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export interface DuplicateLead {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  stage: string;
+  status: string;
+  ownerId: string | null;
+  createdAt: string;
 }
 
 export const leadService = {
@@ -50,11 +81,9 @@ export const leadService = {
     if (filters?.pageSize) params.set('pageSize', String(filters.pageSize));
 
     const { data } = await api.get<any>('/api/v1/leads', { params });
-    // Backend returns { data: Lead[], total, page, pageSize }
     if (data && typeof data === 'object' && Array.isArray(data.data)) {
       return data as LeadsResponse;
     }
-    // Fallback for bare array
     const arr = Array.isArray(data) ? data : [];
     return { data: arr, total: arr.length, page: 1, pageSize: arr.length };
   },
@@ -71,5 +100,25 @@ export const leadService = {
 
   async softDelete(id: string): Promise<void> {
     await api.delete(`/api/v1/leads/${id}`);
+  },
+
+  async checkDuplicates(params: {
+    email?: string;
+    phone?: string;
+    company?: string;
+    firstName?: string;
+    lastName?: string;
+    excludeId?: string;
+  }): Promise<DuplicateLead[]> {
+    const query = new URLSearchParams();
+    if (params.email) query.set('email', params.email);
+    if (params.phone) query.set('phone', params.phone);
+    if (params.company) query.set('company', params.company);
+    if (params.firstName) query.set('firstName', params.firstName);
+    if (params.lastName) query.set('lastName', params.lastName);
+    if (params.excludeId) query.set('excludeId', params.excludeId);
+
+    const { data } = await api.get<any>(`/api/v1/leads/check-duplicates?${query}`);
+    return data?.data ?? [];
   },
 };
