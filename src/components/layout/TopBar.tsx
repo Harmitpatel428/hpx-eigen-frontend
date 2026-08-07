@@ -208,7 +208,7 @@ export const TopBar: React.FC = () => {
   const unread = notifs.filter(n => !n.read).length;
 
   const initials = (() => {
-    if (user?.name) return user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    if (user?.name) return user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
     return (user?.email?.[0] ?? 'U').toUpperCase();
   })();
 
