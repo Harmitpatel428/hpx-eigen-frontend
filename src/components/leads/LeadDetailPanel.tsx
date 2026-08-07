@@ -71,73 +71,167 @@ function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-// ── scoped styles ─────────────────────────────────────────────────────────────
+// ── scoped styles — Apple-grade animation layer ──────────────────────────────
 
 const CSS = `
-@keyframes ldp-fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── timing tokens ─────────────────────────────────────────────── */
+.ldp-root {
+  --ldp-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ldp-spring: cubic-bezier(0.175, 0.885, 0.32, 1.05);
+  --ldp-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ldp-t-instant: 80ms;
+  --ldp-t-fast: 120ms;
+  --ldp-t-normal: 200ms;
 }
-@keyframes ldp-pulse {
+
+/* ── entrance animation ────────────────────────────────────────── */
+@keyframes ldp-settle {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes ldp-stagePulse {
   0%, 100% { opacity: 1; }
-  50%      { opacity: 0.55; }
+  50%      { opacity: 0.5; }
 }
+@keyframes ldp-copyFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(5,150,105,0.3); }
+  50%  { box-shadow: 0 0 0 6px rgba(5,150,105,0); }
+  100% { box-shadow: none; }
+}
+
 .ldp-section {
-  animation: ldp-fadeUp 0.35s cubic-bezier(0.25,0.1,0.25,1) both;
+  animation: ldp-settle 220ms var(--ldp-ease) both;
+  will-change: transform, opacity;
 }
-.ldp-stage-dot-active {
-  animation: ldp-pulse 2.4s ease-in-out infinite;
+.ldp-stage-active {
+  animation: ldp-stagePulse 2.8s ease-in-out infinite;
 }
+.ldp-copy-flash {
+  animation: ldp-copyFlash 0.5s var(--ldp-ease) both;
+}
+
+/* ── frosted header ────────────────────────────────────────────── */
+.ldp-frost {
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-light);
+}
+@supports (backdrop-filter: blur(1px)) {
+  .ldp-frost {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+  :root[data-theme="dark"] .ldp-frost {
+    background: rgba(10, 10, 10, 0.82);
+  }
+}
+
+/* ── scroll body ───────────────────────────────────────────────── */
+.ldp-body {
+  contain: layout style paint;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── interactive rows ──────────────────────────────────────────── */
 .ldp-row {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; margin: 0 -10px;
   border-radius: 8px;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--ldp-t-instant) var(--ldp-ease);
   text-decoration: none; cursor: default;
+  -webkit-tap-highlight-color: transparent;
 }
 .ldp-row:hover { background: var(--bg-subtle); }
 .ldp-row[href] { cursor: pointer; }
-.ldp-row[href]:hover .ldp-icon { color: var(--text-secondary) !important; }
-.ldp-row[href]:hover .ldp-val  { color: var(--text-primary) !important; }
+.ldp-row[href]:hover .ldp-icon {
+  color: var(--text-secondary) !important;
+  transition: color var(--ldp-t-instant) var(--ldp-ease);
+}
+.ldp-row[href]:hover .ldp-val {
+  color: var(--text-primary) !important;
+  transition: color var(--ldp-t-instant) var(--ldp-ease);
+}
 
+/* ── action buttons ────────────────────────────────────────────── */
 .ldp-act {
-  transition: all 0.2s cubic-bezier(0.175,0.885,0.32,1.275);
+  transition:
+    transform var(--ldp-t-fast) var(--ldp-spring),
+    box-shadow var(--ldp-t-normal) var(--ldp-ease),
+    background var(--ldp-t-fast) var(--ldp-ease),
+    border-color var(--ldp-t-fast) var(--ldp-ease);
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
 }
 .ldp-act:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+  transform: translate3d(0, -1px, 0);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 .ldp-act:active:not(:disabled) {
-  transform: translateY(0) scale(0.97);
+  transform: translate3d(0, 0, 0) scale(0.97);
   box-shadow: none;
+  transition-duration: 60ms;
 }
 
+/* ── contact cards ─────────────────────────────────────────────── */
 .ldp-card {
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition:
+    border-color var(--ldp-t-fast) var(--ldp-ease),
+    background var(--ldp-t-fast) var(--ldp-ease),
+    box-shadow var(--ldp-t-normal) var(--ldp-ease),
+    transform var(--ldp-t-fast) var(--ldp-spring);
+  will-change: transform;
 }
 .ldp-card:hover {
   border-color: var(--border-medium) !important;
   background: var(--bg-subtle) !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  transform: translate3d(0, -1px, 0);
 }
 
+/* ── header buttons ────────────────────────────────────────────── */
 .ldp-hdr-btn {
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background var(--ldp-t-instant) var(--ldp-ease),
+    border-color var(--ldp-t-instant) var(--ldp-ease),
+    transform 60ms var(--ldp-ease);
+  -webkit-tap-highlight-color: transparent;
 }
-.ldp-hdr-btn:hover {
-  background: var(--bg-muted) !important;
-}
+.ldp-hdr-btn:hover { background: var(--bg-muted) !important; }
+.ldp-hdr-btn:active { transform: scale(0.96); }
 .ldp-hdr-danger:hover {
-  background: rgba(220,38,38,0.08) !important;
-  border-color: rgba(220,38,38,0.2) !important;
+  background: rgba(220,38,38,0.06) !important;
+  border-color: rgba(220,38,38,0.18) !important;
 }
+
+/* ── whatsapp glow ─────────────────────────────────────────────── */
 .ldp-wa:hover:not(:disabled) {
-  background: rgba(34,197,94,0.12) !important;
+  background: rgba(34,197,94,0.1) !important;
   border-color: #86efac !important;
+}
+
+/* ── copy mini button ──────────────────────────────────────────── */
+.ldp-copy-sm {
+  transition:
+    border-color var(--ldp-t-instant) var(--ldp-ease),
+    color var(--ldp-t-instant) var(--ldp-ease),
+    background var(--ldp-t-instant) var(--ldp-ease),
+    transform 60ms var(--ldp-ease);
 }
 .ldp-copy-sm:hover {
   border-color: var(--border-strong) !important;
   color: var(--text-secondary) !important;
+}
+.ldp-copy-sm:active { transform: scale(0.92); }
+
+/* ── reduced motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ldp-section { animation: none !important; opacity: 1 !important; }
+  .ldp-stage-active { animation: none !important; }
+  .ldp-copy-flash { animation: none !important; }
+  .ldp-act, .ldp-card, .ldp-hdr-btn, .ldp-row {
+    transition-duration: 0ms !important;
+  }
 }
 `;
 
@@ -151,14 +245,15 @@ function StagePipeline({ current }: { current: LeadStage }) {
     <div style={{
       display: 'flex', alignItems: 'flex-start',
       padding: '14px 4px 6px', position: 'relative',
-      opacity: disq ? 0.3 : 1, transition: 'opacity 0.3s',
+      opacity: disq ? 0.3 : 1,
+      transition: 'opacity 0.25s cubic-bezier(0.2,0,0,1)',
     }}>
       {disq && (
         <div style={{
           position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
           background: STAGE_COLORS.DISQUALIFIED.bg, color: STAGE_COLORS.DISQUALIFIED.text,
           fontSize: 9, fontWeight: 700, padding: '2px 10px', borderRadius: 4,
-          letterSpacing: '0.06em', zIndex: 2, opacity: 3,
+          letterSpacing: '0.06em', zIndex: 2,
         }}>
           DISQUALIFIED
         </div>
@@ -179,7 +274,7 @@ function StagePipeline({ current }: { current: LeadStage }) {
                   ? `linear-gradient(90deg, ${prevSc.dot}, ${sc.dot})`
                   : 'var(--border-medium)',
                 opacity: done || active ? 0.45 : 1,
-                transition: 'all 0.4s',
+                transition: 'all 0.3s cubic-bezier(0.2,0,0,1)',
               }} />
             )}
             <div style={{
@@ -187,21 +282,22 @@ function StagePipeline({ current }: { current: LeadStage }) {
               gap: 5, minWidth: 0,
             }}>
               <div
-                className={active ? 'ldp-stage-dot-active' : undefined}
+                className={active ? 'ldp-stage-active' : undefined}
                 style={{
                   width: active ? 12 : 8, height: active ? 12 : 8,
                   borderRadius: '50%',
                   background: done || active ? sc.dot : 'transparent',
                   border: done || active ? `2px solid ${sc.dot}` : '2px solid var(--border-medium)',
                   boxShadow: active ? `0 0 0 4px ${sc.bg}` : 'none',
-                  transition: 'all 0.35s cubic-bezier(0.25,0.1,0.25,1)',
+                  transition: 'all 0.3s cubic-bezier(0.2,0,0,1)',
                 }}
               />
               <span style={{
                 fontSize: 8, fontWeight: active ? 700 : 500,
                 color: active ? sc.text : done ? 'var(--text-secondary)' : 'var(--text-tertiary)',
                 letterSpacing: '0.06em', textTransform: 'uppercase',
-                transition: 'color 0.3s', whiteSpace: 'nowrap',
+                transition: 'color 0.25s cubic-bezier(0.2,0,0,1)',
+                whiteSpace: 'nowrap',
               }}>
                 {STAGE_LABELS[stage]}
               </span>
@@ -219,7 +315,7 @@ function CopyBtn({ text, tooltip }: { text: string; tooltip: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
-      className="ldp-copy-sm"
+      className={`ldp-copy-sm${copied ? ' ldp-copy-flash' : ''}`}
       onClick={() => navigator.clipboard.writeText(text).then(() => {
         setCopied(true); setTimeout(() => setCopied(false), 2000);
       })}
@@ -231,7 +327,6 @@ function CopyBtn({ text, tooltip }: { text: string; tooltip: string }) {
         background: copied ? 'rgba(5,150,105,0.06)' : 'transparent',
         color: copied ? '#059669' : 'var(--text-tertiary)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.2s',
       }}
     >
       {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} />}
@@ -281,14 +376,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
   const [leadCopied, setLeadCopied] = useState(false);
 
-  const priority   = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
+  const priority     = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
   const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
   const contactPhone = mainContact?.phone ?? lead.phone;
   const contactEmail = mainContact?.email ?? lead.email;
   const locationStr  = [lead.area, lead.city, lead.state, lead.country].filter(Boolean).join(', ');
   const fullName     = `${lead.firstName} ${lead.lastName}`;
-
-  // ── copy payloads (unchanged logic) ──────────────────────────────────────
 
   const copyContactText = [
     mainContact ? `${mainContact.firstName} ${mainContact.lastName}` : fullName,
@@ -325,19 +418,17 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   return (
     <>
       <style>{CSS}</style>
-      <div style={{
+      <div className="ldp-root" style={{
         display: 'flex', flexDirection: 'column',
         height: '100%', background: 'var(--bg-app)',
       }}>
 
-        {/* ── Header ───────────────────────────────────────────────────── */}
-        <div style={{
+        {/* ── Frosted Header ───────────────────────────────────────── */}
+        <div className="ldp-frost" style={{
           padding: `1.125rem ${px} 0.75rem`,
-          borderBottom: '1px solid var(--border-light)',
-          position: 'sticky', top: 0,
-          background: 'var(--bg-app)', zIndex: 5,
+          position: 'sticky', top: 0, zIndex: 5,
         }}>
-          {/* Row 1 — avatar · name · actions */}
+          {/* avatar · name · actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
             <div style={{
               width: 46, height: 46, borderRadius: 13, flexShrink: 0,
@@ -345,7 +436,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               color: '#fff', fontSize: 15, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               letterSpacing: '0.02em',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06)',
             }}>
               {lead.firstName[0]}{lead.lastName[0]}
             </div>
@@ -415,10 +506,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             </div>
           </div>
 
-          {/* Row 2 — pipeline stepper */}
+          {/* pipeline stepper */}
           <StagePipeline current={lead.stage ?? 'NEW'} />
 
-          {/* Row 3 — badges */}
+          {/* badges */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', paddingTop: 2 }}>
             <span style={{
               padding: '3px 9px', borderRadius: 5,
@@ -449,14 +540,16 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </div>
         </div>
 
-        {/* ── Body ─────────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: `1.375rem ${px}` }}>
+        {/* ── Body ─────────────────────────────────────────────────── */}
+        <div className="ldp-body" style={{
+          flex: 1, overflowY: 'auto', padding: `1.375rem ${px}`,
+        }}>
 
-          {/* ── Contact Information ──────────────────────────────────── */}
+          {/* Contact Information */}
           <Section
             label="Contact Information"
             action={<CopyBtn text={copyContactText} tooltip="Copy contact info" />}
-            delay={60}
+            delay={40}
           >
             {mainContact && (
               <div className="ldp-row" style={{ marginBottom: 2 }}>
@@ -504,7 +597,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 <span className="ldp-val" style={{
                   flex: 1, fontSize: 13,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  transition: 'color 0.15s',
                 }}>
                   {contactEmail}
                 </span>
@@ -525,7 +617,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 <Phone className="ldp-icon" size={14}
                   style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}
                 />
-                <span className="ldp-val" style={{ flex: 1, fontSize: 13, transition: 'color 0.15s' }}>
+                <span className="ldp-val" style={{ flex: 1, fontSize: 13 }}>
                   {contactPhone}
                 </span>
               </a>
@@ -548,11 +640,11 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             )}
           </Section>
 
-          {/* ── All Contacts ─────────────────────────────────────────── */}
+          {/* All Contacts */}
           {contacts.length > 1 && (
             <>
               {divider}
-              <Section label={`All Contacts (${contacts.length})`} delay={120}>
+              <Section label={`All Contacts (${contacts.length})`} delay={70}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {contacts.map(c => (
                     <div key={c.id} className="ldp-card" style={{
@@ -622,8 +714,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
           {divider}
 
-          {/* ── Quick Actions ────────────────────────────────────────── */}
-          <Section label="Quick Actions" delay={160}>
+          {/* Quick Actions */}
+          <Section label="Quick Actions" delay={100}>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="ldp-act ldp-wa"
@@ -644,7 +736,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               </button>
 
               <button
-                className="ldp-act"
+                className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}
                 onClick={() => navigator.clipboard.writeText(copyLeadText).then(() => {
                   setLeadCopied(true); setTimeout(() => setLeadCopied(false), 2000);
                 })}
@@ -666,11 +758,11 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             </div>
           </Section>
 
-          {/* ── Notes ────────────────────────────────────────────────── */}
+          {/* Notes */}
           {lead.notes && (
             <>
               {divider}
-              <Section label="Notes" delay={200}>
+              <Section label="Notes" delay={130}>
                 <div style={{
                   display: 'flex',
                   borderRadius: 10, overflow: 'hidden',
@@ -689,22 +781,20 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             </>
           )}
 
-          {/* ── Metadata ─────────────────────────────────────────────── */}
+          {/* Metadata */}
           <div className="ldp-section" style={{
             marginTop: '1.75rem', paddingTop: '1rem',
             borderTop: '1px solid var(--border-light)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             fontSize: 11, color: 'var(--text-tertiary)',
-            animationDelay: '240ms',
+            animationDelay: '160ms',
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Clock size={10} />
               Created {fmtDate(lead.createdAt)}
               <span style={{ opacity: 0.6 }}>· {timeAgo(lead.createdAt)}</span>
             </span>
-            <span>
-              Updated {timeAgo(lead.updatedAt)}
-            </span>
+            <span>Updated {timeAgo(lead.updatedAt)}</span>
           </div>
 
         </div>
