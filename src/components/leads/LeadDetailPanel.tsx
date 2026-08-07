@@ -304,7 +304,7 @@ function StagePipeline({ current }: { current: LeadStage }) {
 
 function CopyBtn({ text, tooltip }: { text: string; tooltip: string }) {
   const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <button
@@ -372,7 +372,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   });
 
   const [leadCopied, setLeadCopied] = useState(false);
-  const leadCopyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
 
   const priority     = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
