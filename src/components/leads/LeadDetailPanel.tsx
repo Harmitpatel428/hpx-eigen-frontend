@@ -1,4 +1,4 @@
-import { useState, memo, Fragment } from 'react';
+import { useState, useEffect, useRef, memo, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Phone, Mail, X, Edit2, Trash2,
@@ -56,7 +56,9 @@ function avatarGradient(name: string): string {
 }
 
 function timeAgo(date: string | Date): string {
-  const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  const ms = new Date(date).getTime();
+  if (isNaN(ms)) return '—';
+  const s = Math.floor((Date.now() - ms) / 1000);
   if (s < 60) return 'just now';
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m ago`;
@@ -101,7 +103,6 @@ const CSS = `
 
 .ldp-section {
   animation: ldp-settle 220ms var(--ldp-ease) both;
-  will-change: transform, opacity;
 }
 .ldp-stage-active {
   animation: ldp-stagePulse 2.8s ease-in-out infinite;
@@ -110,20 +111,10 @@ const CSS = `
   animation: ldp-copyFlash 0.5s var(--ldp-ease) both;
 }
 
-/* ── frosted header ────────────────────────────────────────────── */
+/* ── header ────────────────────────────────────────────────────── */
 .ldp-frost {
   background: var(--bg-app);
   border-bottom: 1px solid var(--border-light);
-}
-@supports (backdrop-filter: blur(1px)) {
-  .ldp-frost {
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-  }
-  :root[data-theme="dark"] .ldp-frost {
-    background: rgba(10, 10, 10, 0.82);
-  }
 }
 
 /* ── scroll body ───────────────────────────────────────────────── */
@@ -160,10 +151,10 @@ const CSS = `
     box-shadow var(--ldp-t-normal) var(--ldp-ease),
     background var(--ldp-t-fast) var(--ldp-ease),
     border-color var(--ldp-t-fast) var(--ldp-ease);
-  will-change: transform;
   -webkit-tap-highlight-color: transparent;
 }
 .ldp-act:hover:not(:disabled) {
+  will-change: transform;
   transform: translate3d(0, -1px, 0);
   box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
@@ -180,9 +171,9 @@ const CSS = `
     background var(--ldp-t-fast) var(--ldp-ease),
     box-shadow var(--ldp-t-normal) var(--ldp-ease),
     transform var(--ldp-t-fast) var(--ldp-spring);
-  will-change: transform;
 }
 .ldp-card:hover {
+  will-change: transform;
   border-color: var(--border-medium) !important;
   background: var(--bg-subtle) !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
@@ -313,12 +304,18 @@ function StagePipeline({ current }: { current: LeadStage }) {
 
 function CopyBtn({ text, tooltip }: { text: string; tooltip: string }) {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <button
       className={`ldp-copy-sm${copied ? ' ldp-copy-flash' : ''}`}
-      onClick={() => navigator.clipboard.writeText(text).then(() => {
-        setCopied(true); setTimeout(() => setCopied(false), 2000);
-      })}
+      onClick={() => {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {});
+      }}
       title={tooltip}
       aria-label={tooltip}
       style={{
@@ -375,6 +372,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   });
 
   const [leadCopied, setLeadCopied] = useState(false);
+  const leadCopyTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
 
   const priority     = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
   const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
@@ -404,7 +403,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     lead.expectedCloseDate && `Close: ${fmtDate(lead.expectedCloseDate)}`,
     lead.notes && `\nNotes: ${lead.notes}`,
     contacts.length > 0 && `\nContacts:\n${contacts.map(c =>
-      `  • ${c.firstName} ${c.lastName}${c.role ? ` (${c.role})` : ''}${c.phone ? ` — ${c.phone}` : ''}`
+      `  • ${c.firstName} ${c.lastName}${c.role ? ` (${c.role})` : ''}${c.phone ? ` — ${c.phone}` : ''}${c.email ? ` — ${c.email}` : ''}`
     ).join('\n')}`,
     `\nCreated: ${new Date(lead.createdAt).toLocaleDateString('en-IN')}`,
     '─────────────────────────────',
@@ -426,7 +425,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
         {/* ── Frosted Header ───────────────────────────────────────── */}
         <div className="ldp-frost" style={{
           padding: `1.125rem ${px} 0.75rem`,
-          position: 'sticky', top: 0, zIndex: 5,
         }}>
           {/* avatar · name · actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -438,7 +436,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               letterSpacing: '0.02em',
               boxShadow: '0 1px 4px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06)',
             }}>
-              {lead.firstName[0]}{lead.lastName[0]}
+              {lead.firstName?.[0] ?? '?'}{lead.lastName?.[0] ?? ''}
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -559,7 +557,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   color: '#fff', fontSize: 10, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  {mainContact.firstName[0]}{mainContact.lastName[0]}
+                  {mainContact.firstName?.[0] ?? '?'}{mainContact.lastName?.[0] ?? ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
@@ -578,9 +576,9 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                       </span>
                     )}
                   </div>
-                  {mainContact.role && (
+                  {(mainContact.title || mainContact.role) && (
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                      {mainContact.role}
+                      {mainContact.title || mainContact.role}
                     </div>
                   )}
                 </div>
@@ -659,7 +657,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                         color: '#fff', fontSize: 9, fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                        {c.firstName[0]}{c.lastName[0]}
+                        {c.firstName?.[0] ?? '?'}{c.lastName?.[0] ?? ''}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
@@ -737,9 +735,13 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
               <button
                 className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}
-                onClick={() => navigator.clipboard.writeText(copyLeadText).then(() => {
-                  setLeadCopied(true); setTimeout(() => setLeadCopied(false), 2000);
-                })}
+                onClick={() => {
+                  navigator.clipboard.writeText(copyLeadText).then(() => {
+                    setLeadCopied(true);
+                    clearTimeout(leadCopyTimer.current);
+                    leadCopyTimer.current = setTimeout(() => setLeadCopied(false), 2000);
+                  }).catch(() => {});
+                }}
                 aria-label={leadCopied ? 'Copied!' : 'Copy lead details'}
                 style={{
                   flex: 1, height: 40, borderRadius: 10,
@@ -766,12 +768,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 <div style={{
                   display: 'flex',
                   borderRadius: 10, overflow: 'hidden',
-                  border: '1px solid #fef3c7',
+                  border: '1px solid rgba(245,158,11,0.25)',
                 }}>
-                  <div style={{ width: 3, background: '#f59e0b', flexShrink: 0 }} />
+                  <div style={{ width: 3, background: 'var(--color-warning)', flexShrink: 0 }} />
                   <p style={{
-                    flex: 1, fontSize: 13, color: '#78350f', lineHeight: 1.65,
-                    background: 'rgba(255,251,235,0.5)',
+                    flex: 1, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65,
+                    background: 'var(--bg-subtle)',
                     padding: '10px 14px', margin: 0,
                   }}>
                     {lead.notes}
@@ -794,7 +796,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               Created {fmtDate(lead.createdAt)}
               <span style={{ opacity: 0.6 }}>· {timeAgo(lead.createdAt)}</span>
             </span>
-            <span>Updated {timeAgo(lead.updatedAt)}</span>
+            <span>Updated {fmtDate(lead.updatedAt)} <span style={{ opacity: 0.6 }}>· {timeAgo(lead.updatedAt)}</span></span>
           </div>
 
         </div>
