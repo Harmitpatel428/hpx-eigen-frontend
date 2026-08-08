@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Lead, LeadSource, LeadStage, LeadPriority } from '../types';
+import type { Lead, LeadSource, LeadStage, LeadPriority, CustomFieldValue } from '../types';
 
 export interface CreateLeadPayload {
   firstName: string;
@@ -19,8 +19,10 @@ export interface CreateLeadPayload {
   city?: string;
   area?: string;
   postalCode?: string;
+  freeformAddress?: string;
   ownerId?: string;
   tagNames?: string[];
+  customFieldValues?: Pick<CustomFieldValue, 'fieldId' | 'value'>[];
 }
 
 export interface UpdateLeadPayload {
@@ -41,8 +43,15 @@ export interface UpdateLeadPayload {
   city?: string;
   area?: string;
   postalCode?: string;
+  freeformAddress?: string | null;
   ownerId?: string | null;
   tagNames?: string[];
+  customFieldValues?: Pick<CustomFieldValue, 'fieldId' | 'value'>[];
+}
+
+export interface ImportLeadPayload {
+  rows: CreateLeadPayload[];
+  onDuplicates: 'skip' | 'overwrite';
 }
 
 export interface LeadsResponse {
@@ -100,6 +109,58 @@ export const leadService = {
 
   async softDelete(id: string): Promise<void> {
     await api.delete(`/api/v1/leads/${id}`);
+  },
+
+  // ponytail: sequential create loop — replace with POST /api/v1/leads/import (bulk) when backend adds it
+  async importBatch(
+    rows: CreateLeadPayload[],
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<{ imported: number; skipped: number; errors: { row: number; message: string }[] }> {
+    let imported = 0;
+    const errors: { row: number; message: string }[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        await api.post<unknown>('/api/v1/leads', rows[i]);
+        imported++;
+      } catch (e: unknown) {
+        const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Unknown error';
+        errors.push({ row: i + 1, message: msg });
+      }
+      onProgress?.(i + 1, rows.length);
+    }
+    return { imported, skipped: 0, errors };
+  },
+
+  async bulkDelete(ids: string[]): Promise<{ count: number }> {
+    const { data } = await api.post<any>('/api/v1/leads/bulk-delete', { ids });
+    return data?.data || data;
+  },
+
+  async listDeleted(page = 1, pageSize = 50): Promise<LeadsResponse> {
+    const { data } = await api.get<any>('/api/v1/leads/deleted', { params: { page, pageSize } });
+    if (data && typeof data === 'object' && Array.isArray(data.data)) {
+      return data as LeadsResponse;
+    }
+    const arr = Array.isArray(data) ? data : [];
+    return { data: arr, total: arr.length, page: 1, pageSize: arr.length };
+  },
+
+  async restoreLead(id: string): Promise<void> {
+    await api.post(`/api/v1/leads/${id}/restore`);
+  },
+
+  async bulkRestore(ids: string[]): Promise<{ count: number }> {
+    const { data } = await api.post<any>('/api/v1/leads/bulk-restore', { ids });
+    return data?.data || data;
+  },
+
+  async permanentDelete(id: string): Promise<void> {
+    await api.delete(`/api/v1/leads/${id}/permanent`);
+  },
+
+  async bulkPermanentDelete(ids: string[]): Promise<{ count: number }> {
+    const { data } = await api.post<any>('/api/v1/leads/bulk-permanent-delete', { ids });
+    return data?.data || data;
   },
 
   async checkDuplicates(params: {

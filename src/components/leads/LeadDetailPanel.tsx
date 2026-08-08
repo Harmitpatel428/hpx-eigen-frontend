@@ -5,8 +5,9 @@ import {
   Building2, Calendar, MapPin,
   MessageCircle, Copy, Check, Clock,
 } from 'lucide-react';
-import type { Lead, LeadStage, LeadPriority } from '../../types';
+import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
+import { customFieldService } from '../../services/custom-field.service';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -371,6 +372,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     staleTime: 30_000,
   });
 
+  const { data: fieldDefs = [] } = useQuery<CustomFieldDef[]>({
+    queryKey: ['custom-fields'],
+    queryFn: () => customFieldService.list(),
+    staleTime: 60_000,
+  });
+
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
@@ -379,8 +386,13 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
   const contactPhone = mainContact?.phone ?? lead.phone;
   const contactEmail = mainContact?.email ?? lead.email;
-  const locationStr  = [lead.area, lead.city, lead.state, lead.country].filter(Boolean).join(', ');
+  const structuredLocation = [lead.area, lead.city, lead.state, lead.country].filter(Boolean).join(', ');
+  const locationStr = structuredLocation || lead.freeformAddress || '';
   const fullName     = `${lead.firstName} ${lead.lastName}`;
+
+  const storedCustomValues: Array<{ fieldId: string; value: string | null }> =
+    Array.isArray((lead as any).customFieldValues) ? (lead as any).customFieldValues : [];
+  const populatedCustomValues = storedCustomValues.filter(v => v.value !== null && v.value !== '');
 
   const copyContactText = [
     mainContact ? `${mainContact.firstName} ${mainContact.lastName}` : fullName,
@@ -390,24 +402,40 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     locationStr    && `Location: ${locationStr}`,
   ].filter(Boolean).join('\n');
 
-  const copyLeadText = [
-    '─────────────────────────────',
-    fullName,
-    lead.company   && `Company: ${lead.company}`,
-    contactPhone   && `Phone: ${contactPhone}`,
-    contactEmail   && `Email: ${contactEmail}`,
-    locationStr    && `Location: ${locationStr}`,
-    `Stage: ${STAGE_LABELS[lead.stage ?? 'NEW']}`,
-    `Priority: ${lead.priority ?? 'MEDIUM'}`,
-    `Source: ${(lead.source ?? 'OTHER').replace(/_/g, ' ')}`,
-    lead.expectedCloseDate && `Close: ${fmtDate(lead.expectedCloseDate)}`,
-    lead.notes && `\nNotes: ${lead.notes}`,
-    contacts.length > 0 && `\nContacts:\n${contacts.map(c =>
-      `  • ${c.firstName} ${c.lastName}${c.role ? ` (${c.role})` : ''}${c.phone ? ` — ${c.phone}` : ''}${c.email ? ` — ${c.email}` : ''}`
-    ).join('\n')}`,
-    `\nCreated: ${new Date(lead.createdAt).toLocaleDateString('en-IN')}`,
-    '─────────────────────────────',
-  ].filter(Boolean).join('\n');
+  const copyLeadText = (() => {
+    const sep = '─────────────────────────────';
+    const lines: string[] = [sep, fullName];
+    if (lead.company) lines.push(lead.company);
+    lines.push(sep);
+    lines.push(
+      [`Stage: ${STAGE_LABELS[lead.stage ?? 'NEW']}`, `Priority: ${lead.priority ?? 'MEDIUM'}`, `Source: ${(lead.source ?? 'OTHER').replace(/_/g, ' ')}`].join('  ·  ')
+    );
+    if (lead.expectedCloseDate) lines.push(`Expected Close: ${fmtDate(lead.expectedCloseDate)}`);
+    lines.push('');
+    if (contactPhone) lines.push(`Phone: ${contactPhone}`);
+    if (contactEmail) lines.push(`Email: ${contactEmail}`);
+    if (locationStr)  lines.push(`Location: ${locationStr}`);
+    if (lead.notes) { lines.push(''); lines.push('Notes'); lines.push(lead.notes); }
+    if (contacts.length > 0) {
+      lines.push('');
+      lines.push(`Contacts (${contacts.length})`);
+      contacts.forEach(c =>
+        lines.push(`  • ${c.firstName} ${c.lastName}${c.role ? ` (${c.role})` : ''}${c.phone ? ` — ${c.phone}` : ''}${c.email ? ` — ${c.email}` : ''}`)
+      );
+    }
+    if (populatedCustomValues.length > 0) {
+      lines.push('');
+      lines.push('Custom Fields');
+      populatedCustomValues.forEach(v => {
+        const def = fieldDefs.find(d => d.id === v.fieldId);
+        lines.push(`  ${def?.name ?? v.fieldId}: ${v.value}`);
+      });
+    }
+    lines.push('');
+    lines.push(`Created: ${fmtDate(lead.createdAt)}`);
+    lines.push(sep);
+    return lines.join('\n');
+  })();
 
   const px = '1.375rem';
   const divider = (
@@ -778,6 +806,26 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   }}>
                     {lead.notes}
                   </p>
+                </div>
+              </Section>
+            </>
+          )}
+
+          {/* Custom Fields */}
+          {populatedCustomValues.length > 0 && (
+            <>
+              {divider}
+              <Section label="Custom Fields" delay={145}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {populatedCustomValues.map(v => {
+                    const def = fieldDefs.find(d => d.id === v.fieldId);
+                    return (
+                      <div key={v.fieldId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 0', borderBottom: '1px solid var(--border-light)' }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>{def?.name ?? v.fieldId}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 450, maxWidth: '60%', textAlign: 'right', wordBreak: 'break-word' }}>{v.value}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </Section>
             </>

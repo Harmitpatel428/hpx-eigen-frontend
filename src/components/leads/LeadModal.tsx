@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +11,10 @@ import type { Lead, LeadPriority } from '../../types';
 import { leadService, CreateLeadPayload, UpdateLeadPayload, DuplicateLead } from '../../services/lead.service';
 import { leadContactsService, LeadContact, UpsertContactPayload } from '../../services/lead-contacts.service';
 import { userService, TenantUser } from '../../services/user.service';
+import type { CustomFieldDef, CustomFieldValue } from '../../types';
+import { customFieldService } from '../../services/custom-field.service';
+import { CustomFieldRenderer, getFieldValue, setFieldValue } from './CustomFieldRenderer';
+import { CustomFieldBuilder } from './CustomFieldBuilder';
 
 // ============================================================================
 // CONSTANTS
@@ -54,6 +58,7 @@ const leadSchema = z.object({
   city: z.string().optional(),
   area: z.string().optional(),
   postalCode: z.string().optional(),
+  freeformAddress: z.string().optional(),
 });
 
 type LeadFormData = z.infer<typeof leadSchema>;
@@ -132,7 +137,7 @@ function ContactForm({ initial, onSave, onCancel, isFirst }: ContactFormProps) {
   const [isMain, setIsMain]       = useState(initial?.isMain ?? isFirst);
 
   const inp = {
-    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.375rem',
+    background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem',
     padding: '6px 10px', fontSize: 13, color: '#0f172a', width: '100%',
     outline: 'none', boxSizing: 'border-box' as const,
   };
@@ -145,7 +150,7 @@ function ContactForm({ initial, onSave, onCancel, isFirst }: ContactFormProps) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
         <input style={inp} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-        <input style={inp} placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
+        <input style={inp} placeholder="Mobile / Direct line" value={phone} onChange={e => setPhone(e.target.value)} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
         <input style={inp} placeholder="Job title" value={title} onChange={e => setTitle(e.target.value)} />
@@ -316,6 +321,22 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   const [duplicatesDismissed, setDuplicatesDismissed] = useState(false);
   const duplicateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const LOC_KEY = 'hpx:ui:v1:leadLocMode';
+  const [locMode, setLocMode] = useState<'structured' | 'freeform'>(() => {
+    try { return (localStorage.getItem(LOC_KEY) as 'structured' | 'freeform') ?? 'structured'; }
+    catch { return 'structured'; }
+  });
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValue[]>(
+    lead?.customFieldValues ?? []
+  );
+  const [showFieldBuilder, setShowFieldBuilder] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleLocMode = (m: 'structured' | 'freeform') => {
+    setLocMode(m);
+    try { localStorage.setItem(LOC_KEY, m); } catch {}
+  };
+
   const {
     register, handleSubmit, watch,
     formState: { errors, isSubmitting },
@@ -336,6 +357,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       city: lead.city ?? '',
       area: lead.area ?? '',
       postalCode: lead.postalCode ?? '',
+      freeformAddress: lead.freeformAddress ?? '',
     } : { source: 'OTHER', stage: 'NEW' },
   });
 
@@ -344,6 +366,12 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
     queryFn: () => userService.listAll(),
     staleTime: 5 * 60_000,
     enabled: ownerMode === 'user',
+  });
+
+  const { data: customFields = [] } = useQuery<CustomFieldDef[]>({
+    queryKey: ['custom-fields'],
+    queryFn: () => customFieldService.list(),
+    staleTime: 60_000,
   });
 
   const filteredUsers = users.filter(
@@ -386,6 +414,9 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
 
   const onSubmit = async (values: LeadFormData) => {
     const resolvedOwnerId = ownerMode === 'user' ? selectedOwnerId || undefined : undefined;
+    const locationFields = locMode === 'structured'
+      ? { country: values.country || undefined, state: values.state || undefined, city: values.city || undefined, area: values.area || undefined, postalCode: values.postalCode || undefined, freeformAddress: undefined }
+      : { freeformAddress: values.freeformAddress || undefined, country: undefined, state: undefined, city: undefined, area: undefined, postalCode: undefined };
     const payload: CreateLeadPayload | UpdateLeadPayload = {
       firstName: values.firstName,
       lastName: values.lastName,
@@ -396,13 +427,12 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       stage: values.stage,
       priority,
       expectedCloseDate: values.expectedCloseDate || undefined,
-      country: values.country || undefined,
-      state: values.state || undefined,
-      city: values.city || undefined,
-      area: values.area || undefined,
-      postalCode: values.postalCode || undefined,
+      ...locationFields,
       ownerId: resolvedOwnerId,
       notes: values.notes || undefined,
+      customFieldValues: customFieldValues.length > 0
+        ? customFieldValues.map(v => ({ fieldId: v.fieldId, value: v.value }))
+        : undefined,
     };
     if (mode === 'create') {
       await leadService.create(payload as CreateLeadPayload);
@@ -412,7 +442,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
     onSuccess();
   };
 
-  const inp = 'w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition';
+  const inp = 'w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition';
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -445,23 +475,24 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
             <Divider label="Basic Information" />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <Field label="First Name *" error={errors.firstName?.message}>
-                <input {...register('firstName')} className={inp} placeholder="Rajesh" />
+                <input {...register('firstName')} className={inp} />
               </Field>
               <Field label="Last Name *" error={errors.lastName?.message}>
-                <input {...register('lastName')} className={inp} placeholder="Kumar" />
+                <input {...register('lastName')} className={inp} />
               </Field>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <Field label="Email" error={errors.email?.message}>
-                <input {...register('email')} type="email" className={inp} placeholder="rajesh@acme.com" />
+                <input {...register('email')} type="email" className={inp} />
               </Field>
               <Field label="Phone">
-                <input {...register('phone')} className={inp} placeholder="+91 98765 43210" />
+                <input {...register('phone')} className={inp} />
+                <span style={{ fontSize: 10, color: '#94a3b8', marginTop: 3, display: 'block' }}>Primary / company number</span>
               </Field>
             </div>
             <div style={{ marginBottom: '0.5rem' }}>
               <Field label="Company">
-                <input {...register('company')} className={inp} placeholder="Acme Consulting Pvt Ltd" />
+                <input {...register('company')} className={inp} />
               </Field>
             </div>
 
@@ -516,23 +547,40 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
 
             {/* ── Location ─── */}
             <Divider label="Location · Optional" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <Field label="Country">
-                <input {...register('country')} className={inp} placeholder="India" />
-              </Field>
-              <Field label="State">
-                <input {...register('state')} className={inp} placeholder="Maharashtra" />
-              </Field>
+            {/* Segmented mode toggle */}
+            <div style={{ display: 'flex', gap: 3, background: '#f1f5f9', borderRadius: '0.5rem', padding: 3, marginBottom: '0.75rem' }}>
+              {(['structured', 'freeform'] as const).map(m => (
+                <button key={m} type="button" onClick={() => handleLocMode(m)} style={{ flex: 1, padding: '5px', borderRadius: '0.375rem', border: 'none', background: locMode === m ? '#fff' : 'transparent', color: locMode === m ? '#0f172a' : '#64748b', fontSize: 12, fontWeight: locMode === m ? 600 : 400, cursor: 'pointer', boxShadow: locMode === m ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
+                  {m === 'structured' ? 'Structured' : 'Freeform'}
+                </button>
+              ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <Field label="City">
-                <input {...register('city')} className={inp} placeholder="Mumbai" />
-              </Field>
-              <Field label="Area">
-                <input {...register('area')} className={inp} placeholder="Andheri West" />
-              </Field>
-              <Field label="Postal Code">
-                <input {...register('postalCode')} className={inp} placeholder="400053" />
+            {/* Structured fields — always registered, hidden when inactive */}
+            <div style={{ display: locMode === 'structured' ? 'block' : 'none' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <Field label="Country">
+                  <input {...register('country')} className={inp} />
+                </Field>
+                <Field label="State">
+                  <input {...register('state')} className={inp} />
+                </Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <Field label="City">
+                  <input {...register('city')} className={inp} />
+                </Field>
+                <Field label="Office / Factory Location">
+                  <input {...register('area')} className={inp} />
+                </Field>
+                <Field label="Postal Code">
+                  <input {...register('postalCode')} className={inp} />
+                </Field>
+              </div>
+            </div>
+            {/* Freeform — always registered, hidden when inactive */}
+            <div style={{ display: locMode === 'freeform' ? 'block' : 'none', marginBottom: '0.75rem' }}>
+              <Field label="Address">
+                <textarea {...register('freeformAddress')} className={inp} rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }} />
               </Field>
             </div>
 
@@ -581,11 +629,33 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
             {mode === 'edit' && lead && (
               <>
                 <Divider label="Contacts" />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                  Individual people at this company — each with their own direct line and role.
+                </p>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <ContactsManager leadId={lead.id} />
                 </div>
               </>
             )}
+
+            {/* ── Custom Fields ─── */}
+            <Divider label="Custom Fields" />
+            <div style={{ marginBottom: '0.75rem' }}>
+              {customFields.map(f => (
+                <div key={f.id} style={{ marginBottom: 8 }}>
+                  <Field label={`${f.name}${f.required ? ' *' : ''}`}>
+                    <CustomFieldRenderer
+                      field={f}
+                      value={getFieldValue(customFieldValues, f.id)}
+                      onChange={v => setCustomFieldValues(prev => setFieldValue(prev, f, v))}
+                    />
+                  </Field>
+                </div>
+              ))}
+              <button type="button" onClick={() => setShowFieldBuilder(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6366f1', fontWeight: 500, background: 'none', border: '1px dashed #c7d2fe', borderRadius: '0.375rem', padding: '5px 10px', cursor: 'pointer', width: '100%', justifyContent: 'center', marginTop: customFields.length > 0 ? 4 : 0 }}>
+                <Plus size={12} /> Add Custom Field
+              </button>
+            </div>
 
             {/* ── Notes ─── */}
             <Divider label="Notes" />
@@ -605,6 +675,13 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
           </form>
         </div>
       </div>
+
+      {showFieldBuilder && (
+        <CustomFieldBuilder onClose={() => {
+          setShowFieldBuilder(false);
+          queryClient.invalidateQueries({ queryKey: ['custom-fields'] });
+        }} />
+      )}
     </div>
   );
 });

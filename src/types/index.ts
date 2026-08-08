@@ -99,6 +99,34 @@ export interface LeadTag {
   usageCount: number;
 }
 
+// ============================================================================
+// CUSTOM FIELDS — metadata-driven, extensible to any module
+// ============================================================================
+
+export type CustomFieldType = 'text' | 'number' | 'date' | 'dropdown';
+
+export interface CustomFieldDef {
+  id: string;
+  tenantId: string;
+  module: 'lead'; // expand to union when other modules need it
+  name: string;
+  key: string; // snake_case, derived from name, immutable after creation
+  type: CustomFieldType;
+  options?: string[]; // only populated for dropdown type
+  required: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomFieldValue {
+  fieldId: string;
+  key: string;
+  type: CustomFieldType;
+  value: string | null;
+}
+
 export interface Lead {
   id: string;
   firstName: string;
@@ -116,11 +144,13 @@ export interface Lead {
   country: string | null;
   state: string | null;
   city: string | null;
-  area: string | null;
+  area: string | null; // renamed "Office / Factory Location" in UI
   postalCode: string | null;
+  freeformAddress: string | null; // ponytail: needs backend migration (ALTER TABLE leads ADD COLUMN "freeformAddress" TEXT)
   ownerId: string | null;
   notes: string | null;
   tags: LeadTag[];
+  customFieldValues?: CustomFieldValue[]; // ponytail: needs backend API at /api/v1/lead-fields
   createdAt: string;
   updatedAt: string;
 }

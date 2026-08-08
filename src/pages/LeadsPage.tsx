@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, memo, type CSSProperties } from 'react';
+import { useState, useCallback, useEffect, useMemo, memo, type CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine,
@@ -6,12 +6,15 @@ import {
   Building2, Calendar, MapPin,
   MessageCircle, Copy, Check,
 } from 'lucide-react';
-import type { Lead, LeadStage, LeadPriority } from '../types';
+import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../types';
 import { leadService } from '../services/lead.service';
 import { leadContactsService, LeadContact } from '../services/lead-contacts.service';
+import { customFieldService } from '../services/custom-field.service';
 import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadModal } from '../components/leads/LeadModal';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
+import { LeadImportWizard } from '../components/leads/LeadImportWizard';
+import { exportCSV } from '../utils/csv';
 
 // ============================================================================
 // HELPERS
@@ -94,11 +97,20 @@ export function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [modal, setModal]               = useState<{ mode: 'create' | 'edit'; lead?: Lead } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const { data: leadsResponse, isLoading } = useQuery({
     queryKey: ['leads', { search: searchQuery }],
     queryFn: () => leadService.findAll({ search: searchQuery || undefined, pageSize: 100 }),
     staleTime: 30_000,
+  });
+
+  const { data: fieldDefs = [] } = useQuery<CustomFieldDef[]>({
+    queryKey: ['custom-fields'],
+    queryFn: () => customFieldService.list(),
+    staleTime: 60_000,
   });
 
   const leads: Lead[] = leadsResponse?.data ?? [];
@@ -108,6 +120,7 @@ export function LeadsPage() {
     mutationFn: (id: string) => leadService.softDelete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
       setDeleteTarget(null);
       setSelectedLead(null);
     },
@@ -123,6 +136,98 @@ export function LeadsPage() {
   }, [deleteTarget, deleteMutation]);
 
   const handleClosePanel = useCallback(() => setSelectedLead(null), []);
+
+  const handleExport = useCallback(() => {
+    const STATIC_HEADERS = [
+      'First Name','Last Name','Email','Phone','Company',
+      'Stage','Priority','Source',
+      'Score','Expected Value','Owner ID','Tags',
+      'Country','State','City','Area','Postal Code','Full Address',
+      'Notes','Expected Close Date',
+    ];
+    const cfHeaders = fieldDefs.map(f => f.name);
+    const rows = leads.map(l => {
+      const stored: Array<{ fieldId: string; value: string | null }> =
+        Array.isArray((l as any).customFieldValues) ? (l as any).customFieldValues : [];
+      const tagStr = Array.isArray(l.tags) ? l.tags.map(t => t.name).join(', ') : '';
+      const row: Record<string, unknown> = {
+        'First Name': l.firstName, 'Last Name': l.lastName,
+        'Email': l.email ?? '', 'Phone': l.phone ?? '', 'Company': l.company ?? '',
+        'Stage': l.stage ?? '', 'Priority': l.priority ?? '', 'Source': l.source ?? '',
+        'Score': l.score ?? '', 'Expected Value': l.expectedValue ?? '',
+        'Owner ID': l.ownerId ?? '', 'Tags': tagStr,
+        'Country': l.country ?? '', 'State': l.state ?? '', 'City': l.city ?? '',
+        'Area': l.area ?? '', 'Postal Code': l.postalCode ?? '',
+        'Full Address': (l as any).freeformAddress ?? '',
+        'Notes': l.notes ?? '', 'Expected Close Date': l.expectedCloseDate ?? '',
+      };
+      fieldDefs.forEach(f => {
+        const v = stored.find(sv => sv.fieldId === f.id);
+        row[f.name] = v?.value ?? '';
+      });
+      return row;
+    });
+    exportCSV('leads-export', [...STATIC_HEADERS, ...cfHeaders], rows);
+  }, [leads, fieldDefs]);
+
+  const handleExportSelected = useCallback(() => {
+    const selected = leads.filter(l => selectedIds.has(l.id));
+    if (selected.length === 0) return;
+    const STATIC_HEADERS = [
+      'First Name','Last Name','Email','Phone','Company',
+      'Stage','Priority','Source',
+      'Score','Expected Value','Owner ID','Tags',
+      'Country','State','City','Area','Postal Code','Full Address',
+      'Notes','Expected Close Date',
+    ];
+    const cfHeaders = fieldDefs.map(f => f.name);
+    const rows = selected.map(l => {
+      const stored: Array<{ fieldId: string; value: string | null }> =
+        Array.isArray((l as any).customFieldValues) ? (l as any).customFieldValues : [];
+      const tagStr = Array.isArray(l.tags) ? l.tags.map(t => t.name).join(', ') : '';
+      const row: Record<string, unknown> = {
+        'First Name': l.firstName, 'Last Name': l.lastName,
+        'Email': l.email ?? '', 'Phone': l.phone ?? '', 'Company': l.company ?? '',
+        'Stage': l.stage ?? '', 'Priority': l.priority ?? '', 'Source': l.source ?? '',
+        'Score': l.score ?? '', 'Expected Value': l.expectedValue ?? '',
+        'Owner ID': l.ownerId ?? '', 'Tags': tagStr,
+        'Country': l.country ?? '', 'State': l.state ?? '', 'City': l.city ?? '',
+        'Area': l.area ?? '', 'Postal Code': l.postalCode ?? '',
+        'Full Address': (l as any).freeformAddress ?? '',
+        'Notes': l.notes ?? '', 'Expected Close Date': l.expectedCloseDate ?? '',
+      };
+      fieldDefs.forEach(f => {
+        const v = stored.find(sv => sv.fieldId === f.id);
+        row[f.name] = v?.value ?? '';
+      });
+      return row;
+    });
+    exportCSV('leads-selected-export', [...STATIC_HEADERS, ...cfHeaders], rows);
+  }, [leads, selectedIds, fieldDefs]);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => leadService.bulkDelete(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
+      setSelectedIds(new Set());
+      setBulkDeleteConfirm(false);
+    },
+  });
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => prev.size === leads.length ? new Set() : new Set(leads.map(l => l.id)));
+  }, [leads]);
+
+  const allSelected = leads.length > 0 && selectedIds.size === leads.length;
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
@@ -140,14 +245,32 @@ export function LeadsPage() {
             <input className="input" placeholder="Search leads…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: 30, height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }} />
           </div>
           <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }}><ListFilter size={14} style={{ marginRight: 4 }} /> Filters</button>
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }}><ArrowDownToLine size={14} style={{ marginRight: 4 }} /> Import</button>
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }}><ArrowUpFromLine size={14} style={{ marginRight: 4 }} /> Export</button>
+          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={() => setShowImportWizard(true)}><ArrowDownToLine size={14} style={{ marginRight: 4 }} /> Import</button>
+          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={handleExport}><ArrowUpFromLine size={14} style={{ marginRight: 4 }} /> Export</button>
           <div style={{ width: 1, height: 16, backgroundColor: 'var(--border-medium)', margin: '0 4px' }} />
           <button className="btn btn-primary" style={{ height: 28, padding: '0 12px', fontSize: 13, borderRadius: 'var(--radius-sm)' }} onClick={() => setModal({ mode: 'create' })}>
             <Plus size={14} style={{ marginRight: 4 }} /> New Lead
           </button>
         </div>
       </div>
+
+      {/* BULK ACTIONS TOOLBAR */}
+      {selectedIds.size > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 12, background: 'var(--bg-muted)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedIds.size} selected</span>
+          <div style={{ width: 1, height: 16, background: 'var(--border-medium)' }} />
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#dc2626' }} onClick={() => setBulkDeleteConfirm(true)}>
+            <Trash2 size={12} style={{ marginRight: 4 }} /> Delete
+          </button>
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: 'var(--text-secondary)' }} onClick={handleExportSelected}>
+            <ArrowUpFromLine size={12} style={{ marginRight: 4 }} /> Export Selected
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)' }} onClick={() => setSelectedIds(new Set())}>
+            <X size={12} style={{ marginRight: 4 }} /> Clear
+          </button>
+        </div>
+      )}
 
       {/* DATA GRID */}
       <div style={{ flex: 1, overflow: 'auto', marginRight: 'calc(var(--space-4) * -1)', paddingRight: 'var(--space-4)' }}>
@@ -161,7 +284,10 @@ export function LeadsPage() {
         ) : (
           <div style={{ minWidth: 1300 }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1fr) 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all leads" />
+              </div>
               <div>Lead</div><div>Company</div><div>Contact</div><div>Stage</div><div>Priority</div><div>Close Date</div><div>Actions</div>
             </div>
 
@@ -170,8 +296,14 @@ export function LeadsPage() {
               {leads.map(lead => {
                 const ss = STAGE_COLORS[lead.stage ?? 'NEW'] ?? STAGE_COLORS.NEW;
                 const ps = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
+                const isChecked = selectedIds.has(lead.id);
                 return (
-                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1fr) 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+
+                    {/* Checkbox */}
+                    <div style={{ display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(lead.id)} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label={`Select ${lead.firstName} ${lead.lastName}`} />
+                    </div>
 
                     {/* Name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
@@ -273,6 +405,38 @@ export function LeadsPage() {
           onCancel={() => setDeleteTarget(null)}
           isDeleting={deleteMutation.isPending}
         />
+      )}
+
+      {/* BULK DELETE CONFIRM */}
+      {bulkDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div onClick={() => setBulkDeleteConfirm(false)} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', zIndex: 1, background: '#fff', borderRadius: '0.875rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)', padding: '1.5rem', width: '100%', maxWidth: '400px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.625rem' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={16} color="#dc2626" />
+              </div>
+              <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>Delete {selectedIds.size} Lead{selectedIds.size !== 1 ? 's' : ''}</h3>
+            </div>
+            <p style={{ fontSize: '0.8125rem', color: '#475569', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+              {selectedIds.size} lead{selectedIds.size !== 1 ? 's' : ''} will be moved to the Recycle Bin. You can restore them from there at any time.
+            </p>
+            <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
+              All data including custom fields, notes, and contacts will be preserved.
+            </p>
+            <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
+              <button onClick={() => setBulkDeleteConfirm(false)} style={{ padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => bulkDeleteMutation.mutate([...selectedIds])} disabled={bulkDeleteMutation.isPending} style={{ padding: '0.4375rem 1rem', borderRadius: '0.5rem', background: bulkDeleteMutation.isPending ? '#ef4444aa' : '#dc2626', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: bulkDeleteMutation.isPending ? 'not-allowed' : 'pointer', border: 'none' }}>
+                {bulkDeleteMutation.isPending ? 'Deleting…' : `Delete ${selectedIds.size} Lead${selectedIds.size !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT WIZARD */}
+      {showImportWizard && (
+        <LeadImportWizard onClose={() => setShowImportWizard(false)} fieldDefs={fieldDefs} />
       )}
     </div>
   );

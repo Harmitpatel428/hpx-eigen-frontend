@@ -15,6 +15,7 @@ const InvoicesPage = React.lazy(() => import('./pages/InvoicesPage').then(m => (
 const PaymentsPage = React.lazy(() => import('./pages/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const DocumentationPage = React.lazy(() => import('./pages/DocumentationPage').then(m => ({ default: m.DocumentationPage })));
+const RecycleBinPage = React.lazy(() => import('./pages/RecycleBinPage').then(m => ({ default: m.RecycleBinPage })));
 
 const PageFallback = () => (
   <div className="flex h-full items-center justify-center">
@@ -40,6 +41,7 @@ export default function ProtectedApp() {
             <Route path="/payments" element={<React.Suspense fallback={<PageFallback />}><PaymentsPage /></React.Suspense>} />
             <Route path="/settings" element={<React.Suspense fallback={<PageFallback />}><SettingsPage /></React.Suspense>} />
             <Route path="/documentation" element={<React.Suspense fallback={<PageFallback />}><DocumentationPage /></React.Suspense>} />
+            <Route path="/recycle-bin" element={<React.Suspense fallback={<PageFallback />}><RecycleBinPage /></React.Suspense>} />
           </Route>
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="*" element={<Navigate to="/overview" replace />} />

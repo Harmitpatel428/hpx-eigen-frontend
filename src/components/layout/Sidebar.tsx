@@ -12,6 +12,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 
 const baseNavigation = [
@@ -29,8 +30,9 @@ const departmentItems = [
 ];
 
 const bottomNavigation = [
-  { name: 'Settings',       href: '/settings', icon: Settings   },
-  { name: 'Help & Support', href: '/help',      icon: HelpCircle },
+  { name: 'Recycle Bin',    href: '/recycle-bin', icon: Trash2     },
+  { name: 'Settings',       href: '/settings',    icon: Settings   },
+  { name: 'Help & Support', href: '/help',         icon: HelpCircle },
 ];
 
 export const Sidebar: React.FC = () => {
