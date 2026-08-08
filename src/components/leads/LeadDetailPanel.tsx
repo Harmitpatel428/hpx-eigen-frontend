@@ -390,7 +390,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const { data: crmSettings } = useQuery({
     queryKey: ['crm-settings'],
     queryFn: () => crmSettingsService.get(),
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 
   const [leadCopied, setLeadCopied] = useState(false);
@@ -405,14 +405,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const locationStr = structuredLocation || lead.freeformAddress || '';
   const fullName     = `${lead.firstName} ${lead.lastName}`;
 
-  // Change 2 — resolve header identity from workspace preference
   const headerPref = crmSettings?.leadHeaderPreference ?? null;
-  const headerIdentity = (() => {
-    if (headerPref === 'company') return lead.company || 'Unnamed Lead';
-    if (headerPref === 'phone')   return lead.phone   || 'Unnamed Lead';
-    // 'name' or NULL (unconfigured) → fall back to fullName
-    return fullName;
-  })();
+  const headerIdentity = headerPref === 'company'
+    ? (lead.company || 'Unnamed Lead')
+    : fullName;
 
   const storedCustomValues: Array<{ fieldId: string; value: string | null }> =
     Array.isArray((lead as any).customFieldValues) ? (lead as any).customFieldValues : [];

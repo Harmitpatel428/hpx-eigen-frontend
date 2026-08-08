@@ -1,6 +1,6 @@
 import { api } from './api';
 
-export type LeadHeaderPreference = 'name' | 'company' | 'phone';
+export type LeadHeaderPreference = 'name' | 'company';
 
 export interface CrmSettings {
   leadHeaderPreference: LeadHeaderPreference | null;

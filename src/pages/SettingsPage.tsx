@@ -3,10 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { User, Building2, Bell, Shield, Key, CreditCard, Camera, Tags, Users, UserCheck } from 'lucide-react';
 import { OpportunityTypesSettings } from './settings/OpportunityTypesSettings';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
+import { useAuth } from '../auth/public';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const navigate = useNavigate();
+  const { permissions } = useAuth();
+
+  const workspaceTabs = [
+    'general', 'members', 'org-management', 'billing', 'opportunity-types',
+    ...(permissions.can('role:manage') ? ['lead-identity'] : []),
+  ];
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: 1000 }}>
@@ -39,7 +46,7 @@ export function SettingsPage() {
           ))}
           
           <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Workspace</div>
-          {['general', 'members', 'org-management', 'billing', 'opportunity-types', 'lead-identity'].map(tab => (
+          {workspaceTabs.map(tab => (
             <button 
               key={tab}
               onClick={() => {
