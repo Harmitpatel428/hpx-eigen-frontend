@@ -25,8 +25,23 @@ export interface UpdateNotePayload {
   followUpTime?: string | null;
 }
 
+export interface NotesSummary {
+  count: number;
+  latest: {
+    id: string;
+    content: string;
+    createdAt: string;
+    authorId: string;
+  } | null;
+}
+
 export const leadNotesService = {
-  async list(leadId: string, limit = 100, skip = 0): Promise<LeadNote[]> {
+  async summary(leadId: string): Promise<NotesSummary> {
+    const { data } = await api.get<any>(`/api/v1/leads/${leadId}/notes/summary`);
+    return data?.data ?? { count: 0, latest: null };
+  },
+
+  async list(leadId: string, limit = 15, skip = 0): Promise<LeadNote[]> {
     const { data } = await api.get<any>(`/api/v1/leads/${leadId}/notes?limit=${limit}&skip=${skip}`);
     return data?.data ?? [];
   },

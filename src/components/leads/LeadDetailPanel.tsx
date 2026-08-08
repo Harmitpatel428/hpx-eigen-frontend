@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
+import { leadNotesService, type NotesSummary } from '../../services/lead-notes.service';
 import { customFieldService } from '../../services/custom-field.service';
 
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -378,6 +379,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     staleTime: 60_000,
   });
 
+  const { data: notesSummary } = useQuery<NotesSummary>({
+    queryKey: ['notes-summary', lead.id],
+    queryFn: () => leadNotesService.summary(lead.id),
+    staleTime: 30_000,
+  });
+
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
@@ -415,7 +422,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     if (contactPhone) lines.push(`Phone: ${contactPhone}`);
     if (contactEmail) lines.push(`Email: ${contactEmail}`);
     if (locationStr)  lines.push(`Location: ${locationStr}`);
-    if (lead.notes) { lines.push(''); lines.push('Notes'); lines.push(lead.notes); }
+    if (notesSummary?.latest || lead.notes) {
+      lines.push('');
+      lines.push(`Notes (${notesSummary?.count ?? 0})`);
+      if (notesSummary?.latest) lines.push(notesSummary.latest.content);
+      else if (lead.notes) lines.push(lead.notes);
+    }
     if (contacts.length > 0) {
       lines.push('');
       lines.push(`Contacts (${contacts.length})`);
@@ -789,24 +801,52 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </Section>
 
           {/* Notes */}
-          {lead.notes && (
+          {notesSummary && (notesSummary.count > 0 || lead.notes) && (
             <>
               {divider}
-              <Section label="Notes" delay={130}>
-                <div style={{
-                  display: 'flex',
-                  borderRadius: 10, overflow: 'hidden',
-                  border: '1px solid rgba(245,158,11,0.25)',
-                }}>
-                  <div style={{ width: 3, background: 'var(--color-warning)', flexShrink: 0 }} />
+              <Section label={`Notes${notesSummary?.count ? ` (${notesSummary.count})` : ''}`} delay={130}>
+                {notesSummary?.latest ? (
+                  <div>
+                    <div style={{
+                      display: 'flex',
+                      borderRadius: 10, overflow: 'hidden',
+                      border: '1px solid rgba(37,99,235,0.2)',
+                      marginBottom: '8px',
+                    }}>
+                      <div style={{ width: 3, background: '#2563eb', flexShrink: 0 }} />
+                      <p style={{
+                        flex: 1, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65,
+                        background: 'var(--bg-subtle)',
+                        padding: '10px 14px', margin: 0,
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                      }}>
+                        {notesSummary.latest.content}
+                      </p>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: '8px' }}>
+                      {new Date(notesSummary.latest.createdAt).toLocaleDateString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </div>
+                    {notesSummary.count > 1 && (
+                      <button onClick={onEdit} style={{
+                        fontSize: 12, color: '#2563eb', background: 'none', border: 'none',
+                        cursor: 'pointer', padding: 0,
+                      }}>
+                        View all {notesSummary.count} notes →
+                      </button>
+                    )}
+                  </div>
+                ) : lead.notes ? (
                   <p style={{
                     flex: 1, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65,
-                    background: 'var(--bg-subtle)',
-                    padding: '10px 14px', margin: 0,
+                    margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   }}>
                     {lead.notes}
                   </p>
-                </div>
+                ) : (
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>No notes</p>
+                )}
               </Section>
             </>
           )}
