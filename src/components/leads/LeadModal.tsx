@@ -446,7 +446,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }} />
+      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }} />
 
       <div style={{
         position: 'relative', zIndex: 1, background: '#ffffff',
