@@ -83,9 +83,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isMounted) {
           setUser(res.data);
 
-          // Seed permissions cache
-          const perms = (res.data as any).permissions || {};
-          const roles = res.data.roles || [];
+          // Seed permissions cache — unwrap { success, data: { permissions, roles } }
+          const userData = (res.data as any)?.data ?? res.data;
+          const perms = userData?.permissions || {};
+          const roles = userData?.roles || [];
           permissionService.current.setManifest(perms, roles);
 
           fsm.current.transition('AUTHENTICATED');
