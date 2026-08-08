@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { X, Upload, FileText, AlertTriangle, Check, ChevronRight, RotateCcw } from 'lucide-react';
+import { X, Upload, FileText, AlertTriangle, Check, ChevronRight, RotateCcw, EyeOff } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseCSV, detectFieldKey, IMPORTABLE_FIELDS, type ParseResult } from '../../utils/csv';
 import { leadService } from '../../services/lead.service';
@@ -136,6 +136,9 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
     ...fieldDefs.map(f => ({ key: `cf:${f.id}`, label: f.name })),
   ];
 
+  // Captures the auto-detected mapping so we can restore it when the user un-skips a column
+  const autoMapRef = useRef<Record<string, string>>({});
+
   const [step, setStep]           = useState<Step>(0);
   const [parsed, setParsed]       = useState<ParseResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -166,6 +169,7 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
         autoMap[h] = cf ? `cf:${cf.id}` : '__skip__';
       }
     });
+    autoMapRef.current = autoMap;
     setParsed(result);
     setColumnMap(autoMap);
     setStep(1);
@@ -335,27 +339,40 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
           {step === 1 && parsed && (
             <div>
               <p style={{ fontSize: 13, color: '#475569', marginBottom: '1rem' }}>
-                Found <strong style={{ color: '#0f172a' }}>{parsed.rows.length} rows</strong> and <strong style={{ color: '#0f172a' }}>{parsed.headers.length} columns</strong>. Review and confirm how each column maps to a lead field.
+                Found <strong style={{ color: '#0f172a' }}>{parsed.rows.length} rows</strong> and <strong style={{ color: '#0f172a' }}>{parsed.headers.length} columns</strong>. Columns are mapped automatically. Toggle <em>Skip</em> for any column you want to exclude.
               </p>
 
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.625rem', overflow: 'hidden', marginBottom: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, background: '#f8fafc', padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <span>CSV Column</span><span>Maps To</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 0, background: '#f8fafc', padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <span>CSV Column</span><span>Detected As</span><span>Skip</span>
                 </div>
-                {parsed.headers.map(h => (
-                  <div key={h} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f8fafc', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 6px', borderRadius: 3, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h}</span>
-                    <select
-                      style={{ ...inp, cursor: 'pointer', width: '100%' }}
-                      value={columnMap[h] ?? '__skip__'}
-                      onChange={e => setColumnMap(prev => ({ ...prev, [h]: e.target.value }))}
-                    >
-                      {allFields.map(f => (
-                        <option key={f.key} value={f.key}>{f.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                {parsed.headers.map(h => {
+                  const mapped = columnMap[h] ?? '__skip__';
+                  const isSkipped = mapped === '__skip__';
+                  const detectedLabel = allFields.find(f => f.key === mapped && f.key !== '__skip__')?.label;
+                  return (
+                    <div key={h} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f8fafc', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 6px', borderRadius: 3, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h}</span>
+                      <span style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, color: isSkipped ? '#94a3b8' : '#059669' }}>
+                        {isSkipped
+                          ? <><EyeOff size={13} style={{ flexShrink: 0 }} /> <em style={{ fontStyle: 'normal' }}>Skip column</em></>
+                          : <><Check size={13} strokeWidth={2.5} style={{ flexShrink: 0 }} /> {detectedLabel}</>
+                        }
+                      </span>
+                      <label title={isSkipped ? 'Include this column' : 'Skip this column'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSkipped}
+                          onChange={e => setColumnMap(prev => ({
+                            ...prev,
+                            [h]: e.target.checked ? '__skip__' : (autoMapRef.current[h] ?? '__skip__'),
+                          }))}
+                          style={{ accentColor: '#0f172a', cursor: 'pointer' }}
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

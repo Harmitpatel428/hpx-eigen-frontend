@@ -3,12 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
-  MessageCircle, Copy, Check, Clock,
+  MessageCircle, Copy, Check, Clock, User,
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
 import { leadNotesService, type NotesSummary } from '../../services/lead-notes.service';
+import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
+import { crmSettingsService } from '../../services/crm-settings.service';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -385,6 +387,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     staleTime: 30_000,
   });
 
+  const { data: crmSettings } = useQuery({
+    queryKey: ['crm-settings'],
+    queryFn: () => crmSettingsService.get(),
+    staleTime: Infinity,
+  });
+
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
@@ -397,13 +405,22 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const locationStr = structuredLocation || lead.freeformAddress || '';
   const fullName     = `${lead.firstName} ${lead.lastName}`;
 
+  // Change 2 — resolve header identity from workspace preference
+  const headerPref = crmSettings?.leadHeaderPreference ?? null;
+  const headerIdentity = (() => {
+    if (headerPref === 'company') return lead.company || 'Unnamed Lead';
+    if (headerPref === 'phone')   return lead.phone   || 'Unnamed Lead';
+    // 'name' or NULL (unconfigured) → fall back to fullName
+    return fullName;
+  })();
+
   const storedCustomValues: Array<{ fieldId: string; value: string | null }> =
     Array.isArray((lead as any).customFieldValues) ? (lead as any).customFieldValues : [];
   const populatedCustomValues = storedCustomValues.filter(v => v.value !== null && v.value !== '');
 
+  // Change 3 — contact copy reflects new order: Name → Phone → Email → Location
   const copyContactText = [
-    mainContact ? `${mainContact.firstName} ${mainContact.lastName}` : fullName,
-    lead.company   && `Company: ${lead.company}`,
+    fullName,
     contactPhone   && `Phone: ${contactPhone}`,
     contactEmail   && `Email: ${contactEmail}`,
     locationStr    && `Location: ${locationStr}`,
@@ -485,7 +502,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 lineHeight: 1.2, letterSpacing: '-0.015em',
               }}>
-                {fullName}
+                {headerIdentity}
               </h2>
               {lead.company && (
                 <div style={{
@@ -589,39 +606,35 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             action={<CopyBtn text={copyContactText} tooltip="Copy contact info" />}
             delay={40}
           >
-            {mainContact && (
-              <div className="ldp-row" style={{ marginBottom: 2 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                  background: avatarGradient(`${mainContact.firstName} ${mainContact.lastName}`),
-                  color: '#fff', fontSize: 10, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {mainContact.firstName?.[0] ?? '?'}{mainContact.lastName?.[0] ?? ''}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    display: 'flex', alignItems: 'center', gap: 6,
-                  }}>
-                    {mainContact.firstName} {mainContact.lastName}
-                    {mainContact.isMain && (
-                      <span style={{
-                        fontSize: 8, color: '#fff', background: 'var(--text-secondary)',
-                        padding: '1px 6px', borderRadius: 3, fontWeight: 700,
-                        letterSpacing: '0.05em',
-                      }}>
-                        PRIMARY
-                      </span>
-                    )}
-                  </div>
-                  {(mainContact.title || mainContact.role) && (
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                      {mainContact.title || mainContact.role}
-                    </div>
-                  )}
-                </div>
+            {/* Change 3 — Lead canonical name always first */}
+            <div className="ldp-row" style={{ marginBottom: 2 }}>
+              <User size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+              <span style={{
+                fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {fullName}
+              </span>
+            </div>
+
+            {/* Phone before Email */}
+            {contactPhone ? (
+              <a className="ldp-row" href={`tel:${contactPhone}`}
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <Phone className="ldp-icon" size={14}
+                  style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}
+                />
+                <span className="ldp-val" style={{ flex: 1, fontSize: 13 }}>
+                  {contactPhone}
+                </span>
+              </a>
+            ) : (
+              <div className="ldp-row">
+                <Phone size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, opacity: 0.35 }} />
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', opacity: 0.5, fontStyle: 'italic' }}>
+                  No phone
+                </span>
               </div>
             )}
 
@@ -644,26 +657,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 <Mail size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, opacity: 0.35 }} />
                 <span style={{ fontSize: 13, color: 'var(--text-tertiary)', opacity: 0.5, fontStyle: 'italic' }}>
                   No email
-                </span>
-              </div>
-            )}
-
-            {contactPhone ? (
-              <a className="ldp-row" href={`tel:${contactPhone}`}
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <Phone className="ldp-icon" size={14}
-                  style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}
-                />
-                <span className="ldp-val" style={{ flex: 1, fontSize: 13 }}>
-                  {contactPhone}
-                </span>
-              </a>
-            ) : (
-              <div className="ldp-row">
-                <Phone size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, opacity: 0.35 }} />
-                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', opacity: 0.5, fontStyle: 'italic' }}>
-                  No phone
                 </span>
               </div>
             )}
@@ -801,55 +794,17 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </Section>
 
           {/* Notes */}
-          {notesSummary && (notesSummary.count > 0 || lead.notes) && (
-            <>
-              {divider}
-              <Section label={`Notes${notesSummary?.count ? ` (${notesSummary.count})` : ''}`} delay={130}>
-                {notesSummary?.latest ? (
-                  <div>
-                    <div style={{
-                      display: 'flex',
-                      borderRadius: 10, overflow: 'hidden',
-                      border: '1px solid rgba(37,99,235,0.2)',
-                      marginBottom: '8px',
-                    }}>
-                      <div style={{ width: 3, background: '#2563eb', flexShrink: 0 }} />
-                      <p style={{
-                        flex: 1, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65,
-                        background: 'var(--bg-subtle)',
-                        padding: '10px 14px', margin: 0,
-                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      }}>
-                        {notesSummary.latest.content}
-                      </p>
-                    </div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: '8px' }}>
-                      {new Date(notesSummary.latest.createdAt).toLocaleDateString('en-IN', {
-                        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
-                    </div>
-                    {notesSummary.count > 1 && (
-                      <button onClick={onEdit} style={{
-                        fontSize: 12, color: '#2563eb', background: 'none', border: 'none',
-                        cursor: 'pointer', padding: 0,
-                      }}>
-                        View all {notesSummary.count} notes →
-                      </button>
-                    )}
-                  </div>
-                ) : lead.notes ? (
-                  <p style={{
-                    flex: 1, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65,
-                    margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  }}>
-                    {lead.notes}
-                  </p>
-                ) : (
-                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>No notes</p>
-                )}
-              </Section>
-            </>
-          )}
+          <>
+            {divider}
+            <Section label="Notes" delay={130}>
+              <LeadNotesSummary
+                leadId={lead.id}
+                leadName={fullName}
+                legacyNote={lead.notes}
+                anchorRight={480}
+              />
+            </Section>
+          </>
 
           {/* Custom Fields */}
           {populatedCustomValues.length > 0 && (

@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { LeadNote } from '../../services/lead-notes.service';
 import { leadNotesService } from '../../services/lead-notes.service';
@@ -34,12 +34,15 @@ export const LeadNotesSection = memo(function LeadNotesSection({
     queryFn: () => leadNotesService.list(leadId),
   });
 
+  const invalidateNotes = () => {
+    queryClient.invalidateQueries({ queryKey: ['notes', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['notes-summary', leadId] });
+  };
+
   const createMutation = useMutation({
     mutationFn: (payload: Parameters<typeof leadNotesService.create>[1]) =>
       leadNotesService.create(leadId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', leadId] });
-    },
+    onSuccess: invalidateNotes,
   });
 
   const updateMutation = useMutation({
@@ -55,16 +58,14 @@ export const LeadNotesSection = memo(function LeadNotesSection({
         followUpTime: payload.followUpTime,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', leadId] });
+      invalidateNotes();
       setEditingNoteId(null);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (noteId: string) => leadNotesService.delete(leadId, noteId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', leadId] });
-    },
+    onSuccess: invalidateNotes,
   });
 
   const handleAddNote = async (
@@ -105,16 +106,20 @@ export const LeadNotesSection = memo(function LeadNotesSection({
 
   const editingNote = editingNoteId ? notes.find((n) => n.id === editingNoteId) : null;
 
-  return (
-    <div style={{ marginTop: '2rem' }}>
-      <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '1rem' }}>
-        Notes
-      </h3>
+  const atLimit = notes.length >= 15;
 
-      <AddLeadNote
-        onAdd={handleAddNote}
-        isLoading={createMutation.isPending}
-      />
+  return (
+    <div style={{ marginTop: '1.5rem' }}>
+      {atLimit ? (
+        <div style={{ fontSize: 12, color: '#dc2626', marginBottom: '0.75rem', padding: '6px 0' }}>
+          Maximum of 15 notes reached.
+        </div>
+      ) : (
+        <AddLeadNote
+          onAdd={handleAddNote}
+          isLoading={createMutation.isPending}
+        />
+      )}
 
       {isLoading ? (
         <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>

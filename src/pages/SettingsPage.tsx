@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Building2, Bell, Shield, Key, CreditCard, Camera, Tags, Users } from 'lucide-react';
+import { User, Building2, Bell, Shield, Key, CreditCard, Camera, Tags, Users, UserCheck } from 'lucide-react';
 import { OpportunityTypesSettings } from './settings/OpportunityTypesSettings';
+import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
@@ -38,7 +39,7 @@ export function SettingsPage() {
           ))}
           
           <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Workspace</div>
-          {['general', 'members', 'org-management', 'billing', 'opportunity-types'].map(tab => (
+          {['general', 'members', 'org-management', 'billing', 'opportunity-types', 'lead-identity'].map(tab => (
             <button 
               key={tab}
               onClick={() => {
@@ -64,8 +65,10 @@ export function SettingsPage() {
               {tab === 'org-management' && <Users size={16} />}
               {tab === 'billing' && <CreditCard size={16} />}
               {tab === 'opportunity-types' && <Tags size={16} />}
-              {tab === 'opportunity-types' ? 'Opportunity Types' : 
-               tab === 'org-management' ? 'Organization Management' : 
+              {tab === 'lead-identity' && <UserCheck size={16} />}
+              {tab === 'opportunity-types' ? 'Opportunity Types' :
+               tab === 'lead-identity' ? 'Lead Identity' :
+               tab === 'org-management' ? 'Organization Management' :
                tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -142,7 +145,11 @@ export function SettingsPage() {
           <OpportunityTypesSettings />
         )}
 
-        {activeTab !== 'profile' && activeTab !== 'opportunity-types' && (
+        {activeTab === 'lead-identity' && (
+          <LeadIdentitySettings />
+        )}
+
+        {activeTab !== 'profile' && activeTab !== 'opportunity-types' && activeTab !== 'lead-identity' && (
           <div style={{ padding: 'var(--space-24) 0', textAlign: 'center' }}>
             <h2 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Coming Soon</h2>
             <p className="type-body" style={{ color: 'var(--text-tertiary)' }}>This settings panel is being rebuilt.</p>
