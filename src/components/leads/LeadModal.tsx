@@ -15,6 +15,7 @@ import type { CustomFieldDef, CustomFieldValue } from '../../types';
 import { customFieldService } from '../../services/custom-field.service';
 import { CustomFieldRenderer, getFieldValue, setFieldValue } from './CustomFieldRenderer';
 import { CustomFieldBuilder } from './CustomFieldBuilder';
+import { LeadNotesSection } from './LeadNotesSection';
 
 // ============================================================================
 // CONSTANTS
@@ -658,10 +659,16 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
             </div>
 
             {/* ── Notes ─── */}
-            <Divider label="Notes" />
-            <div style={{ marginBottom: '1.25rem' }}>
-              <textarea {...register('notes')} className={inp} rows={3} placeholder="Key context about this lead…" style={{ resize: 'vertical' }} />
-            </div>
+            {mode === 'edit' && lead ? (
+              <LeadNotesSection leadId={lead.id} />
+            ) : (
+              <>
+                <Divider label="Notes" />
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <textarea {...register('notes')} className={inp} rows={3} placeholder="Key context about this lead…" style={{ resize: 'vertical' }} />
+                </div>
+              </>
+            )}
 
             {/* Footer */}
             <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
