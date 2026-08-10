@@ -106,6 +106,7 @@ const ALIASES: Record<string, string> = {
   'score': 'score', 'lead score': 'score',
   'expected value': 'expectedValue', 'deal value': 'expectedValue', 'value': 'expectedValue',
   'tags': 'tagNames', 'tag': 'tagNames', 'labels': 'tagNames',
+  'created date': '__skip__',
 };
 
 export function detectFieldKey(header: string): string | null {

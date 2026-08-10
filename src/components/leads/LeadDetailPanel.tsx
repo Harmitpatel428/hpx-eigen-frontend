@@ -77,6 +77,13 @@ function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function fmtDateSlash(d: string | Date) {
+  const dt = new Date(d);
+  const dd = String(dt.getDate()).padStart(2, '0');
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${dt.getFullYear()}`;
+}
+
 // ── scoped styles — Apple-grade animation layer ──────────────────────────────
 
 const CSS = `
@@ -393,6 +400,16 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     staleTime: 5 * 60 * 1000,
   });
 
+  const HDR_KEY = 'hpx:ui:v1:leadHeaderFreeze';
+  const [headerFreeze, setHeaderFreeze] = useState(() => {
+    try { return localStorage.getItem(HDR_KEY) !== 'free'; } catch { return true; }
+  });
+  const toggleHeaderFreeze = () => {
+    const next = !headerFreeze;
+    setHeaderFreeze(next);
+    try { localStorage.setItem(HDR_KEY, next ? 'freeze' : 'free'); } catch {}
+  };
+
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
@@ -414,9 +431,9 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     Array.isArray((lead as any).customFieldValues) ? (lead as any).customFieldValues : [];
   const populatedCustomValues = storedCustomValues.filter(v => v.value !== null && v.value !== '');
 
-  // Change 3 — contact copy reflects new order: Name → Phone → Email → Location
   const copyContactText = [
     fullName,
+    lead.company   && `Company: ${lead.company}`,
     contactPhone   && `Phone: ${contactPhone}`,
     contactEmail   && `Email: ${contactEmail}`,
     locationStr    && `Location: ${locationStr}`,
@@ -430,7 +447,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     lines.push(
       [`Stage: ${STAGE_LABELS[lead.stage ?? 'NEW']}`, `Priority: ${lead.priority ?? 'MEDIUM'}`, `Source: ${(lead.source ?? 'OTHER').replace(/_/g, ' ')}`].join('  ·  ')
     );
-    if (lead.expectedCloseDate) lines.push(`Expected Close: ${fmtDate(lead.expectedCloseDate)}`);
+    if (lead.expectedCloseDate) lines.push(`Expected Close: ${fmtDateSlash(lead.expectedCloseDate)}`);
     lines.push('');
     if (contactPhone) lines.push(`Phone: ${contactPhone}`);
     if (contactEmail) lines.push(`Email: ${contactEmail}`);
@@ -457,7 +474,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
       });
     }
     lines.push('');
-    lines.push(`Created: ${fmtDate(lead.createdAt)}`);
+    lines.push(`Created: ${fmtDateSlash(lead.createdAt)}`);
     lines.push(sep);
     return lines.join('\n');
   })();
@@ -467,19 +484,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     <div style={{ height: 1, background: 'var(--border-light)', margin: '1.375rem 0' }} />
   );
 
-  return (
-    <>
-      <style>{CSS}</style>
-      <div className="ldp-root" style={{
-        display: 'flex', flexDirection: 'column',
-        height: '100%', background: 'var(--bg-app)',
-      }}>
-
-        {/* ── Frosted Header ───────────────────────────────────────── */}
+  const headerContent = (
         <div className="ldp-frost" style={{
           padding: `1.125rem ${px} 0.75rem`,
+          ...(headerFreeze ? {} : { borderBottom: 'none' }),
         }}>
-          {/* avatar · name · actions */}
+          {/* avatar · name · close */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
             <div style={{
               width: 46, height: 46, borderRadius: 13, flexShrink: 0,
@@ -494,13 +504,21 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2 style={{
-                fontSize: 18, fontWeight: 700, color: 'var(--text-primary)',
+                fontSize: 20, fontWeight: 750, color: 'var(--text-primary)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                lineHeight: 1.2, letterSpacing: '-0.015em',
+                lineHeight: 1.2, letterSpacing: '-0.02em',
               }}>
                 {headerIdentity}
               </h2>
-              {lead.company && (
+              {headerPref === 'company' ? (
+                <div style={{
+                  fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500,
+                  marginTop: 2,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {fullName}
+                </div>
+              ) : lead.company ? (
                 <div style={{
                   fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 450,
                   marginTop: 2,
@@ -510,37 +528,26 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   <Building2 size={11} style={{ flexShrink: 0 }} />
                   {lead.company}
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               <button
                 className="ldp-hdr-btn"
-                onClick={onEdit}
-                aria-label="Edit lead"
+                onClick={toggleHeaderFreeze}
+                aria-label={headerFreeze ? 'Free-glide header' : 'Freeze header'}
+                title={headerFreeze ? 'Header: Frozen — click for Free Glide' : 'Header: Free Glide — click to Freeze'}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  height: 32, padding: '0 12px', borderRadius: 8,
+                  width: 32, height: 32, borderRadius: 8,
                   border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
-                  color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                  color: headerFreeze ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13,
                 }}
               >
-                <Edit2 size={12} /> Edit
+                {headerFreeze ? '❄' : '↕'}
               </button>
-              <button
-                className="ldp-hdr-btn ldp-hdr-danger"
-                onClick={onDelete}
-                aria-label="Delete lead"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  height: 32, padding: '0 12px', borderRadius: 8,
-                  border: '1px solid rgba(220,38,38,0.12)', background: 'rgba(220,38,38,0.03)',
-                  color: '#dc2626', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                }}
-              >
-                <Trash2 size={12} /> Delete
-              </button>
-              <div style={{ width: 1, height: 18, background: 'var(--border-light)', margin: '0 2px' }} />
               <button
                 className="ldp-hdr-btn"
                 onClick={onClose}
@@ -590,11 +597,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             </span>
           </div>
         </div>
+  );
 
-        {/* ── Body ─────────────────────────────────────────────────── */}
-        <div className="ldp-body" style={{
-          flex: 1, overflowY: 'auto', padding: `1.375rem ${px}`,
-        }}>
+  const bodyContent = (
+        <div style={{ padding: `1.375rem ${px}` }}>
 
           {/* Contact Information */}
           <Section
@@ -602,7 +608,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             action={<CopyBtn text={copyContactText} tooltip="Copy contact info" />}
             delay={40}
           >
-            {/* Change 3 — Lead canonical name always first */}
+            {/* Lead name */}
             <div className="ldp-row" style={{ marginBottom: 2 }}>
               <User size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
               <span style={{
@@ -743,6 +749,36 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
           {/* Quick Actions */}
           <Section label="Quick Actions" delay={100}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <button
+                className="ldp-act"
+                onClick={onEdit}
+                aria-label="Edit lead"
+                style={{
+                  flex: 1, height: 38, borderRadius: 10,
+                  border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}
+              >
+                <Edit2 size={14} /> Edit
+              </button>
+              <button
+                className="ldp-act ldp-hdr-danger"
+                onClick={onDelete}
+                aria-label="Delete lead"
+                style={{
+                  flex: 1, height: 38, borderRadius: 10,
+                  border: '1px solid rgba(220,38,38,0.12)', background: 'rgba(220,38,38,0.03)',
+                  color: '#dc2626',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="ldp-act ldp-wa"
@@ -750,7 +786,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 disabled={!contactPhone}
                 aria-label="Send WhatsApp"
                 style={{
-                  flex: 1, height: 40, borderRadius: 10,
+                  flex: 1, height: 38, borderRadius: 10,
                   border: contactPhone ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
                   background: contactPhone ? 'rgba(34,197,94,0.05)' : 'var(--bg-subtle)',
                   color: contactPhone ? '#16a34a' : 'var(--text-tertiary)',
@@ -773,7 +809,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 }}
                 aria-label={leadCopied ? 'Copied!' : 'Copy lead details'}
                 style={{
-                  flex: 1, height: 40, borderRadius: 10,
+                  flex: 1, height: 38, borderRadius: 10,
                   border: `1px solid ${leadCopied ? 'rgba(5,150,105,0.3)' : 'var(--border-medium)'}`,
                   background: leadCopied ? 'rgba(5,150,105,0.06)' : 'var(--bg-app)',
                   color: leadCopied ? '#059669' : 'var(--text-secondary)',
@@ -839,6 +875,28 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </div>
 
         </div>
+  );
+
+  return (
+    <>
+      <style>{CSS}</style>
+      <div className="ldp-root" style={{
+        display: 'flex', flexDirection: 'column',
+        height: '100%', background: 'var(--bg-app)',
+      }}>
+        {headerFreeze ? (
+          <>
+            {headerContent}
+            <div className="ldp-body" style={{ flex: 1, overflowY: 'auto' }}>
+              {bodyContent}
+            </div>
+          </>
+        ) : (
+          <div className="ldp-body" style={{ flex: 1, overflowY: 'auto' }}>
+            {headerContent}
+            {bodyContent}
+          </div>
+        )}
       </div>
     </>
   );

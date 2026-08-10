@@ -61,6 +61,17 @@ function validateRows(rows: Record<string, string>[], map: Record<string, string
   return errors;
 }
 
+function parseDateValue(raw: string): string | undefined {
+  if (!raw) return undefined;
+  // DD/MM/YYYY → YYYY-MM-DD
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) return `${slashMatch[3]}-${slashMatch[2].padStart(2, '0')}-${slashMatch[1].padStart(2, '0')}`;
+  // already ISO or other parseable format
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return undefined;
+}
+
 function rowToPayload(row: Record<string, string>, map: Record<string, string>): CreateLeadPayload | null {
   const get = (key: string): string => {
     const col = Object.entries(map).find(([, v]) => v === key)?.[0];
@@ -104,7 +115,7 @@ function rowToPayload(row: Record<string, string>, map: Record<string, string>):
     postalCode: get('postalCode') || undefined,
     freeformAddress: get('freeformAddress') || undefined,
     notes:   get('notes')   || undefined,
-    expectedCloseDate: get('expectedCloseDate') || undefined,
+    expectedCloseDate: parseDateValue(get('expectedCloseDate')),
     ownerId: get('ownerId') || undefined,
     score: scoreStr ? Number(scoreStr) : undefined,
     expectedValue: evStr || undefined,

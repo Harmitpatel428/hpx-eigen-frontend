@@ -9,6 +9,7 @@ export interface LeadContact {
   email: string | null;
   phone: string | null;
   title: string | null;
+  company: string | null;
   role: string | null;
   isMain: boolean;
   createdAt: string;

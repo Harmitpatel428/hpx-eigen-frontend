@@ -10,6 +10,7 @@ import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../types';
 import { leadService } from '../services/lead.service';
 import { leadContactsService, LeadContact } from '../services/lead-contacts.service';
 import { customFieldService } from '../services/custom-field.service';
+import { crmSettingsService } from '../services/crm-settings.service';
 import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadModal } from '../components/leads/LeadModal';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
@@ -107,6 +108,13 @@ export function LeadsPage() {
     staleTime: 30_000,
   });
 
+  const { data: crmSettings } = useQuery({
+    queryKey: ['crm-settings'],
+    queryFn: () => crmSettingsService.get(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const companyFirst = crmSettings?.leadHeaderPreference === 'company';
+
   const { data: fieldDefs = [] } = useQuery<CustomFieldDef[]>({
     queryKey: ['custom-fields'],
     queryFn: () => customFieldService.list(),
@@ -137,16 +145,25 @@ export function LeadsPage() {
 
   const handleClosePanel = useCallback(() => setSelectedLead(null), []);
 
-  const handleExport = useCallback(() => {
+  const fmtExportDate = (v: string | null | undefined): string => {
+    if (!v) return '';
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  };
+
+  const buildExportRows = useCallback((source: Lead[]) => {
     const STATIC_HEADERS = [
       'First Name','Last Name','Email','Phone','Company',
       'Stage','Priority','Source',
       'Score','Expected Value','Owner ID','Tags',
       'Country','State','City','Area','Postal Code','Full Address',
-      'Notes','Expected Close Date',
+      'Notes','Expected Close Date','Created Date',
     ];
     const cfHeaders = fieldDefs.map(f => f.name);
-    const rows = leads.map(l => {
+    const rows = source.map(l => {
       const stored: Array<{ fieldId: string; value: string | null }> =
         Array.isArray((l as any).customFieldValues) ? (l as any).customFieldValues : [];
       const tagStr = Array.isArray(l.tags) ? l.tags.map(t => t.name).join(', ') : '';
@@ -159,7 +176,9 @@ export function LeadsPage() {
         'Country': l.country ?? '', 'State': l.state ?? '', 'City': l.city ?? '',
         'Area': l.area ?? '', 'Postal Code': l.postalCode ?? '',
         'Full Address': (l as any).freeformAddress ?? '',
-        'Notes': l.notes ?? '', 'Expected Close Date': l.expectedCloseDate ?? '',
+        'Notes': l.notes ?? '',
+        'Expected Close Date': fmtExportDate(l.expectedCloseDate),
+        'Created Date': fmtExportDate(l.createdAt),
       };
       fieldDefs.forEach(f => {
         const v = stored.find(sv => sv.fieldId === f.id);
@@ -167,43 +186,20 @@ export function LeadsPage() {
       });
       return row;
     });
-    exportCSV('leads-export', [...STATIC_HEADERS, ...cfHeaders], rows);
-  }, [leads, fieldDefs]);
+    return { headers: [...STATIC_HEADERS, ...cfHeaders], rows };
+  }, [fieldDefs]);
+
+  const handleExport = useCallback(() => {
+    const { headers, rows } = buildExportRows(leads);
+    exportCSV('leads-export', headers, rows);
+  }, [leads, buildExportRows]);
 
   const handleExportSelected = useCallback(() => {
     const selected = leads.filter(l => selectedIds.has(l.id));
     if (selected.length === 0) return;
-    const STATIC_HEADERS = [
-      'First Name','Last Name','Email','Phone','Company',
-      'Stage','Priority','Source',
-      'Score','Expected Value','Owner ID','Tags',
-      'Country','State','City','Area','Postal Code','Full Address',
-      'Notes','Expected Close Date',
-    ];
-    const cfHeaders = fieldDefs.map(f => f.name);
-    const rows = selected.map(l => {
-      const stored: Array<{ fieldId: string; value: string | null }> =
-        Array.isArray((l as any).customFieldValues) ? (l as any).customFieldValues : [];
-      const tagStr = Array.isArray(l.tags) ? l.tags.map(t => t.name).join(', ') : '';
-      const row: Record<string, unknown> = {
-        'First Name': l.firstName, 'Last Name': l.lastName,
-        'Email': l.email ?? '', 'Phone': l.phone ?? '', 'Company': l.company ?? '',
-        'Stage': l.stage ?? '', 'Priority': l.priority ?? '', 'Source': l.source ?? '',
-        'Score': l.score ?? '', 'Expected Value': l.expectedValue ?? '',
-        'Owner ID': l.ownerId ?? '', 'Tags': tagStr,
-        'Country': l.country ?? '', 'State': l.state ?? '', 'City': l.city ?? '',
-        'Area': l.area ?? '', 'Postal Code': l.postalCode ?? '',
-        'Full Address': (l as any).freeformAddress ?? '',
-        'Notes': l.notes ?? '', 'Expected Close Date': l.expectedCloseDate ?? '',
-      };
-      fieldDefs.forEach(f => {
-        const v = stored.find(sv => sv.fieldId === f.id);
-        row[f.name] = v?.value ?? '';
-      });
-      return row;
-    });
-    exportCSV('leads-selected-export', [...STATIC_HEADERS, ...cfHeaders], rows);
-  }, [leads, selectedIds, fieldDefs]);
+    const { headers, rows } = buildExportRows(selected);
+    exportCSV('leads-selected-export', headers, rows);
+  }, [leads, selectedIds, buildExportRows]);
 
   const bulkDeleteMutation = useMutation({
     mutationFn: (ids: string[]) => leadService.bulkDelete(ids),
@@ -288,7 +284,11 @@ export function LeadsPage() {
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all leads" />
               </div>
-              <div>Lead</div><div>Company</div><div>Contact</div><div>Stage</div><div>Priority</div><div>Close Date</div><div>Actions</div>
+              {companyFirst
+                ? <><div>Company</div><div>Lead</div></>
+                : <><div>Lead</div><div>Company</div></>
+              }
+              <div>Contact</div><div>Stage</div><div>Priority</div><div>Close Date</div><div>Actions</div>
             </div>
 
             {/* Rows */}
@@ -305,18 +305,32 @@ export function LeadsPage() {
                       <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(lead.id)} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label={`Select ${lead.firstName} ${lead.lastName}`} />
                     </div>
 
-                    {/* Name */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                        {lead.firstName[0]}{lead.lastName[0]}
-                      </div>
-                      <span style={{ fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.firstName} {lead.lastName}</span>
-                    </div>
-
-                    {/* Company */}
-                    <div style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontSize: 12 }}>
-                      {lead.company || <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
-                    </div>
+                    {/* Primary + Secondary identity columns (swap based on org preference) */}
+                    {companyFirst ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                          <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                            {(lead.company?.[0] ?? '?').toUpperCase()}
+                          </div>
+                          <span style={{ fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.company || 'Unnamed'}</span>
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontSize: 12 }}>
+                          {lead.firstName} {lead.lastName}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                          <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                            {lead.firstName[0]}{lead.lastName[0]}
+                          </div>
+                          <span style={{ fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.firstName} {lead.lastName}</span>
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontSize: 12 }}>
+                          {lead.company || <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                        </div>
+                      </>
+                    )}
 
                     {/* Contact */}
                     <div style={{ overflow: 'hidden' }}>
