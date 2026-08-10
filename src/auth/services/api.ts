@@ -72,7 +72,8 @@ api.interceptors.response.use(
       const isPublicAuthRoute =
         currentPath.includes('/login') ||
         currentPath.includes('/signup') ||
-        currentPath.includes('/register');
+        currentPath.includes('/register') ||
+        currentPath.includes('/accept-invite');
 
       if (!isPublicAuthRoute) {
         if (typeof window !== 'undefined') {

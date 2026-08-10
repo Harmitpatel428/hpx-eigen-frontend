@@ -36,11 +36,32 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
   const qc = useQueryClient();
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [result, setResult] = useState<{ emailStatus: string; sentTo: string } | null>(null);
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const invite = useMutation({
-    mutationFn: () => import('../../services/api').then(m => m.api.post('/api/v1/users/invite', { email, roleId })),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tenant-users'] }); onClose(); },
+    mutationFn: () => import('../../services/api').then(m => m.api.post('/api/v1/users/invite', { email: email.trim().toLowerCase(), roleId })),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['tenant-users'] });
+      setResult({ emailStatus: res.data?.emailStatus ?? 'SENT', sentTo: email.trim().toLowerCase() });
+    },
   });
+
+  function handleSend() {
+    setEmailError('');
+    if (!EMAIL_RE.test(email.trim())) { setEmailError('Enter a valid email address.'); return; }
+    invite.mutate();
+  }
+
+  const resultMessage = result
+    ? result.emailStatus === 'SENT'
+      ? `Invitation created and email submitted to ${result.sentTo}.`
+      : result.emailStatus === 'FAILED'
+      ? `Invitation created, but the email could not be sent. The invitation is valid — ask the recipient to contact you for the link.`
+      : `Invitation created. Email delivery is disabled in development.`
+    : null;
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -48,45 +69,60 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
       <div style={{ position: 'relative', background: 'var(--bg-app, #fff)', borderRadius: 16, padding: 28, width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', border: '1px solid var(--border-medium)' }}>
         <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 20 }}>Invite Member</h2>
 
-        <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</label>
-        <input
-          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, color: 'var(--text-primary)', background: 'transparent', outline: 'none', marginBottom: 16 }}
-          placeholder="colleague@company.com"
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          autoFocus
-        />
+        {result ? (
+          <>
+            <p style={{ fontSize: 14, color: result.emailStatus === 'FAILED' ? '#b45309' : result.emailStatus === 'SKIPPED' ? '#6b7280' : '#15803d', marginBottom: 20, lineHeight: 1.5 }}>
+              {resultMessage}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Done</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</label>
+            <input
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${emailError ? '#dc2626' : 'var(--border-medium)'}`, fontSize: 14, color: 'var(--text-primary)', background: 'transparent', outline: 'none', marginBottom: emailError ? 4 : 16 }}
+              placeholder="colleague@company.com"
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setEmailError(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              autoFocus
+            />
+            {emailError && <p style={{ fontSize: 12, color: '#dc2626', marginBottom: 12 }}>{emailError}</p>}
 
-        <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Role</label>
-        <select
-          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, color: 'var(--text-primary)', background: 'transparent', cursor: 'pointer', marginBottom: 20 }}
-          value={roleId}
-          onChange={e => setRoleId(e.target.value)}
-        >
-          <option value="">Select a role…</option>
-          {roles.map(r => (
-            <option key={r.id} value={r.id}>{r.name}{r._count?.users != null ? ` (${r._count.users} users)` : ''}</option>
-          ))}
-        </select>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Role</label>
+            <select
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, color: 'var(--text-primary)', background: 'transparent', cursor: 'pointer', marginBottom: 20 }}
+              value={roleId}
+              onChange={e => setRoleId(e.target.value)}
+            >
+              <option value="">Select a role…</option>
+              {roles.map(r => (
+                <option key={r.id} value={r.id}>{r.name}{r._count?.users != null ? ` (${r._count.users} users)` : ''}</option>
+              ))}
+            </select>
 
-        {invite.isError && (
-          <p style={{ fontSize: 13, color: '#dc2626', marginBottom: 12 }}>
-            {(invite.error as any)?.response?.data?.error?.message || 'Failed to send invitation.'}
-          </p>
+            {invite.isError && (
+              <p style={{ fontSize: 13, color: '#dc2626', marginBottom: 12 }}>
+                {(invite.error as any)?.response?.data?.message || (invite.error as any)?.response?.data?.error?.message || 'Failed to send invitation.'}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={handleSend}
+                disabled={!email.trim() || !roleId || invite.isPending}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 500, cursor: invite.isPending ? 'not-allowed' : 'pointer', opacity: (!email.trim() || !roleId) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {invite.isPending ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <UserPlus size={14} />}
+                Send Invite
+              </button>
+            </div>
+          </>
         )}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-          <button
-            onClick={() => invite.mutate()}
-            disabled={!email.trim() || !roleId || invite.isPending}
-            style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 500, cursor: invite.isPending ? 'not-allowed' : 'pointer', opacity: (!email.trim() || !roleId) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {invite.isPending ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <UserPlus size={14} />}
-            Send Invite
-          </button>
-        </div>
       </div>
     </div>
   );

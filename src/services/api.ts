@@ -48,7 +48,8 @@ api.interceptors.response.use(
 
     if (err.response?.status === 401) {
       // Prevent redirect loop: never redirect when already on the login page
-      const isLoginPage = window.location.pathname.includes('/login');
+      const isLoginPage = window.location.pathname.includes('/login') ||
+        window.location.pathname.includes('/accept-invite');
       if (!isLoginPage) {
         if (typeof window !== 'undefined') {
           (window as any).tokenStorage?.clear?.();

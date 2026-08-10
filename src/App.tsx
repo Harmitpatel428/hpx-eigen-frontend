@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
+import { AcceptInvitePage } from './pages/AcceptInvitePage';
 
 // ─── Error Boundary that wraps EVERYTHING ──────────────────────────
 class GlobalErrorBoundary extends React.Component<
@@ -111,6 +112,7 @@ export const App: React.FC = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/accept-invite" element={<AcceptInvitePage />} />
               
               {/* Everything else loads the full app shell with providers */}
               <Route path="/*" element={
