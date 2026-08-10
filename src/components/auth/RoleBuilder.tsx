@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Check, X, ChevronRight, Loader2 } from 'lucide-react';
+import { Plus, Check, X, ChevronRight, Loader2, Copy } from 'lucide-react';
 import { permissionService } from '../../services/permission.service';
 import type { Role } from '../../types';
 
@@ -59,6 +59,7 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
   const qc = useQueryClient();
   const [newRoleName, setNewRoleName] = useState('');
   const [showNewRole, setShowNewRole] = useState(false);
+  const [cloning, setCloning] = useState<string | null>(null);
 
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: ['roles'],
@@ -73,6 +74,19 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
       setShowNewRole(false);
     },
   });
+
+  const handleClone = async (role: Role) => {
+    setCloning(role.id);
+    try {
+      const newRole = await permissionService.cloneRole(role.id);
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      onSelectRole(newRole.id);
+    } catch (err) {
+      console.error('Failed to clone role:', err);
+    } finally {
+      setCloning(null);
+    }
+  };
 
   return (
     <div style={S.card}>
@@ -91,9 +105,7 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && newRoleName.trim()) {
-                  createRoleMutation.mutate(newRoleName.trim());
-                }
+                if (e.key === 'Enter' && newRoleName.trim()) createRoleMutation.mutate(newRoleName.trim());
                 if (e.key === 'Escape') { setShowNewRole(false); setNewRoleName(''); }
               }}
               autoFocus
@@ -112,36 +124,43 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
           </div>
         )}
         {roles.map((role: Role) => (
-          <button
+          <div
             key={role.id}
-            onClick={() => onSelectRole(role.id)}
             style={{
-              width: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '10px 12px',
               borderRadius: 8,
-              border: 'none',
               cursor: 'pointer',
-              textAlign: 'left',
               background: selectedRoleId === role.id ? '#f8fafc' : 'transparent',
-              color: '#0f172a',
-              fontSize: 14,
-              fontWeight: selectedRoleId === role.id ? 500 : 400,
               transition: 'background 120ms',
             }}
+            onClick={() => onSelectRole(role.id)}
           >
-            <span>{role.name}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+              <span style={{ fontSize: 14, fontWeight: selectedRoleId === role.id ? 500 : 400, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{role.name}</span>
+              {role._count?.users != null && (
+                <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{role._count.users}</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
               {role.isSystem && (
                 <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: '#fef3c7', color: '#92400e', fontWeight: 600 }}>
                   SYSTEM
                 </span>
               )}
+              <button
+                title="Duplicate role"
+                onClick={e => { e.stopPropagation(); handleClone(role); }}
+                disabled={cloning === role.id}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#94a3b8', borderRadius: 4, display: 'flex', alignItems: 'center' }}
+              >
+                {cloning === role.id ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={13} />}
+              </button>
               <ChevronRight size={14} style={{ color: '#94a3b8' }} />
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>

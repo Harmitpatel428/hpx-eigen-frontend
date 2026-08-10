@@ -5,6 +5,7 @@ export interface TenantUser {
   email: string;
   status: string;
   createdAt: string;
+  userRoles?: { role: { id: string; name: string }; scopeType: string }[];
 }
 
 export const userService = {

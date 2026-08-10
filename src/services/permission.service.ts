@@ -44,6 +44,12 @@ export const permissionService = {
     await api.delete(`/api/v1/roles/${roleId}/permissions/${permissionId}`);
   },
 
+  /** Clone a role (atomic server-side) */
+  async cloneRole(roleId: string): Promise<Role> {
+    const { data } = await api.post<Role>(`/api/v1/roles/${roleId}/clone`);
+    return data;
+  },
+
   // ─── User Role Assignments ─────────────────────────────────────
 
   /** List users assigned to a role with their scope */
