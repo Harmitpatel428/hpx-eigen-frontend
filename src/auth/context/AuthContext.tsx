@@ -135,6 +135,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Permission Synchronization — refresh on tab focus and every 5 minutes
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && fsm.current.state === 'AUTHENTICATED') {
+        refreshUser();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshUser]);
+
+  useEffect(() => {
+    if (status !== 'AUTHENTICATED') return;
+    const id = setInterval(refreshUser, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [status, refreshUser]);
+
   // Public API
   const login = useCallback(async (email: string, password: string) => {
     try {
