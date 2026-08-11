@@ -22,6 +22,8 @@ export interface User {
   department?: { id: string; name: string } | null;
   team?: { id: string; name: string } | null;
   permissionsVersion?: number;
+  isImpersonated?: boolean;
+  impersonatedByUserId?: string | null;
 }
 
 export interface AuthContextValue {

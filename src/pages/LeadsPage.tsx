@@ -285,7 +285,7 @@ export function LeadsPage() {
         ) : (
           <div style={{ minWidth: 1300 }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all leads" />
               </div>
@@ -293,7 +293,7 @@ export function LeadsPage() {
                 ? <><div>Company</div><div>Lead</div></>
                 : <><div>Lead</div><div>Company</div></>
               }
-              <div>Contact</div><div>Stage</div><div>Priority</div><div>Close Date</div><div>Actions</div>
+              <div>Assigned</div><div>Contact</div><div>Stage</div><div>Priority</div><div>Close Date</div><div>Actions</div>
             </div>
 
             {/* Rows */}
@@ -303,7 +303,7 @@ export function LeadsPage() {
                 const ps = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
                 const isChecked = selectedIds.has(lead.id);
                 return (
-                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
 
                     {/* Checkbox */}
                     <div style={{ display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
@@ -336,6 +336,16 @@ export function LeadsPage() {
                         </div>
                       </>
                     )}
+
+                    {/* Assigned */}
+                    <div style={{ overflow: 'hidden' }}>
+                      {lead.owner
+                        ? <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                            {[lead.owner.firstName, lead.owner.lastName].filter(Boolean).join(' ') || '—'}
+                          </span>
+                        : <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
+                      }
+                    </div>
 
                     {/* Contact */}
                     <div style={{ overflow: 'hidden' }}>

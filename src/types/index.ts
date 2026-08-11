@@ -148,6 +148,7 @@ export interface Lead {
   postalCode: string | null;
   freeformAddress: string | null; // ponytail: needs backend migration (ALTER TABLE leads ADD COLUMN "freeformAddress" TEXT)
   ownerId: string | null;
+  owner?: { id: string; firstName: string | null; lastName: string | null } | null;
   notes: string | null;
   tags: LeadTag[];
   customFieldValues?: CustomFieldValue[]; // ponytail: needs backend API at /api/v1/lead-fields
