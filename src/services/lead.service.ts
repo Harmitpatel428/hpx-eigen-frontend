@@ -163,6 +163,24 @@ export const leadService = {
     return data?.data || data;
   },
 
+  async previewAutoAssign(payload: { leadIds: string[]; departmentId: string }): Promise<{
+    employees: Array<{ id: string; firstName: string | null; lastName: string | null; currentWorkload: number; delta: number }>;
+    totalLeads: number;
+  }> {
+    const { data } = await api.post<any>('/api/v1/leads/bulk-assign/preview', payload);
+    return data?.data ?? data;
+  },
+
+  async bulkAssign(payload: {
+    leadIds: string[];
+    mode: 'MANUAL' | 'AUTO';
+    userId?: string;
+    departmentId?: string;
+  }): Promise<{ count: number }> {
+    const { data } = await api.post<any>('/api/v1/leads/bulk-assign', payload);
+    return data?.data ?? data;
+  },
+
   async checkDuplicates(params: {
     email?: string;
     phone?: string;

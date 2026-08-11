@@ -4,7 +4,7 @@ import {
   Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine,
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
-  MessageCircle, Copy, Check,
+  MessageCircle, Copy, Check, UserCheck,
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../types';
 import { leadService } from '../services/lead.service';
@@ -15,6 +15,7 @@ import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadModal } from '../components/leads/LeadModal';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
 import { LeadImportWizard } from '../components/leads/LeadImportWizard';
+import { LeadAssignModal } from '../components/leads/LeadAssignModal';
 import { exportCSV } from '../utils/csv';
 
 // ============================================================================
@@ -101,6 +102,7 @@ export function LeadsPage() {
   const [showImportWizard, setShowImportWizard] = useState(false);
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   const { data: leadsResponse, isLoading } = useQuery({
     queryKey: ['leads', { search: searchQuery }],
@@ -255,6 +257,9 @@ export function LeadsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 12, background: 'var(--bg-muted)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedIds.size} selected</span>
           <div style={{ width: 1, height: 16, background: 'var(--border-medium)' }} />
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#6366f1' }} onClick={() => setShowAssignModal(true)}>
+            <UserCheck size={12} style={{ marginRight: 4 }} /> Assign
+          </button>
           <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#dc2626' }} onClick={() => setBulkDeleteConfirm(true)}>
             <Trash2 size={12} style={{ marginRight: 4 }} /> Delete
           </button>
@@ -451,6 +456,19 @@ export function LeadsPage() {
       {/* IMPORT WIZARD */}
       {showImportWizard && (
         <LeadImportWizard onClose={() => setShowImportWizard(false)} fieldDefs={fieldDefs} />
+      )}
+
+      {/* ASSIGN MODAL */}
+      {showAssignModal && (
+        <LeadAssignModal
+          selectedIds={selectedIds}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            setSelectedIds(new Set());
+            setShowAssignModal(false);
+          }}
+          onClose={() => setShowAssignModal(false)}
+        />
       )}
     </div>
   );
