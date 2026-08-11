@@ -50,6 +50,11 @@ export const permissionService = {
     return data;
   },
 
+  /** Permanently delete a custom role */
+  async deleteRole(id: string): Promise<void> {
+    await api.delete(`/api/v1/roles/${id}`);
+  },
+
   // ─── User Role Assignments ─────────────────────────────────────
 
   /** List users assigned to a role with their scope */

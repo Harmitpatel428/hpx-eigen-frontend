@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Check, X, ChevronRight, Loader2, Copy } from 'lucide-react';
+import { Plus, Check, X, ChevronRight, Loader2, Copy, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { permissionService } from '../../services/permission.service';
 import type { Role } from '../../types';
 
@@ -60,6 +61,7 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
   const [newRoleName, setNewRoleName] = useState('');
   const [showNewRole, setShowNewRole] = useState(false);
   const [cloning, setCloning] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<{ id: string; name: string; userCount: number } | null>(null);
 
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: ['roles'],
@@ -87,6 +89,28 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
       setCloning(null);
     }
   };
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: (id: string) => permissionService.deleteRole(id),
+    onSuccess: () => {
+      if (selectedRoleId === deleting?.id) onSelectRole(null);
+      qc.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Role deleted successfully.');
+      setDeleting(null);
+    },
+    onError: (err: any) => {
+      const code = err?.response?.data?.code;
+      if (code === 'RESOURCE_NOT_FOUND') {
+        qc.invalidateQueries({ queryKey: ['roles'] });
+        setDeleting(null);
+        toast.info('That role no longer exists. The role list has been refreshed.');
+      } else if (code === 'BUSINESS_RULE_VIOLATION') {
+        toast.error('Cannot delete: would remove the last role:manage administrator.');
+      } else {
+        toast.error(err?.response?.data?.message || 'Failed to delete role.');
+      }
+    },
+  });
 
   return (
     <div style={S.card}>
@@ -158,11 +182,58 @@ export function RoleBuilder({ selectedRoleId, onSelectRole }: RoleBuilderProps) 
               >
                 {cloning === role.id ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Copy size={13} />}
               </button>
+              {!role.isSystem && (
+                <button
+                  title="Delete role"
+                  onClick={e => { e.stopPropagation(); setDeleting({ id: role.id, name: role.name, userCount: role._count?.users ?? 0 }); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#f87171', borderRadius: 4, display: 'flex', alignItems: 'center' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
               <ChevronRight size={14} style={{ color: '#94a3b8' }} />
             </div>
           </div>
         ))}
       </div>
+
+      {deleting && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => !deleteRoleMutation.isPending && setDeleting(null)}
+        >
+          <div style={{ background: '#fff', borderRadius: 12, padding: 24, maxWidth: 400, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0f172a', margin: '0 0 8px' }}>
+              Delete "{deleting.name}"?
+            </h3>
+            <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>
+              {deleting.userCount > 0
+                ? `This role is currently assigned to ${deleting.userCount} user${deleting.userCount !== 1 ? 's' : ''}. Deleting it will remove their assignment — the users themselves will not be deleted.`
+                : 'This role has no assigned users. Its permission assignments will be permanently removed.'}
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                style={S.btn('ghost')}
+                onClick={() => setDeleting(null)}
+                disabled={deleteRoleMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                style={{ ...S.btn('danger'), background: '#dc2626', color: '#fff' }}
+                onClick={() => deleteRoleMutation.mutate(deleting.id)}
+                disabled={deleteRoleMutation.isPending}
+              >
+                {deleteRoleMutation.isPending
+                  ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                  : <Trash2 size={13} />}
+                {deleteRoleMutation.isPending ? 'Deleting…' : 'Delete Role'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
