@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { tokenStorage } from '../auth/storage/tokenStorage';
 
 type InviteInfo = {
   email: string;
@@ -82,14 +83,10 @@ export function AcceptInvitePage() {
       }
 
       const res = await axios.post(`${API}/api/v1/auth/accept-invite`, body);
-      const { accessToken, refreshToken } = res.data?.data ?? {};
+      const { accessToken, refreshToken, sessionId, user } = res.data?.data ?? {};
 
       if (accessToken) {
-        localStorage.setItem('hpx:access-token', accessToken);
-        localStorage.setItem('accessToken', accessToken);
-      }
-      if (refreshToken) {
-        localStorage.setItem('hpx:refresh-token', refreshToken);
+        tokenStorage.set({ accessToken, refreshToken, sessionId: sessionId ?? '', userId: user?.id ?? '' });
       }
 
       setPageState('success');

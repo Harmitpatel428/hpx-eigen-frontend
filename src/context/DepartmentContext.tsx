@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { get } from '../auth/services/api';
+import { tokenStorage } from '../auth/storage/tokenStorage';
 
 export type DepartmentType = 'SALES' | 'PROCESS' | 'DOCUMENTATION';
 
@@ -25,9 +26,7 @@ const STORAGE_KEY = 'hpx:active-department';
 
 function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
-  const token = (window as any).tokenStorage?.getAccessToken?.() 
-    || localStorage.getItem('hpx:access-token');
-  return !!token;
+  return !!tokenStorage.get()?.accessToken;
 }
 
 export function DepartmentProvider({ children }: { children: React.ReactNode }) {

@@ -35,6 +35,9 @@ export class LocalTokenStorage implements TokenStorage {
     localStorage.removeItem(TOKENS_KEY);
     localStorage.removeItem(TENANT_KEY);
     localStorage.removeItem(VERSION_KEY);
+    localStorage.removeItem('hpx:access-token');
+    localStorage.removeItem('hpx:refresh-token');
+    localStorage.removeItem('accessToken');
   }
 
   isValid(): boolean {

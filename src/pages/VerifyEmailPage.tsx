@@ -27,13 +27,6 @@ export function VerifyEmailPage() {
       try {
         const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/v1/auth/verify-email`, { token });
 
-        // Extract from standardized response format
-        const accessToken = response.data?.data?.accessToken || response.data?.jwt;
-        if (accessToken) {
-          localStorage.setItem('hpx:access-token', accessToken);
-          localStorage.setItem('accessToken', accessToken);
-        }
-
         setStatus('success');
         setMessage('Email verified successfully! Redirecting to workspace...');
         toast.success('Email verified!');

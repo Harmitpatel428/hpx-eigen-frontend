@@ -189,15 +189,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Login failed: No token received.');
       }
 
-      // Save to localStorage
-      localStorage.setItem('hpx:access-token', accessToken);
-      localStorage.setItem('accessToken', accessToken);
-      console.log('4. TOKEN SAVED TO localStorage');
-      Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to localStorage', level: 'info' });
-      if (refreshToken) {
-        localStorage.setItem('hpx:refresh-token', refreshToken);
-      }
-
+      console.log('4. SAVING TOKEN TO tokenStorage');
+      Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
       try {
         tokenStorage.set({
           accessToken,

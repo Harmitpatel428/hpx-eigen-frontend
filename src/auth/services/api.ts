@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import * as Sentry from '@sentry/react';
+import { tokenStorage } from '../storage/tokenStorage';
 /**
  * Typed error that carries the HTTP status code so callers can distinguish
  * 403 Forbidden from 500 Internal Server Error, etc.
@@ -31,11 +32,7 @@ export const api = axios.create({
 // ─── Request Interceptor: Attach Bearer + Department Context ───────
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Check all known token storage keys
-    const token = 
-      localStorage.getItem('hpx:access-token') || 
-      localStorage.getItem('accessToken') || 
-      localStorage.getItem('token');
+    const token = tokenStorage.get()?.accessToken;
       
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -76,11 +73,7 @@ api.interceptors.response.use(
         currentPath.includes('/accept-invite');
 
       if (!isPublicAuthRoute) {
-        if (typeof window !== 'undefined') {
-          (window as any).tokenStorage?.clear?.();
-          localStorage.removeItem('hpx:access-token');
-          localStorage.removeItem('hpx:active-department');
-        }
+        tokenStorage.clear();
         window.location.href = '/login';
       }
       return Promise.reject(new Error('Session expired. Please log in again.'));
