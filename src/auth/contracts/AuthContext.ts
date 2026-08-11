@@ -13,8 +13,14 @@ export type AuthState =
 export interface User {
   id: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
   name?: string;
+  phone?: string;
+  avatarUrl?: string;
   roles?: string[];
+  department?: { id: string; name: string } | null;
+  team?: { id: string; name: string } | null;
   permissionsVersion?: number;
 }
 
@@ -33,4 +39,7 @@ export interface AuthContextValue {
 
   /** Initiates the strict logout flow */
   logout: () => Promise<void>;
+
+  /** Re-fetches user profile from /users/me and updates state */
+  refreshUser: () => Promise<void>;
 }

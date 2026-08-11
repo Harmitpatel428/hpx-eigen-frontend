@@ -9,7 +9,7 @@
  * Design: Strict Apple-style light theme.
  * bg-white, text-slate-900, border-slate-200, focus:ring-slate-900
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Shield,
@@ -27,6 +27,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { permissionService } from '../../services/permission.service';
+import { userService } from '../../services/user.service';
 import type { Role, Department, Team, ScopeType, UserRoleAssignment } from '../../types';
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
@@ -182,10 +183,23 @@ function UserAssignmentTab() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignUserId, setAssignUserId] = useState('');
   const [assignScope, setAssignScope] = useState<ScopeType>('OWN');
+  const [filterDeptId, setFilterDeptId] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
     queryFn: () => permissionService.getRoles(),
+  });
+
+  const { data: allUsers = [], isLoading: allUsersLoading } = useQuery({
+    queryKey: ['all-users'],
+    queryFn: () => userService.listAll(),
+    enabled: showAssignModal,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => permissionService.getDepartments(),
   });
 
   const { data: roleUsers = [], isLoading: usersLoading } = useQuery({
@@ -194,6 +208,22 @@ function UserAssignmentTab() {
     enabled: !!selectedRoleId,
   });
 
+  const assignedUserIds = useMemo(
+    () => new Set(roleUsers.map((u: UserRoleAssignment) => u.id)),
+    [roleUsers]
+  );
+
+  const filteredUsers = useMemo(() => {
+    let list = allUsers.filter(u => !assignedUserIds.has(u.id) && u.status === 'ACTIVE');
+    if (filterDeptId) list = list.filter(u => u.departmentId === filterDeptId);
+    const q = userSearch.toLowerCase();
+    if (q) list = list.filter(u =>
+      u.email.toLowerCase().includes(q) ||
+      [u.firstName, u.lastName].filter(Boolean).join(' ').toLowerCase().includes(q)
+    );
+    return list;
+  }, [allUsers, assignedUserIds, filterDeptId, userSearch]);
+
   const assignMutation = useMutation({
     mutationFn: () => permissionService.assignUserRole(selectedRoleId, assignUserId, assignScope),
     onSuccess: () => {
@@ -201,6 +231,8 @@ function UserAssignmentTab() {
       setShowAssignModal(false);
       setAssignUserId('');
       setAssignScope('OWN');
+      setFilterDeptId('');
+      setUserSearch('');
     },
   });
 
@@ -209,6 +241,16 @@ function UserAssignmentTab() {
       permissionService.unassignUserRole(roleId, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['role-users', selectedRoleId] }),
   });
+
+  const selectedUser = allUsers.find(u => u.id === assignUserId);
+
+  function closeModal() {
+    setShowAssignModal(false);
+    setAssignUserId('');
+    setAssignScope('OWN');
+    setFilterDeptId('');
+    setUserSearch('');
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -239,24 +281,68 @@ function UserAssignmentTab() {
           alignItems: 'center', justifyContent: 'center', zIndex: 1000,
         }}>
           <div style={{
-            background: '#ffffff', borderRadius: 16, padding: 28, width: 440,
+            background: '#ffffff', borderRadius: 16, padding: 28, width: 480,
             boxShadow: '0 20px 60px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0',
           }}>
             <h2 style={{ fontSize: 17, fontWeight: 600, color: '#0f172a', marginBottom: 20 }}>
               Assign Role: {roles.find((r: Role) => r.id === selectedRoleId)?.name}
             </h2>
 
+            {/* Department filter */}
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
-              User ID
+              Filter by Department
+            </label>
+            <select
+              style={{ ...S.select, width: '100%', marginBottom: 12 }}
+              value={filterDeptId}
+              onChange={(e) => { setFilterDeptId(e.target.value); setAssignUserId(''); }}
+              aria-label="Filter users by department"
+            >
+              <option value="">All departments</option>
+              {departments.map((d: Department) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+
+            {/* User search */}
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
+              Select User
             </label>
             <input
-              style={{ ...S.input, marginBottom: 16 }}
-              placeholder="Paste user UUID…"
+              style={{ ...S.input, marginBottom: 6 }}
+              placeholder="Search by name or email…"
+              value={userSearch}
+              onChange={(e) => { setUserSearch(e.target.value); setAssignUserId(''); }}
+              aria-label="Search users"
+            />
+            <select
+              style={{ ...S.select, width: '100%', marginBottom: 4, height: 120 }}
+              size={5}
               value={assignUserId}
               onChange={(e) => setAssignUserId(e.target.value)}
-              aria-label="User ID for role assignment"
-            />
+              aria-label="Select user to assign"
+            >
+              {allUsersLoading && <option disabled>Loading users…</option>}
+              {!allUsersLoading && filteredUsers.length === 0 && (
+                <option disabled>No eligible users found</option>
+              )}
+              {filteredUsers.map(u => {
+                const displayName = [u.firstName, u.lastName].filter(Boolean).join(' ');
+                return (
+                  <option key={u.id} value={u.id}>
+                    {displayName ? `${displayName} (${u.email})` : u.email}
+                  </option>
+                );
+              })}
+            </select>
+            {selectedUser && (
+              <p style={{ fontSize: 12, color: '#7C3AED', marginBottom: 12, fontWeight: 500 }}>
+                Selected: {[selectedUser.firstName, selectedUser.lastName].filter(Boolean).join(' ') || selectedUser.email}
+              </p>
+            )}
+            {!selectedUser && <div style={{ marginBottom: 12 }} />}
 
+            {/* Access scope */}
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
               Access Scope
             </label>
@@ -278,13 +364,13 @@ function UserAssignmentTab() {
             </p>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button style={S.btn('ghost')} onClick={() => { setShowAssignModal(false); setAssignUserId(''); }}>
+              <button style={S.btn('ghost')} onClick={closeModal}>
                 Cancel
               </button>
               <button
                 style={S.btn('primary')}
                 onClick={() => assignMutation.mutate()}
-                disabled={!assignUserId.trim() || assignMutation.isPending}
+                disabled={!assignUserId || assignMutation.isPending}
               >
                 {assignMutation.isPending ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={14} />}
                 Assign
@@ -335,10 +421,12 @@ function UserAssignmentTab() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748b' }}>
-                      {u.teamId ? u.teamId.slice(0, 8) + '…' : '—'}
+                      {u.teamId ? (u as any).teamName || u.teamId.slice(0, 8) + '…' : '—'}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748b' }}>
-                      {u.departmentId ? u.departmentId.slice(0, 8) + '…' : '—'}
+                      {u.departmentId
+                        ? departments.find((d: Department) => d.id === u.departmentId)?.name || u.departmentId.slice(0, 8) + '…'
+                        : '—'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={S.scopeBadge(u.scopeType)}>{u.scopeType}</span>

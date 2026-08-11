@@ -1,27 +1,23 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DepartmentSwitcher } from '../ui/DepartmentSwitcher';
-import { Bell, Sun, Moon, LogOut, CheckCheck } from 'lucide-react';
+import { Bell, Sun, Moon, LogOut, CheckCheck, User, Settings, Shield } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../auth/public';
-import type { User } from '../../auth/public';
+import type { User as UserType } from '../../auth/public';
+import { api } from '../../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Notif {
-  id: number;
+interface Notification {
+  id: string;
+  type: string;
   title: string;
-  body: string;
-  time: string;
-  read: boolean;
+  message: string;
+  readAt: string | null;
+  createdAt: string;
+  actionUrl?: string;
 }
-
-// ── Seed notifications (replace with real API when endpoint exists) ───────────
-
-const SEED_NOTIFS: Notif[] = [
-  { id: 1, title: 'New lead assigned',        body: 'Infosys Consulting added to your pipeline',      time: '2m ago',  read: false },
-  { id: 2, title: 'Deal moved to Negotiation', body: 'Tata Consultancy Services — ₹18L opportunity', time: '14m ago', read: false },
-  { id: 3, title: 'Activity reminder',         body: 'Follow-up call with Rajesh Gupta due today',   time: '1h ago',  read: true  },
-];
 
 // ── Shared dropdown shell ──────────────────────────────────────────────────────
 
@@ -40,99 +36,123 @@ const Panel: React.FC<{ width?: number; children: React.ReactNode }> = ({ width 
   </div>
 );
 
+// ── Time formatting ───────────────────────────────────────────────────────────
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 // ── Notification panel ─────────────────────────────────────────────────────────
 
-const NotifPanel: React.FC<{ notifs: Notif[]; onMarkAll: () => void }> = ({ notifs, onMarkAll }) => {
-  const unread = notifs.filter(n => !n.read).length;
-
-  return (
-    <Panel width={340}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 16px 12px',
-        borderBottom: '1px solid var(--border-light)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-            Notifications
+const NotifPanel: React.FC<{
+  notifications: Notification[];
+  loading: boolean;
+  unreadCount: number;
+  onMarkAll: () => void;
+  onMarkRead: (id: string) => void;
+  onViewAll: () => void;
+}> = ({ notifications, loading, unreadCount, onMarkAll, onMarkRead, onViewAll }) => (
+  <Panel width={340}>
+    {/* Header */}
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '14px 16px 12px',
+      borderBottom: '1px solid var(--border-light)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+          Notifications
+        </span>
+        {unreadCount > 0 && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, lineHeight: 1,
+            background: '#7C3AED', color: '#fff',
+            padding: '2px 7px', borderRadius: 99,
+          }}>
+            {unreadCount} new
           </span>
-          {unread > 0 && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, lineHeight: 1,
-              background: '#7C3AED', color: '#fff',
-              padding: '2px 7px', borderRadius: 99,
-            }}>
-              {unread} new
-            </span>
-          )}
-        </div>
-        {unread > 0 && (
-          <button
-            onClick={onMarkAll}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#7C3AED', fontWeight: 500 }}
-          >
-            <CheckCheck size={13} strokeWidth={2} />
-            Mark all read
-          </button>
         )}
       </div>
-
-      {/* List */}
-      <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-        {notifs.length === 0 ? (
-          <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-            All caught up ✓
-          </div>
-        ) : (
-          notifs.map(n => (
-            <div
-              key={n.id}
-              className="topbar-notif-row"
-              style={{
-                display: 'flex', gap: 11, padding: '12px 16px',
-                borderBottom: '1px solid var(--border-light)',
-                background: n.read ? 'transparent' : 'rgba(124,58,237,0.05)',
-                cursor: 'pointer', transition: 'background 0.15s',
-              }}
-            >
-              <div style={{
-                width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                background: n.read ? 'var(--border-strong)' : '#7C3AED',
-              }} />
-              <div>
-                <p style={{ fontSize: 13, fontWeight: n.read ? 400 : 600, color: 'var(--text-primary)', marginBottom: 3 }}>
-                  {n.title}
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 5 }}>
-                  {n.body}
-                </p>
-                <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{n.time}</p>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Footer */}
-      <div style={{
-        padding: '10px 16px',
-        borderTop: '1px solid var(--border-light)',
-        textAlign: 'center',
-      }}>
-        <button style={{ fontSize: 12, color: '#7C3AED', fontWeight: 500 }}>
-          View all notifications →
+      {unreadCount > 0 && (
+        <button
+          onClick={onMarkAll}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#7C3AED', fontWeight: 500 }}
+        >
+          <CheckCheck size={13} strokeWidth={2} />
+          Mark all read
         </button>
-      </div>
-    </Panel>
-  );
-};
+      )}
+    </div>
+
+    {/* List */}
+    <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+      {loading ? (
+        <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+          Loading...
+        </div>
+      ) : notifications.length === 0 ? (
+        <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+          All caught up
+        </div>
+      ) : (
+        notifications.map(n => (
+          <div
+            key={n.id}
+            className="topbar-notif-row"
+            onClick={() => { if (!n.readAt) onMarkRead(n.id); }}
+            style={{
+              display: 'flex', gap: 11, padding: '12px 16px',
+              borderBottom: '1px solid var(--border-light)',
+              background: n.readAt ? 'transparent' : 'rgba(124,58,237,0.05)',
+              cursor: 'pointer', transition: 'background 0.15s',
+            }}
+          >
+            <div style={{
+              width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0,
+              background: n.readAt ? 'var(--border-strong)' : '#7C3AED',
+            }} />
+            <div>
+              <p style={{ fontSize: 13, fontWeight: n.readAt ? 400 : 600, color: 'var(--text-primary)', marginBottom: 3 }}>
+                {n.title}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 5 }}>
+                {n.message}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{timeAgo(n.createdAt)}</p>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+
+    {/* Footer */}
+    <div style={{
+      padding: '10px 16px',
+      borderTop: '1px solid var(--border-light)',
+      textAlign: 'center',
+    }}>
+      <button onClick={onViewAll} style={{ fontSize: 12, color: '#7C3AED', fontWeight: 500 }}>
+        View all notifications
+      </button>
+    </div>
+  </Panel>
+);
 
 // ── Profile panel ──────────────────────────────────────────────────────────────
 
-const ProfilePanel: React.FC<{ user: User | null; initials: string; onLogout: () => void }> = ({
-  user, initials, onLogout,
-}) => (
+const ProfilePanel: React.FC<{
+  user: UserType | null;
+  initials: string;
+  onLogout: () => void;
+  onNavigate: (path: string) => void;
+}> = ({ user, initials, onLogout, onNavigate }) => (
   <Panel width={236}>
     {/* User info */}
     <div style={{ padding: '14px', borderBottom: '1px solid var(--border-light)' }}>
@@ -173,8 +193,31 @@ const ProfilePanel: React.FC<{ user: User | null; initials: string; onLogout: ()
       </div>
     </div>
 
-    {/* Actions */}
+    {/* Navigation actions */}
     <div style={{ padding: 6 }}>
+      {[
+        { label: 'Profile', icon: User, path: '/settings', tab: 'profile' },
+        { label: 'Settings', icon: Settings, path: '/settings', tab: 'general' },
+        { label: 'Security', icon: Shield, path: '/settings', tab: 'security' },
+      ].map(item => (
+        <button
+          key={item.label}
+          onClick={() => onNavigate(item.path)}
+          className="topbar-logout-btn"
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 9,
+            padding: '9px 10px', borderRadius: 10,
+            fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
+            transition: 'background 0.15s',
+          }}
+        >
+          <item.icon size={14} strokeWidth={1.5} />
+          {item.label}
+        </button>
+      ))}
+
+      <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 10px' }} />
+
       <button
         onClick={onLogout}
         className="topbar-logout-btn"
@@ -197,25 +240,79 @@ const ProfilePanel: React.FC<{ user: User | null; initials: string; onLogout: ()
 export const TopBar: React.FC = () => {
   const { theme, toggle: toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const [notifOpen,   setNotifOpen]   = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notifs, setNotifs] = useState<Notif[]>(SEED_NOTIFS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
 
-  const notifRef   = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const unread = notifs.filter(n => !n.read).length;
-
   const initials = (() => {
-    if (user?.name) return user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+    if (user?.name && user.name !== user.email) return user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
     return (user?.email?.[0] ?? 'U').toUpperCase();
   })();
+
+  // Fetch unread count on mount and periodically
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await api.get('/api/v1/notifications/unread-count');
+      setUnreadCount((res.data as any)?.data?.count ?? 0);
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  // Fetch notifications when panel opens
+  const fetchNotifications = useCallback(async () => {
+    setNotifLoading(true);
+    try {
+      const res = await api.get('/api/v1/notifications', { params: { limit: 10 } });
+      setNotifications((res.data as any)?.data?.notifications ?? []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setNotifLoading(false);
+    }
+  }, []);
+
+  const handleNotifOpen = () => {
+    setNotifOpen(v => {
+      if (!v) fetchNotifications();
+      return !v;
+    });
+    setProfileOpen(false);
+  };
+
+  const handleMarkRead = async (id: string) => {
+    try {
+      await api.patch(`/api/v1/notifications/${id}/read`);
+      setNotifications(ns => ns.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
+      setUnreadCount(c => Math.max(0, c - 1));
+    } catch { /* silent */ }
+  };
+
+  const handleMarkAll = async () => {
+    try {
+      await api.patch('/api/v1/notifications/read-all');
+      setNotifications(ns => ns.map(n => ({ ...n, readAt: n.readAt || new Date().toISOString() })));
+      setUnreadCount(0);
+    } catch { /* silent */ }
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current   && !notifRef.current.contains(e.target   as Node)) setNotifOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     };
     document.addEventListener('mousedown', handler);
@@ -242,7 +339,7 @@ export const TopBar: React.FC = () => {
         >
           <span key={theme} className="topbar-theme-icon" style={{ display: 'flex' }}>
             {theme === 'dark'
-              ? <Sun  size={16} strokeWidth={1.5} />
+              ? <Sun size={16} strokeWidth={1.5} />
               : <Moon size={16} strokeWidth={1.5} />
             }
           </span>
@@ -251,13 +348,14 @@ export const TopBar: React.FC = () => {
         {/* ── Notification bell ── */}
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button
-            onClick={() => { setNotifOpen(v => !v); setProfileOpen(false); }}
+            onClick={handleNotifOpen}
             className="topbar-icon-btn"
             style={{ width: 36, height: 36, position: 'relative' }}
             title="Notifications"
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
           >
             <Bell size={16} strokeWidth={1.5} />
-            {unread > 0 && (
+            {unreadCount > 0 && (
               <span style={{
                 position: 'absolute', top: 8, right: 8,
                 width: 7, height: 7, borderRadius: '50%',
@@ -275,8 +373,12 @@ export const TopBar: React.FC = () => {
 
           {notifOpen && (
             <NotifPanel
-              notifs={notifs}
-              onMarkAll={() => setNotifs(ns => ns.map(n => ({ ...n, read: true })))}
+              notifications={notifications}
+              loading={notifLoading}
+              unreadCount={unreadCount}
+              onMarkAll={handleMarkAll}
+              onMarkRead={handleMarkRead}
+              onViewAll={() => { setNotifOpen(false); navigate('/settings'); }}
             />
           )}
         </div>
@@ -300,7 +402,12 @@ export const TopBar: React.FC = () => {
           </button>
 
           {profileOpen && (
-            <ProfilePanel user={user} initials={initials} onLogout={logout} />
+            <ProfilePanel
+              user={user}
+              initials={initials}
+              onLogout={logout}
+              onNavigate={(path) => { setProfileOpen(false); navigate(path); }}
+            />
           )}
         </div>
 

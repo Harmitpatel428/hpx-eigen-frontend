@@ -79,14 +79,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         fsm.current.transition('RESTORING');
-        const res = await api.get<User>('/api/v1/users/me');
+        const res = await api.get('/api/v1/users/me');
         if (isMounted) {
-          setUser(res.data);
-
-          // Seed permissions cache — unwrap { success, data: { permissions, roles } }
+          // Unwrap { success, data: { id, email, name, permissions, roles, ... } }
           const userData = (res.data as any)?.data ?? res.data;
           const perms = userData?.permissions || {};
           const roles = userData?.roles || [];
+
+          setUser(userData as User);
           permissionService.current.setManifest(perms, roles);
 
           fsm.current.transition('AUTHENTICATED');
@@ -225,6 +225,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await api.get('/api/v1/users/me');
+      const userData = (res.data as any)?.data ?? res.data;
+      const perms = userData?.permissions || {};
+      const roles = userData?.roles || [];
+      setUser(userData as User);
+      permissionService.current.setManifest(perms, roles);
+    } catch {
+      // Silently fail — user will see stale data until next refresh
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await api.post('/api/v1/auth/logout');
@@ -243,7 +256,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     permissions: permissionService.current,
     login,
     logout,
-  }), [status, user, login, logout]);
+    refreshUser,
+  }), [status, user, login, logout, refreshUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

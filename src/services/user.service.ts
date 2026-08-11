@@ -3,8 +3,11 @@ import { api } from './api';
 export interface TenantUser {
   id: string;
   email: string;
+  firstName?: string | null;
+  lastName?: string | null;
   status: string;
   createdAt: string;
+  departmentId?: string | null;
   userRoles?: { role: { id: string; name: string }; scopeType: string }[];
 }
 
