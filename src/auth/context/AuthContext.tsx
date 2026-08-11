@@ -135,6 +135,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await api.get('/api/v1/users/me');
+      const userData = (res.data as any)?.data ?? res.data;
+      const perms = userData?.permissions || {};
+      const roles = userData?.roles || [];
+      setUser(userData as User);
+      permissionService.current.setManifest(perms, roles);
+    } catch {
+      // Silently fail — user will see stale data until next refresh
+    }
+  }, []);
+
   // Permission Synchronization — refresh on tab focus and every 5 minutes
   useEffect(() => {
     const onVisible = () => {
@@ -239,19 +252,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.error('[AuthContext] Login error thrown to UI:', message);
       throw new Error(message);
-    }
-  }, []);
-
-  const refreshUser = useCallback(async () => {
-    try {
-      const res = await api.get('/api/v1/users/me');
-      const userData = (res.data as any)?.data ?? res.data;
-      const perms = userData?.permissions || {};
-      const roles = userData?.roles || [];
-      setUser(userData as User);
-      permissionService.current.setManifest(perms, roles);
-    } catch {
-      // Silently fail — user will see stale data until next refresh
     }
   }, []);
 
