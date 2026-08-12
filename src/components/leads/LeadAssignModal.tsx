@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { leadService } from '../../services/lead.service';
 import { userService, TenantUser } from '../../services/user.service';
 import { permissionService } from '../../services/permission.service';
+import { displayName } from '../../utils/crm';
 import type { Department } from '../../types';
 
 interface LeadAssignModalProps {
@@ -149,7 +150,7 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
                 {filtered.length === 0 ? (
                   <p style={{ fontSize: '0.8125rem', color: '#94a3b8', padding: '1rem', textAlign: 'center' }}>No active employees found.</p>
                 ) : filtered.map(u => {
-                  const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+                  const name = displayName(u);
                   const isSelected = selectedUser?.id === u.id;
                   return (
                     <button
@@ -224,7 +225,7 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
                     <span style={{ textAlign: 'right' }}>Final</span>
                   </div>
                   {preview.employees.map(emp => {
-                    const name = [emp.firstName, emp.lastName].filter(Boolean).join(' ') || emp.id;
+                    const name = displayName(emp);
                     return (
                       <div key={emp.id} style={{ display: 'grid', gridTemplateColumns: '1fr 64px 44px 64px', padding: '0.625rem 0.875rem', borderTop: '1px solid #f1f5f9', fontSize: '0.8125rem', alignItems: 'center' }}>
                         <span style={{ fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>

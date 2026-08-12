@@ -11,6 +11,11 @@ import { leadService } from '../services/lead.service';
 import { leadContactsService, LeadContact } from '../services/lead-contacts.service';
 import { customFieldService } from '../services/custom-field.service';
 import { crmSettingsService } from '../services/crm-settings.service';
+import { toast } from 'sonner';
+import { useAuth } from '../auth/context/AuthContext';
+import { saveOriginalTokensForImpersonation } from '../components/layout/ImpersonationBanner';
+import { tokenStorage } from '../auth/storage/tokenStorage';
+import { api } from '../services/api';
 import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadModal } from '../components/leads/LeadModal';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
@@ -96,6 +101,11 @@ function DeleteConfirm({ lead, onConfirm, onCancel, isDeleting }: DeleteConfirmP
 export function LeadsPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery]   = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [modal, setModal]               = useState<{ mode: 'create' | 'edit'; lead?: Lead } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -105,8 +115,8 @@ export function LeadsPage() {
   const [showAssignModal, setShowAssignModal] = useState(false);
 
   const { data: leadsResponse, isLoading } = useQuery({
-    queryKey: ['leads', { search: searchQuery }],
-    queryFn: () => leadService.findAll({ search: searchQuery || undefined, pageSize: 100 }),
+    queryKey: ['leads', { search: debouncedSearch }],
+    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, pageSize: 100 }),
     staleTime: 30_000,
   });
 
@@ -116,6 +126,27 @@ export function LeadsPage() {
     staleTime: 5 * 60 * 1000,
   });
   const companyFirst = crmSettings?.leadHeaderPreference === 'company';
+  const { permissions } = useAuth();
+  const canImpersonate = permissions.can('user:impersonate') && !!crmSettings?.allowImpersonation;
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+
+  const handleImpersonate = useCallback(async (ownerId: string) => {
+    if (impersonatingId) return;
+    setImpersonatingId(ownerId);
+    try {
+      const res = await api.post('/api/v1/sessions/impersonate', { targetUserId: ownerId });
+      saveOriginalTokensForImpersonation();
+      tokenStorage.set({
+        accessToken: res.data.accessToken,
+        sessionId: res.data.impersonationSessionId,
+        userId: res.data.impersonatedUser.id,
+      });
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to start impersonation.');
+      setImpersonatingId(null);
+    }
+  }, [impersonatingId]);
 
   const { data: fieldDefs = [] } = useQuery<CustomFieldDef[]>({
     queryKey: ['custom-fields'],
@@ -339,12 +370,25 @@ export function LeadsPage() {
 
                     {/* Assigned */}
                     <div style={{ overflow: 'hidden' }}>
-                      {lead.owner
-                        ? <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                      {lead.owner ? (
+                        canImpersonate ? (
+                          <button
+                            style={{ background: 'rgba(99,102,241,0.08)', border: 'none', borderRadius: 3, padding: '1px 5px', fontSize: 12, color: impersonatingId === lead.owner.id ? 'var(--text-tertiary)' : 'var(--color-primary,#6366f1)', fontWeight: 500, cursor: impersonatingId ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', textAlign: 'left', fontFamily: 'inherit', opacity: impersonatingId && impersonatingId !== lead.owner.id ? 0.5 : 1 }}
+                            title="View as this user"
+                            aria-label={`Enter account of ${[lead.owner.firstName, lead.owner.lastName].filter(Boolean).join(' ')}`}
+                            disabled={!!impersonatingId}
+                            onClick={(e) => { e.stopPropagation(); handleImpersonate(lead.owner!.id); }}
+                          >
+                            {impersonatingId === lead.owner.id ? 'Entering…' : ([lead.owner.firstName, lead.owner.lastName].filter(Boolean).join(' ') || '—')}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                             {[lead.owner.firstName, lead.owner.lastName].filter(Boolean).join(' ') || '—'}
                           </span>
-                        : <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
-                      }
+                        )
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
+                      )}
                     </div>
 
                     {/* Contact */}

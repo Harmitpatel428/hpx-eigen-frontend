@@ -1,3 +1,9 @@
+// Display name for a user: "First Last" > email > "Unknown"
+export function displayName(person: { firstName?: string | null; lastName?: string | null; email?: string | null }): string {
+  const name = [person.firstName, person.lastName].filter(Boolean).join(' ');
+  return name || person.email || 'Unknown';
+}
+
 // Currency formatting (INR) — UI display (no decimal)
 export function formatINR(value: number): string {
   return new Intl.NumberFormat('en-IN', {

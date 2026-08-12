@@ -111,24 +111,18 @@ export const leadService = {
     await api.delete(`/api/v1/leads/${id}`);
   },
 
-  // ponytail: sequential create loop — replace with POST /api/v1/leads/import (bulk) when backend adds it
   async importBatch(
     rows: CreateLeadPayload[],
     onProgress?: (done: number, total: number) => void,
   ): Promise<{ imported: number; skipped: number; errors: { row: number; message: string }[] }> {
-    let imported = 0;
-    const errors: { row: number; message: string }[] = [];
-    for (let i = 0; i < rows.length; i++) {
-      try {
-        await api.post<unknown>('/api/v1/leads', rows[i]);
-        imported++;
-      } catch (e: unknown) {
-        const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Unknown error';
-        errors.push({ row: i + 1, message: msg });
-      }
-      onProgress?.(i + 1, rows.length);
-    }
-    return { imported, skipped: 0, errors };
+    const { data } = await api.post<any>('/api/v1/leads/import', { rows, onDuplicates: 'skip' });
+    const result = data?.data ?? data;
+    onProgress?.(rows.length, rows.length);
+    return {
+      imported: result.imported ?? 0,
+      skipped: result.skipped ?? 0,
+      errors: result.errors ?? [],
+    };
   },
 
   async bulkDelete(ids: string[]): Promise<{ count: number }> {

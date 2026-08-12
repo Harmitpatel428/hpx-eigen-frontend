@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check } from 'lucide-react';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 import { MembersSettings } from './settings/MembersSettings';
 import { OrgManagement } from './settings/OrgManagement';
 import { useAuth } from '../auth/public';
 import { api } from '../services/api';
+import { crmSettingsService } from '../services/crm-settings.service';
 import { toast } from 'sonner';
 
 export function SettingsPage() {
@@ -88,6 +90,7 @@ export function SettingsPage() {
               <p className="type-body" style={{ marginBottom: 'var(--space-8)', color: 'var(--text-secondary)' }}>Organization-wide workspace settings.</p>
             </section>
             <LeadIdentitySettings />
+            <AdminAccountAccessSettings />
           </div>
         )}
 
@@ -276,6 +279,83 @@ function SecurityTab() {
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+// ─── Admin Account Access Settings ────────────────────────────────
+// Allows authorized admins (role:manage) to toggle whether admins can
+// click the assigned-person badge in the Leads table to enter a user's account.
+
+function AdminAccountAccessSettings() {
+  const qc = useQueryClient();
+  const { permissions } = useAuth();
+  const canManage = permissions.can('role:manage');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['crm-settings'],
+    queryFn: () => crmSettingsService.get(),
+    staleTime: Infinity,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (enabled: boolean) => crmSettingsService.setImpersonation(enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['crm-settings'] });
+      toast.success('Setting saved');
+    },
+    onError: () => toast.error('Failed to save setting'),
+  });
+
+  if (isLoading) return null;
+
+  const enabled = data?.allowImpersonation ?? false;
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+        Administrative Account Access
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+        When enabled, authorized administrators can click the assigned-person badge on a lead to view that user's account. All access events are audited. The API enforces this setting independently of the UI.
+      </p>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 16px', borderRadius: 10,
+        border: `1px solid ${enabled ? '#0f172a' : 'var(--border-medium)'}`,
+        background: enabled ? 'rgba(15,23,42,0.03)' : 'var(--bg-subtle)',
+        maxWidth: 420,
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+            {enabled ? 'Enabled' : 'Disabled'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            {enabled ? "Admins can enter any assigned user's account." : "Badge is visible but access is blocked server-side."}
+          </div>
+        </div>
+        {canManage && (
+          <button
+            onClick={() => mutation.mutate(!enabled)}
+            disabled={mutation.isPending}
+            style={{
+              position: 'relative', width: 44, height: 24, borderRadius: 999,
+              border: 'none', cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+              background: enabled ? '#0f172a' : '#cbd5e1',
+              transition: 'background 0.15s',
+              flexShrink: 0,
+            }}
+            aria-label={enabled ? 'Disable administrative account access' : 'Enable administrative account access'}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: enabled ? 23 : 3,
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
