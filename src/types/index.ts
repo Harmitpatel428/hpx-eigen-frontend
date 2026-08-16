@@ -82,7 +82,32 @@ export interface Session {
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
 export type LeadSource = 'WEBSITE' | 'REFERRAL' | 'COLD_CALL' | 'EMAIL_CAMPAIGN' | 'SOCIAL_MEDIA' | 'TRADE_SHOW' | 'OTHER';
-export type LeadStage = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
+export type LeadStage =
+  // Active selectable stages
+  | 'NEW' | 'QUALIFIED' | 'FOLLOW_UP' | 'CALL_BACK_REQUESTED' | 'CALL_NOT_RECEIVED' | 'OTHER' | 'DISQUALIFIED'
+  // Legacy read-only values — historical records only
+  | 'CONTACTED' | 'CONVERTED';
+
+export type LeadActivityType =
+  | 'STAGE_CHANGE' | 'FOLLOW_UP_SCHEDULED' | 'CALLBACK_SCHEDULED' | 'CALL_NOT_RECEIVED_EVENT'
+  | 'ASSIGNMENT_CHANGE' | 'LEAD_CREATED' | 'NOTE_ADDED' | 'OTHER';
+export type LeadActivityState = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface LeadActivity {
+  id: string;
+  tenantId: string;
+  leadId: string;
+  actorUserId: string | null;
+  actor?: { id: string; firstName: string | null; lastName: string | null } | null;
+  type: LeadActivityType;
+  state: LeadActivityState;
+  subject: string;
+  metadata: Record<string, unknown>;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 export type LeadPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type OpportunityStage = 'PROSPECTING' | 'QUALIFICATION' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
 export type ActivityType = 'CALL' | 'EMAIL' | 'MEETING' | 'NOTE' | 'TASK';
@@ -138,6 +163,7 @@ export interface Lead {
   status: LeadStatus;
   score: number | null;
   stage: LeadStage | null;
+  followUpDate: string | null;
   expectedValue: string | null; // Decimal comes back as string from JSON
   priority: LeadPriority;
   expectedCloseDate: string | null;

@@ -28,16 +28,22 @@ import { exportCSV } from '../utils/csv';
 // ============================================================================
 
 const STAGE_LABELS: Record<LeadStage, string> = {
-  NEW: 'New', CONTACTED: 'Contacted', QUALIFIED: 'Qualified',
-  DISQUALIFIED: 'Disqualified', CONVERTED: 'Converted',
+  NEW: 'New', QUALIFIED: 'Qualified', FOLLOW_UP: 'Follow-Up',
+  CALL_BACK_REQUESTED: 'Call Back Requested', CALL_NOT_RECEIVED: 'Call Not Received',
+  OTHER: 'Other', DISQUALIFIED: 'Disqualified',
+  CONTACTED: 'Contacted', CONVERTED: 'Converted',
 };
 
 const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }> = {
-  NEW:          { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
-  CONTACTED:    { bg: 'rgba(245,158,11,0.1)', text: '#d97706', dot: '#d97706' },
-  QUALIFIED:    { bg: 'rgba(16,185,129,0.1)', text: '#059669', dot: '#059669' },
-  DISQUALIFIED: { bg: 'rgba(239,68,68,0.1)',  text: '#dc2626', dot: '#dc2626' },
-  CONVERTED:    { bg: 'rgba(139,92,246,0.1)', text: '#7c3aed', dot: '#7c3aed' },
+  NEW:                 { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
+  QUALIFIED:           { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#059669' },
+  FOLLOW_UP:           { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
+  CALL_BACK_REQUESTED: { bg: 'rgba(249,115,22,0.1)',  text: '#ea580c', dot: '#ea580c' },
+  CALL_NOT_RECEIVED:   { bg: 'rgba(239,68,68,0.08)',  text: '#dc2626', dot: '#dc2626' },
+  OTHER:               { bg: 'rgba(107,114,128,0.1)', text: '#6b7280', dot: '#6b7280' },
+  DISQUALIFIED:        { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#dc2626' },
+  CONTACTED:           { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
+  CONVERTED:           { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
 };
 
 const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {

@@ -51,7 +51,8 @@ const leadSchema = z.object({
   phone: z.string().optional(),
   company: z.string().optional(),
   source: z.enum(['WEBSITE', 'REFERRAL', 'COLD_CALL', 'EMAIL_CAMPAIGN', 'SOCIAL_MEDIA', 'TRADE_SHOW', 'OTHER']).optional(),
-  stage: z.enum(['NEW', 'CONTACTED', 'QUALIFIED', 'DISQUALIFIED', 'CONVERTED']).optional(),
+  stage: z.enum(['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'OTHER', 'DISQUALIFIED']).optional(),
+  followUpDate: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   notes: z.string().optional(),
   country: z.string().optional(),
@@ -350,7 +351,8 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       phone: lead.phone ?? '',
       company: lead.company ?? '',
       source: lead.source,
-      stage: lead.stage ?? 'NEW',
+      stage: (lead.stage && ['NEW','QUALIFIED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED'].includes(lead.stage)) ? lead.stage as any : 'NEW',
+      followUpDate: lead.followUpDate ? lead.followUpDate.split('T')[0] : '',
       expectedCloseDate: lead.expectedCloseDate ? lead.expectedCloseDate.split('T')[0] : '',
       notes: lead.notes ?? '',
       country: lead.country ?? '',
@@ -385,6 +387,9 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const watchedStage = watch('stage');
+  const FOLLOW_UP_STAGES = new Set(['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
 
   // Duplicate detection
   const watchedEmail   = watch('email');
@@ -426,6 +431,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       company: values.company || undefined,
       source: values.source,
       stage: values.stage,
+      followUpDate: values.followUpDate || undefined,
       priority,
       expectedCloseDate: values.expectedCloseDate || undefined,
       ...locationFields,
@@ -503,10 +509,12 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
               <Field label="Stage">
                 <select {...register('stage')} className={inp} style={{ cursor: 'pointer' }}>
                   <option value="NEW">New</option>
-                  <option value="CONTACTED">Contacted</option>
                   <option value="QUALIFIED">Qualified</option>
+                  <option value="FOLLOW_UP">Follow-Up</option>
+                  <option value="CALL_BACK_REQUESTED">Call Back Requested</option>
+                  <option value="CALL_NOT_RECEIVED">Call Not Received</option>
+                  <option value="OTHER">Other</option>
                   <option value="DISQUALIFIED">Disqualified</option>
-                  <option value="CONVERTED">Converted</option>
                 </select>
               </Field>
               <Field label="Source">
@@ -521,6 +529,15 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                 </select>
               </Field>
             </div>
+
+            {/* Follow-Up Date — required for FOLLOW_UP / CALL_BACK_REQUESTED / CALL_NOT_RECEIVED */}
+            {watchedStage && FOLLOW_UP_STAGES.has(watchedStage) && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <Field label="Follow-Up Date *" error={errors.followUpDate?.message}>
+                  <input type="date" {...register('followUpDate', { required: 'Follow-up date is required for this stage.' })} className={inp} />
+                </Field>
+              </div>
+            )}
 
             {/* Priority */}
             <div style={{ marginBottom: '0.75rem' }}>

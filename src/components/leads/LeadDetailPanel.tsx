@@ -3,11 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
-  MessageCircle, Copy, Check, Clock, User,
+  MessageCircle, Copy, Check, Clock, User, Activity,
 } from 'lucide-react';
-import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../../types';
+import type { Lead, LeadStage, LeadPriority, CustomFieldDef, LeadActivity } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
 import { leadNotesService, type NotesSummary } from '../../services/lead-notes.service';
+import { listLeadActivities } from '../../services/lead-activities.service';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
 import { crmSettingsService } from '../../services/crm-settings.service';
@@ -15,16 +16,24 @@ import { crmSettingsService } from '../../services/crm-settings.service';
 // ── constants ─────────────────────────────────────────────────────────────────
 
 const STAGE_LABELS: Record<LeadStage, string> = {
-  NEW: 'New', CONTACTED: 'Contacted', QUALIFIED: 'Qualified',
-  DISQUALIFIED: 'Disqualified', CONVERTED: 'Converted',
+  NEW: 'New', QUALIFIED: 'Qualified', FOLLOW_UP: 'Follow-Up',
+  CALL_BACK_REQUESTED: 'Call Back Requested', CALL_NOT_RECEIVED: 'Call Not Received',
+  OTHER: 'Other', DISQUALIFIED: 'Disqualified',
+  // legacy read-only
+  CONTACTED: 'Contacted', CONVERTED: 'Converted',
 };
 
 const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }> = {
-  NEW:          { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
-  CONTACTED:    { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
-  QUALIFIED:    { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#059669' },
-  DISQUALIFIED: { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#dc2626' },
-  CONVERTED:    { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
+  NEW:                  { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
+  QUALIFIED:            { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#059669' },
+  FOLLOW_UP:            { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
+  CALL_BACK_REQUESTED:  { bg: 'rgba(249,115,22,0.1)',  text: '#ea580c', dot: '#ea580c' },
+  CALL_NOT_RECEIVED:    { bg: 'rgba(239,68,68,0.08)',  text: '#dc2626', dot: '#dc2626' },
+  OTHER:                { bg: 'rgba(107,114,128,0.1)', text: '#6b7280', dot: '#6b7280' },
+  DISQUALIFIED:         { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#dc2626' },
+  // legacy read-only
+  CONTACTED:            { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
+  CONVERTED:            { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
 };
 
 const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {
@@ -34,7 +43,7 @@ const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {
   LOW:      { color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
 };
 
-const PIPELINE: LeadStage[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED'];
+const PIPELINE: LeadStage[] = ['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'DISQUALIFIED'];
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #1e3a5f, #2563eb)',
@@ -339,6 +348,95 @@ function CopyBtn({ text, tooltip }: { text: string; tooltip: string }) {
     >
       {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} />}
     </button>
+  );
+}
+
+// ── Activity type display config ──────────────────────────────────────────────
+
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  STAGE_CHANGE:           'Stage Changed',
+  FOLLOW_UP_SCHEDULED:    'Follow-Up Scheduled',
+  CALLBACK_SCHEDULED:     'Callback Scheduled',
+  CALL_NOT_RECEIVED_EVENT:'Call Not Received',
+  ASSIGNMENT_CHANGE:      'Lead Assigned',
+  LEAD_CREATED:           'Lead Created',
+  NOTE_ADDED:             'Note Added',
+  OTHER:                  'Activity',
+};
+
+function TimelineSection({ leadId }: { leadId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['lead-activities', leadId],
+    queryFn: () => listLeadActivities(leadId, 1, 30),
+    staleTime: 30_000,
+  });
+
+  const activities: LeadActivity[] = data?.data ?? [];
+  const now = Date.now();
+  const upcoming = activities.filter(a => a.state === 'PENDING' && a.scheduledAt && new Date(a.scheduledAt).getTime() > now);
+  const historical = activities.filter(a => !upcoming.includes(a));
+
+  if (isLoading) return (
+    <div style={{ padding: '1rem 0', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
+      Loading timeline…
+    </div>
+  );
+
+  if (!activities.length) return (
+    <div style={{ padding: '0.5rem 0', fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+      No timeline events yet.
+    </div>
+  );
+
+  const renderActivity = (a: LeadActivity) => {
+    const label = ACTIVITY_TYPE_LABELS[a.type] ?? a.type;
+    const meta = a.metadata as any;
+    let detail = '';
+    if (a.type === 'STAGE_CHANGE' && meta.from && meta.to) {
+      detail = `${STAGE_LABELS[meta.from as LeadStage] ?? meta.from} → ${STAGE_LABELS[meta.to as LeadStage] ?? meta.to}`;
+    } else if (a.type === 'ASSIGNMENT_CHANGE') {
+      detail = a.subject;
+    } else if (a.scheduledAt) {
+      detail = fmtDate(a.scheduledAt);
+    }
+    const actor = a.actor ? `${a.actor.firstName ?? ''} ${a.actor.lastName ?? ''}`.trim() : null;
+    const ts = a.completedAt ?? a.scheduledAt ?? a.createdAt;
+    return (
+      <div key={a.id} style={{ display: 'flex', gap: 10, paddingBottom: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 20 }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%', marginTop: 3, flexShrink: 0,
+            background: a.state === 'PENDING' ? '#f59e0b' : 'var(--text-tertiary)',
+          }} />
+          <div style={{ flex: 1, width: 1, background: 'var(--border-light)', minHeight: 12 }} />
+        </div>
+        <div style={{ flex: 1, paddingBottom: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', lineHeight: '1.3' }}>{label}</div>
+          {detail && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>{detail}</div>}
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, display: 'flex', gap: 6 }}>
+            <span>{fmtDate(ts)}</span>
+            {actor && <span>· {actor}</span>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ padding: '0.25rem 0' }}>
+      {upcoming.length > 0 && (
+        <>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Upcoming</div>
+          {upcoming.map(renderActivity)}
+        </>
+      )}
+      {historical.length > 0 && (
+        <>
+          {upcoming.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, marginTop: 4 }}>History</div>}
+          {historical.map(renderActivity)}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -749,55 +847,52 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
           {/* Quick Actions */}
           <Section label="Quick Actions" delay={100}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               <button
                 className="ldp-act"
                 onClick={onEdit}
                 aria-label="Edit lead"
                 style={{
-                  flex: 1, height: 38, borderRadius: 10,
+                  flex: 1, height: 34, borderRadius: 8,
                   border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
                   color: 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <Edit2 size={14} /> Edit
+                <Edit2 size={13} /> Edit
               </button>
               <button
                 className="ldp-act ldp-hdr-danger"
                 onClick={onDelete}
                 aria-label="Delete lead"
                 style={{
-                  flex: 1, height: 38, borderRadius: 10,
+                  flex: 1, height: 34, borderRadius: 8,
                   border: '1px solid rgba(220,38,38,0.12)', background: 'rgba(220,38,38,0.03)',
                   color: '#dc2626',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <Trash2 size={14} /> Delete
+                <Trash2 size={13} /> Delete
               </button>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="ldp-act ldp-wa"
                 onClick={() => contactPhone && window.open(whatsappUrl(contactPhone), '_blank')}
                 disabled={!contactPhone}
                 aria-label="Send WhatsApp"
                 style={{
-                  flex: 1, height: 38, borderRadius: 10,
+                  flex: 1, height: 34, borderRadius: 8,
                   border: contactPhone ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
                   background: contactPhone ? 'rgba(34,197,94,0.05)' : 'var(--bg-subtle)',
                   color: contactPhone ? '#16a34a' : 'var(--text-tertiary)',
-                  fontSize: 13, fontWeight: 600,
+                  fontSize: 11, fontWeight: 600,
                   cursor: contactPhone ? 'pointer' : 'not-allowed',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <MessageCircle size={15} /> WhatsApp
+                <MessageCircle size={13} /> WA
               </button>
-
               <button
                 className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}
                 onClick={() => {
@@ -809,18 +904,15 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 }}
                 aria-label={leadCopied ? 'Copied!' : 'Copy lead details'}
                 style={{
-                  flex: 1, height: 38, borderRadius: 10,
+                  flex: 1, height: 34, borderRadius: 8,
                   border: `1px solid ${leadCopied ? 'rgba(5,150,105,0.3)' : 'var(--border-medium)'}`,
                   background: leadCopied ? 'rgba(5,150,105,0.06)' : 'var(--bg-app)',
                   color: leadCopied ? '#059669' : 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                {leadCopied
-                  ? <><Check size={15} strokeWidth={2.5} /> Copied!</>
-                  : <><Copy size={15} /> Copy Lead</>
-                }
+                {leadCopied ? <><Check size={13} strokeWidth={2.5} /> Copied</> : <><Copy size={13} /> Copy</>}
               </button>
             </div>
           </Section>
@@ -857,6 +949,14 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               </Section>
             </>
           )}
+
+          {/* Timeline */}
+          <>
+            {divider}
+            <Section label="Timeline" delay={150}>
+              <TimelineSection leadId={lead.id} />
+            </Section>
+          </>
 
           {/* Metadata */}
           <div className="ldp-section" style={{

@@ -11,6 +11,7 @@ export interface CreateLeadPayload {
   notes?: string;
   score?: number;
   stage?: LeadStage;
+  followUpDate?: string | null;
   expectedValue?: number | string;
   priority?: LeadPriority;
   expectedCloseDate?: string;
@@ -35,6 +36,7 @@ export interface UpdateLeadPayload {
   notes?: string;
   score?: number;
   stage?: LeadStage;
+  followUpDate?: string | null;
   expectedValue?: number | string;
   priority?: LeadPriority;
   expectedCloseDate?: string | null;
