@@ -3,14 +3,14 @@ import { api } from './api';
 export type LeadHeaderPreference = 'name' | 'company';
 
 export interface CrmSettings {
-  leadHeaderPreference: LeadHeaderPreference | null;
+  leadHeaderPreference: LeadHeaderPreference;
   allowImpersonation: boolean;
 }
 
 export const crmSettingsService = {
   async get(): Promise<CrmSettings> {
-    const { data } = await api.get<CrmSettings>('/api/v1/settings/crm');
-    return { leadHeaderPreference: data.leadHeaderPreference ?? null, allowImpersonation: data.allowImpersonation ?? false };
+    const { data } = await api.get<{ leadHeaderPreference: LeadHeaderPreference | null; allowImpersonation: boolean }>('/api/v1/settings/crm');
+    return { leadHeaderPreference: data.leadHeaderPreference ?? 'name', allowImpersonation: data.allowImpersonation ?? false };
   },
   async setLeadHeaderPreference(preference: LeadHeaderPreference): Promise<CrmSettings> {
     const { data } = await api.post<{ success: boolean; leadHeaderPreference: LeadHeaderPreference }>(

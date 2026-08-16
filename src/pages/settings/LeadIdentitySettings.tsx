@@ -17,16 +17,16 @@ export function LeadIdentitySettings() {
   const { data, isLoading } = useQuery({
     queryKey: ['crm-settings'],
     queryFn: () => crmSettingsService.get(),
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const pref = (data?.leadHeaderPreference ?? 'name') as LeadHeaderPreference;
+  const pref = data?.leadHeaderPreference ?? 'name';
   const [selected, setSelected] = useState<LeadHeaderPreference>(pref);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setSelected((data?.leadHeaderPreference ?? 'name') as LeadHeaderPreference);
+    setSelected(data?.leadHeaderPreference ?? 'name');
   }, [data?.leadHeaderPreference]);
 
   const mutation = useMutation({
