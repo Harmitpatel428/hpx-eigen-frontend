@@ -10,7 +10,7 @@ import type { LeadSource, LeadStage, LeadPriority, CustomFieldDef } from '../../
 
 interface RowError { row: number; column: string; message: string; suggestedFix?: string }
 
-const VALID_STAGES  = new Set(['NEW','CONTACTED','QUALIFIED','DISQUALIFIED','CONVERTED']);
+const VALID_STAGES  = new Set(['NEW','QUALIFIED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED','CONTACTED','CONVERTED']);
 const VALID_SOURCES = new Set(['WEBSITE','REFERRAL','COLD_CALL','EMAIL_CAMPAIGN','SOCIAL_MEDIA','TRADE_SHOW','OTHER']);
 const VALID_PRIOS   = new Set(['CRITICAL','HIGH','MEDIUM','LOW']);
 
@@ -36,6 +36,12 @@ function validateRows(rows: Record<string, string>[], map: Record<string, string
     const stage = get('stage');
     if (stage && !VALID_STAGES.has(stage.toUpperCase())) {
       errors.push({ row: n, column: 'stage', message: `Unknown stage: "${stage}".`, suggestedFix: `Use one of: ${[...VALID_STAGES].join(', ')}.` });
+    }
+
+    const FOLLOW_UP_REQUIRED = new Set(['FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED']);
+    const followUpDate = get('followUpDate');
+    if (stage && FOLLOW_UP_REQUIRED.has(stage.toUpperCase()) && !followUpDate) {
+      errors.push({ row: n, column: 'followUpDate', message: `Stage "${stage}" requires a Follow-Up Date.`, suggestedFix: 'Add a followUpDate column with a date value.' });
     }
 
     const source = get('source');
@@ -115,6 +121,7 @@ function rowToPayload(row: Record<string, string>, map: Record<string, string>):
     postalCode: get('postalCode') || undefined,
     freeformAddress: get('freeformAddress') || undefined,
     notes:   get('notes')   || undefined,
+    followUpDate: parseDateValue(get('followUpDate')) || undefined,
     expectedCloseDate: parseDateValue(get('expectedCloseDate')),
     ownerId: get('ownerId') || undefined,
     score: scoreStr ? Number(scoreStr) : undefined,
@@ -335,7 +342,7 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
               <div style={{ marginTop: '1.5rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Expected columns (in any order, any capitalization):</p>
                 <p style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', lineHeight: 1.6 }}>
-                  firstName, lastName, email, phone, company, stage, source, priority, score, expectedValue, tags, country, state, city, area, postalCode, notes, expectedCloseDate
+                  firstName, lastName, email, phone, company, stage, source, priority, score, expectedValue, followUpDate, tags, country, state, city, area, postalCode, notes, expectedCloseDate
                 </p>
                 {fieldDefs.length > 0 && (
                   <p style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', lineHeight: 1.6, marginTop: 4 }}>

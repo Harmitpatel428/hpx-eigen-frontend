@@ -75,8 +75,11 @@ api.interceptors.response.use(
       if (!isPublicAuthRoute) {
         tokenStorage.clear();
         window.location.href = '/login';
+        return Promise.reject(new Error('Session expired. Please log in again.'));
       }
-      return Promise.reject(new Error('Session expired. Please log in again.'));
+      // On auth routes (login, signup, etc.) the 401 means wrong credentials —
+      // pass the original error through so the caller can read the response body.
+      return Promise.reject(error);
     }
 
     if (error.response?.status === 403) {

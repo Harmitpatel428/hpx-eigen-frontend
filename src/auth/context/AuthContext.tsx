@@ -239,6 +239,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let message = 'Login failed. Please try again.';
       if (error?.response?.data?.error?.message) {
         message = error.response.data.error.message;
+      } else if (error?.response?.data?.message) {
+        message = error.response.data.message;
       } else if (error?.message) {
         message = error.message;
       }
