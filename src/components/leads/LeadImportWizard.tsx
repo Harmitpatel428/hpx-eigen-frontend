@@ -10,9 +10,10 @@ import type { LeadSource, LeadStage, LeadPriority, CustomFieldDef } from '../../
 
 interface RowError { row: number; column: string; message: string; suggestedFix?: string }
 
-const VALID_STAGES  = new Set(['NEW','QUALIFIED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED','CONTACTED','CONVERTED']);
-const VALID_SOURCES = new Set(['WEBSITE','REFERRAL','COLD_CALL','EMAIL_CAMPAIGN','SOCIAL_MEDIA','TRADE_SHOW','OTHER']);
-const VALID_PRIOS   = new Set(['CRITICAL','HIGH','MEDIUM','LOW']);
+const VALID_STAGES   = new Set(['NEW','QUALIFIED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED']);
+const LEGACY_STAGES  = new Set(['CONTACTED','CONVERTED']);
+const VALID_SOURCES  = new Set(['WEBSITE','REFERRAL','COLD_CALL','EMAIL_CAMPAIGN','SOCIAL_MEDIA','TRADE_SHOW','OTHER']);
+const VALID_PRIOS    = new Set(['CRITICAL','HIGH','MEDIUM','LOW']);
 
 function validateRows(rows: Record<string, string>[], map: Record<string, string>): RowError[] {
   const errors: RowError[] = [];
@@ -34,8 +35,13 @@ function validateRows(rows: Record<string, string>[], map: Record<string, string
     }
 
     const stage = get('stage');
-    if (stage && !VALID_STAGES.has(stage.toUpperCase())) {
-      errors.push({ row: n, column: 'stage', message: `Unknown stage: "${stage}".`, suggestedFix: `Use one of: ${[...VALID_STAGES].join(', ')}.` });
+    if (stage) {
+      const upper = stage.toUpperCase();
+      if (LEGACY_STAGES.has(upper)) {
+        errors.push({ row: n, column: 'stage', message: `Stage "${stage}" is a legacy stage and is no longer importable.`, suggestedFix: 'Remove this value or use a current stage. The record remains readable in the system.' });
+      } else if (!VALID_STAGES.has(upper)) {
+        errors.push({ row: n, column: 'stage', message: `Unknown stage: "${stage}".`, suggestedFix: `Use one of: ${[...VALID_STAGES].join(', ')}.` });
+      }
     }
 
     const FOLLOW_UP_REQUIRED = new Set(['FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED']);
@@ -218,13 +224,22 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
     if (!parsed) return;
     setStep(3);
     setProgress(0);
-    const payloads = parsed.rows.map(r => rowToPayload(r, columnMap)).filter(Boolean) as CreateLeadPayload[];
-    const result = await leadService.importBatch(payloads, (done, total) => {
-      setProgress(Math.round((done / total) * 100));
-    });
-    setImportResult({ imported: result.imported, skipped: result.errors.length });
-    setImportErrors(result.errors);
-    queryClient.invalidateQueries({ queryKey: ['leads'] });
+    const invalidRowNums = new Set(validationErrors.map(e => e.row));
+    const payloads = parsed.rows
+      .map((r, i) => invalidRowNums.has(i + 1) ? null : rowToPayload(r, columnMap))
+      .filter(Boolean) as CreateLeadPayload[];
+    try {
+      const result = await leadService.importBatch(payloads, (done, total) => {
+        setProgress(Math.round((done / total) * 100));
+      });
+      setImportResult({ imported: result.imported, skipped: result.skipped });
+      setImportErrors(result.errors);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message ?? 'Import failed. Please try again.';
+      setImportErrors([{ row: 0, message: msg }]);
+      setImportResult({ imported: 0, skipped: 0 });
+    }
     setStep(4);
   };
 
@@ -516,7 +531,7 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
               <div style={{ display: 'inline-grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: '1.5rem' }}>
                 {[
                   { label: 'Imported', value: importResult.imported, color: '#059669', bg: 'rgba(5,150,105,0.08)' },
-                  { label: 'Skipped', value: importResult.skipped + importErrors.length, color: '#d97706', bg: 'rgba(245,158,11,0.08)' },
+                  { label: 'Skipped', value: importResult.skipped, color: '#d97706', bg: 'rgba(245,158,11,0.08)' },
                   { label: 'Errors', value: importErrors.length, color: importErrors.length > 0 ? '#dc2626' : '#059669', bg: importErrors.length > 0 ? 'rgba(220,38,38,0.06)' : 'rgba(5,150,105,0.06)' },
                 ].map(s => (
                   <div key={s.label} style={{ background: s.bg, borderRadius: '0.5rem', padding: '1rem 1.25rem', minWidth: 100 }}>

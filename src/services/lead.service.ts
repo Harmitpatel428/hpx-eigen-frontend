@@ -116,8 +116,9 @@ export const leadService = {
   async importBatch(
     rows: CreateLeadPayload[],
     onProgress?: (done: number, total: number) => void,
+    onDuplicates: 'skip' | 'overwrite' = 'skip',
   ): Promise<{ imported: number; skipped: number; errors: { row: number; message: string }[] }> {
-    const { data } = await api.post<any>('/api/v1/leads/import', { rows, onDuplicates: 'skip' });
+    const { data } = await api.post<any>('/api/v1/leads/import', { rows, onDuplicates });
     const result = data?.data ?? data;
     onProgress?.(rows.length, rows.length);
     return {
