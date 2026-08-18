@@ -244,7 +244,7 @@ const CSS = `
 // ── stage selector ────────────────────────────────────────────────────────────
 
 // Stages that require an explicit follow-up date before saving.
-const DATE_REQUIRED = new Set<LeadStage>(['CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'DISQUALIFIED']);
+const DATE_REQUIRED = new Set<LeadStage>(['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
 
 function LeadStageSelector({
   currentStage, onSelect,
@@ -743,33 +743,43 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             </div>
           </div>
 
-          {/* stage + medium cards */}
+          {/* Row 1: Stage + Follow-up date */}
           <div style={{ display: 'flex', gap: 12, paddingTop: 12, paddingBottom: 2 }}>
             <div>
               <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} />
               <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
             </div>
-            <div>
-              <span style={{
-                display: 'inline-block', padding: '3px 9px', borderRadius: 5,
-                background: 'var(--bg-muted)', color: 'var(--text-secondary)',
-                fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
-              }}>
-                {(lead.source ?? 'OTHER').replace(/_/g, ' ')}
-              </span>
-              <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Medium</div>
-            </div>
+            {lead.followUpDate && (
+              <div>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 9px', borderRadius: 5,
+                  background: 'rgba(245,158,11,0.1)', color: '#d97706',
+                  fontSize: 10, fontWeight: 600,
+                }}>
+                  <Calendar size={9} />
+                  {fmtDate(lead.followUpDate)}
+                </span>
+                <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Follow-up</div>
+              </div>
+            )}
           </div>
 
-          {/* badges */}
+          {/* Row 2: Priority + Source */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', paddingTop: 2 }}>
             <span style={{
               padding: '3px 9px', borderRadius: 5,
               background: priority.bg, color: priority.color,
-              fontSize: 10, fontWeight: 700,
-              letterSpacing: '0.05em', textTransform: 'uppercase',
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
             }}>
               {lead.priority ?? 'MEDIUM'}
+            </span>
+            <span style={{
+              padding: '3px 9px', borderRadius: 5,
+              background: 'var(--bg-muted)', color: 'var(--text-secondary)',
+              fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+            }}>
+              {(lead.source ?? 'OTHER').replace(/_/g, ' ')}
             </span>
             {lead.expectedCloseDate && (
               <span style={{
@@ -968,14 +978,13 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               <button
                 className="ldp-act ldp-wa"
                 onClick={() => {
-                  if (waChannels.length > 1) { setWaOpen(true); return; }
                   const dest = primaryWaChannel
                     ? buildWaUrl(primaryWaChannel)
                     : contactPhone ? whatsappUrl(contactPhone) : null;
                   if (dest) window.open(dest, '_blank');
                 }}
                 disabled={!primaryWaChannel && !contactPhone}
-                aria-label={waChannels.length > 1 ? 'Choose WhatsApp channel' : 'Send WhatsApp'}
+                aria-label="Send WhatsApp"
                 style={{
                   flex: 1, height: 34, borderRadius: 8,
                   border: (primaryWaChannel || contactPhone) ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
@@ -986,7 +995,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <MessageCircle size={13} /> WA{waChannels.length > 1 ? ` (${waChannels.length})` : ''}
+                <MessageCircle size={13} /> WA
               </button>
               <button
                 className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}
