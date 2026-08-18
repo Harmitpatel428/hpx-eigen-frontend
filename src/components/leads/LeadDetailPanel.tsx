@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, memo, Fragment } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useRef, memo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
-  MessageCircle, Copy, Check, Clock, User, Activity,
+  MessageCircle, Copy, Check, Clock, User, Activity, ChevronDown,
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadPriority, CustomFieldDef, LeadActivity } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
@@ -12,6 +12,9 @@ import { listLeadActivities } from '../../services/lead-activities.service';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
 import { crmSettingsService } from '../../services/crm-settings.service';
+import { leadService } from '../../services/lead.service';
+import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
+import { LeadWaChannelsModal } from './LeadWaChannelsModal';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -111,10 +114,6 @@ const CSS = `
   from { opacity: 0; transform: translate3d(0, 5px, 0); }
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
-@keyframes ldp-stagePulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.5; }
-}
 @keyframes ldp-copyFlash {
   0%   { box-shadow: 0 0 0 0 rgba(5,150,105,0.3); }
   50%  { box-shadow: 0 0 0 6px rgba(5,150,105,0); }
@@ -123,9 +122,6 @@ const CSS = `
 
 .ldp-section {
   animation: ldp-settle 220ms var(--ldp-ease) both;
-}
-.ldp-stage-active {
-  animation: ldp-stagePulse 2.8s ease-in-out infinite;
 }
 .ldp-copy-flash {
   animation: ldp-copyFlash 0.5s var(--ldp-ease) both;
@@ -238,7 +234,6 @@ const CSS = `
 /* ── reduced motion ────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .ldp-section { animation: none !important; opacity: 1 !important; }
-  .ldp-stage-active { animation: none !important; }
   .ldp-copy-flash { animation: none !important; }
   .ldp-act, .ldp-card, .ldp-hdr-btn, .ldp-row {
     transition-duration: 0ms !important;
@@ -246,76 +241,120 @@ const CSS = `
 }
 `;
 
-// ── stage pipeline stepper ────────────────────────────────────────────────────
+// ── stage selector ────────────────────────────────────────────────────────────
 
-function StagePipeline({ current }: { current: LeadStage }) {
-  const idx = PIPELINE.indexOf(current);
-  const disq = current === 'DISQUALIFIED';
+function LeadStageSelector({
+  currentStage, onSelect, variant = 'badge',
+}: {
+  currentStage: LeadStage;
+  onSelect: (stage: LeadStage) => void;
+  variant?: 'badge' | 'action-button' | 'text-button';
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const sc = STAGE_COLORS[currentStage];
+
+  let trigger: React.ReactNode;
+  let wrapperStyle: React.CSSProperties;
+
+  if (variant === 'badge') {
+    wrapperStyle = { position: 'relative', display: 'inline-block' };
+    trigger = (
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+          padding: '3px 9px', borderRadius: 5, border: 'none',
+          background: sc.bg, color: sc.text,
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+        }}
+      >
+        {STAGE_LABELS[currentStage]}
+        <ChevronDown size={9} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+      </button>
+    );
+  } else if (variant === 'action-button') {
+    wrapperStyle = { flex: 1, position: 'relative' };
+    trigger = (
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="ldp-act"
+        style={{
+          width: '100%', height: 34, borderRadius: 8,
+          border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+          color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+        }}
+      >
+        <Activity size={13} /> Status
+      </button>
+    );
+  } else {
+    wrapperStyle = { position: 'relative', display: 'inline-block' };
+    trigger = (
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-tertiary)', fontSize: 11, fontWeight: 600, padding: 0,
+        }}
+      >
+        <ChevronDown size={11} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+        Change Stage
+      </button>
+    );
+  }
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start',
-      padding: '14px 4px 6px', position: 'relative',
-      opacity: disq ? 0.3 : 1,
-      transition: 'opacity 0.25s cubic-bezier(0.2,0,0,1)',
-    }}>
-      {disq && (
+    <div ref={ref} style={wrapperStyle}>
+      {trigger}
+      {open && (
         <div style={{
-          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-          background: STAGE_COLORS.DISQUALIFIED.bg, color: STAGE_COLORS.DISQUALIFIED.text,
-          fontSize: 9, fontWeight: 700, padding: '2px 10px', borderRadius: 4,
-          letterSpacing: '0.06em', zIndex: 2,
+          position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 200,
+          background: 'var(--bg-app)', border: '1px solid var(--border-medium)',
+          borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          minWidth: 190, overflow: 'hidden',
         }}>
-          DISQUALIFIED
+          <div style={{
+            padding: '8px 12px 4px', fontSize: 10, fontWeight: 700,
+            color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase',
+          }}>
+            Stage
+          </div>
+          {PIPELINE.map(stage => {
+            const s = STAGE_COLORS[stage];
+            const active = stage === currentStage;
+            return (
+              <button
+                key={stage}
+                onClick={() => { onSelect(stage); setOpen(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', padding: '7px 12px', border: 'none', textAlign: 'left',
+                  background: active ? s.bg : 'transparent', cursor: 'pointer',
+                  color: active ? s.text : 'var(--text-primary)',
+                  fontSize: 12, fontWeight: active ? 700 : 450,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
+                {STAGE_LABELS[stage]}
+                {active && <Check size={11} style={{ marginLeft: 'auto' }} strokeWidth={2.5} />}
+              </button>
+            );
+          })}
         </div>
       )}
-
-      {PIPELINE.map((stage, i) => {
-        const done = !disq && idx >= 0 && i < idx;
-        const active = !disq && i === idx;
-        const sc = STAGE_COLORS[stage];
-        const prevSc = i > 0 ? STAGE_COLORS[PIPELINE[i - 1]] : sc;
-
-        return (
-          <Fragment key={stage}>
-            {i > 0 && (
-              <div style={{
-                flex: 1, height: 2, marginTop: 5, borderRadius: 1,
-                background: done || active
-                  ? `linear-gradient(90deg, ${prevSc.dot}, ${sc.dot})`
-                  : 'var(--border-medium)',
-                opacity: done || active ? 0.45 : 1,
-                transition: 'all 0.3s cubic-bezier(0.2,0,0,1)',
-              }} />
-            )}
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: 5, minWidth: 0,
-            }}>
-              <div
-                className={active ? 'ldp-stage-active' : undefined}
-                style={{
-                  width: active ? 12 : 8, height: active ? 12 : 8,
-                  borderRadius: '50%',
-                  background: done || active ? sc.dot : 'transparent',
-                  border: done || active ? `2px solid ${sc.dot}` : '2px solid var(--border-medium)',
-                  boxShadow: active ? `0 0 0 4px ${sc.bg}` : 'none',
-                  transition: 'all 0.3s cubic-bezier(0.2,0,0,1)',
-                }}
-              />
-              <span style={{
-                fontSize: 8, fontWeight: active ? 700 : 500,
-                color: active ? sc.text : done ? 'var(--text-secondary)' : 'var(--text-tertiary)',
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                transition: 'color 0.25s cubic-bezier(0.2,0,0,1)',
-                whiteSpace: 'nowrap',
-              }}>
-                {STAGE_LABELS[stage]}
-              </span>
-            </div>
-          </Fragment>
-        );
-      })}
     </div>
   );
 }
@@ -498,6 +537,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: waChannels = [] } = useQuery<WaChannel[]>({
+    queryKey: ['wa-channels', lead.id],
+    queryFn: () => waChannelsService.list(lead.id),
+    staleTime: 30_000,
+  });
+
   const HDR_KEY = 'hpx:ui:v1:leadHeaderFreeze';
   const [headerFreeze, setHeaderFreeze] = useState(() => {
     try { return localStorage.getItem(HDR_KEY) !== 'free'; } catch { return true; }
@@ -508,9 +553,32 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     try { localStorage.setItem(HDR_KEY, next ? 'freeze' : 'free'); } catch {}
   };
 
+  const [waOpen, setWaOpen] = useState(false);
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
+
+  const qc = useQueryClient();
+  const [localStage, setLocalStage] = useState<LeadStage>(lead.stage ?? 'NEW');
+  useEffect(() => { setLocalStage(lead.stage ?? 'NEW'); }, [lead.stage]);
+
+  const handleStageChange = async (stage: LeadStage) => {
+    if (stage === localStage) return;
+    const prev = localStage;
+    setLocalStage(stage);
+    try {
+      const needsDate = (['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED'] as LeadStage[]).includes(stage);
+      await leadService.update(lead.id, {
+        stage,
+        ...(needsDate && !lead.followUpDate ? { followUpDate: new Date().toISOString() } : {}),
+      });
+      qc.invalidateQueries({ queryKey: ['leads'] });
+    } catch {
+      setLocalStage(prev);
+    }
+  };
+
+  const primaryWaChannel = waChannels.find(c => c.isPrimary) ?? waChannels[0] ?? null;
 
   const priority     = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
   const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
@@ -662,8 +730,23 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             </div>
           </div>
 
-          {/* pipeline stepper */}
-          <StagePipeline current={lead.stage ?? 'NEW'} />
+          {/* stage + medium cards */}
+          <div style={{ display: 'flex', gap: 12, paddingTop: 12, paddingBottom: 2 }}>
+            <div>
+              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} variant="badge" />
+              <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
+            </div>
+            <div>
+              <span style={{
+                display: 'inline-block', padding: '3px 9px', borderRadius: 5,
+                background: 'var(--bg-muted)', color: 'var(--text-secondary)',
+                fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+              }}>
+                {(lead.source ?? 'OTHER').replace(/_/g, ' ')}
+              </span>
+              <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Medium</div>
+            </div>
+          </div>
 
           {/* badges */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', paddingTop: 2 }}>
@@ -686,13 +769,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 {fmtDate(lead.expectedCloseDate)}
               </span>
             )}
-            <span style={{
-              padding: '3px 9px', borderRadius: 5,
-              background: 'var(--bg-muted)', color: 'var(--text-secondary)',
-              fontSize: 10, fontWeight: 500,
-            }}>
-              {(lead.source ?? 'OTHER').replace(/_/g, ' ')}
-            </span>
           </div>
         </div>
   );
@@ -878,20 +954,26 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               </button>
               <button
                 className="ldp-act ldp-wa"
-                onClick={() => contactPhone && window.open(whatsappUrl(contactPhone), '_blank')}
-                disabled={!contactPhone}
-                aria-label="Send WhatsApp"
+                onClick={() => {
+                  if (waChannels.length > 1) { setWaOpen(true); return; }
+                  const dest = primaryWaChannel
+                    ? buildWaUrl(primaryWaChannel)
+                    : contactPhone ? whatsappUrl(contactPhone) : null;
+                  if (dest) window.open(dest, '_blank');
+                }}
+                disabled={!primaryWaChannel && !contactPhone}
+                aria-label={waChannels.length > 1 ? 'Choose WhatsApp channel' : 'Send WhatsApp'}
                 style={{
                   flex: 1, height: 34, borderRadius: 8,
-                  border: contactPhone ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
-                  background: contactPhone ? 'rgba(34,197,94,0.05)' : 'var(--bg-subtle)',
-                  color: contactPhone ? '#16a34a' : 'var(--text-tertiary)',
+                  border: (primaryWaChannel || contactPhone) ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
+                  background: (primaryWaChannel || contactPhone) ? 'rgba(34,197,94,0.05)' : 'var(--bg-subtle)',
+                  color: (primaryWaChannel || contactPhone) ? '#16a34a' : 'var(--text-tertiary)',
                   fontSize: 11, fontWeight: 600,
-                  cursor: contactPhone ? 'pointer' : 'not-allowed',
+                  cursor: (primaryWaChannel || contactPhone) ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <MessageCircle size={13} /> WA
+                <MessageCircle size={13} /> WA{waChannels.length > 1 ? ` (${waChannels.length})` : ''}
               </button>
               <button
                 className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}
@@ -914,6 +996,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               >
                 {leadCopied ? <><Check size={13} strokeWidth={2.5} /> Copied</> : <><Copy size={13} /> Copy</>}
               </button>
+              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} variant="action-button" />
             </div>
           </Section>
 
@@ -927,8 +1010,48 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 legacyNote={lead.notes}
                 anchorRight={480}
               />
+              <div style={{ marginTop: 8 }}>
+                <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} variant="text-button" />
+              </div>
             </Section>
           </>
+
+          {/* WhatsApp Channels */}
+          {waChannels.length > 0 && (
+            <>
+              {divider}
+              <Section label="WhatsApp Channels" delay={138}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {primaryWaChannel && (
+                    <div className="ldp-row" style={{ cursor: 'default', padding: '6px 0', margin: 0 }}>
+                      <MessageCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                          {primaryWaChannel.displayName}
+                        </span>
+                        {waChannels.length > 1 && (
+                          <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--text-tertiary)' }}>
+                            +{waChannels.length - 1} more
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>Primary</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setWaOpen(true)}
+                    style={{
+                      background: 'none', border: 'none', padding: '2px 0',
+                      fontSize: 11.5, color: '#16a34a', cursor: 'pointer',
+                      fontWeight: 500, textAlign: 'left',
+                    }}
+                  >
+                    Manage channels →
+                  </button>
+                </div>
+              </Section>
+            </>
+          )}
 
           {/* Custom Fields */}
           {populatedCustomValues.length > 0 && (
@@ -998,6 +1121,14 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </div>
         )}
       </div>
+      {waOpen && (
+        <LeadWaChannelsModal
+          leadId={lead.id}
+          leadName={fullName}
+          onClose={() => setWaOpen(false)}
+          anchorRight={480}
+        />
+      )}
     </>
   );
 });
