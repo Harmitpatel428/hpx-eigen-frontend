@@ -2,11 +2,11 @@ import { useState, useCallback, useEffect, useMemo, memo, type CSSProperties } f
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, ArrowUpFromLine,
-  Phone, Mail, X, Edit2, Trash2,
+  X, Trash2,
   Building2, Calendar, MapPin,
-  MessageCircle, Copy, Check, UserCheck,
+  Copy, Check, UserCheck,
 } from 'lucide-react';
-import type { Lead, LeadStage, LeadPriority, CustomFieldDef } from '../types';
+import type { Lead, LeadStage, CustomFieldDef } from '../types';
 import { leadService } from '../services/lead.service';
 import { leadContactsService, LeadContact } from '../services/lead-contacts.service';
 import { customFieldService } from '../services/custom-field.service';
@@ -46,17 +46,6 @@ const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }>
   CONVERTED:           { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
 };
 
-const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {
-  CRITICAL: { color: '#dc2626', bg: 'rgba(220,38,38,0.08)' },
-  HIGH:     { color: '#ea580c', bg: 'rgba(234,88,12,0.08)'  },
-  MEDIUM:   { color: '#2563eb', bg: 'rgba(37,99,235,0.08)'  },
-  LOW:      { color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
-};
-
-function whatsappUrl(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  return `https://wa.me/${digits}`;
-}
 
 // ============================================================================
 // DELETE CONFIRM
@@ -318,7 +307,7 @@ export function LeadsPage() {
         ) : (
           <div style={{ minWidth: 1300 }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 130px 190px 90px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all leads" />
               </div>
@@ -326,17 +315,16 @@ export function LeadsPage() {
                 ? <><div>Company</div><div>Lead</div></>
                 : <><div>Lead</div><div>Company</div></>
               }
-              <div>Assigned</div><div>Contact</div><div>Stage</div><div>Priority</div><div>Close Date</div><div>Actions</div>
+              <div>Assigned</div><div>Contact</div><div>Stage</div>
             </div>
 
             {/* Rows */}
             <div>
               {leads.map(lead => {
                 const ss = STAGE_COLORS[lead.stage ?? 'NEW'] ?? STAGE_COLORS.NEW;
-                const ps = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
                 const isChecked = selectedIds.has(lead.id);
                 return (
-                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 130px 190px 90px 100px 110px 120px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: '32px minmax(180px,1fr) 130px 130px 190px 90px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
 
                     {/* Checkbox */}
                     <div style={{ display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
@@ -406,41 +394,6 @@ export function LeadsPage() {
                       </span>
                     </div>
 
-                    {/* Priority */}
-                    <div>
-                      <span style={{ display: 'inline-block', padding: '2px 6px', background: ps.bg, color: ps.color, borderRadius: 3, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                        {lead.priority ?? 'MEDIUM'}
-                      </span>
-                    </div>
-
-                    {/* Close Date */}
-                    <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
-                      {lead.expectedCloseDate
-                        ? new Date(lead.expectedCloseDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-                        : <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-                      }
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: 3 }} onClick={e => e.stopPropagation()}>
-                      <button className="btn-ghost" style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Edit" onClick={() => setModal({ mode: 'edit', lead })}>
-                        <Edit2 size={12} />
-                      </button>
-                      <button className="btn-ghost" style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-error, #dc2626)' }} title="Delete" onClick={() => setDeleteTarget(lead)}>
-                        <Trash2 size={12} />
-                      </button>
-                      <button className="btn-ghost" style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Call" onClick={() => lead.phone && window.open(`tel:${lead.phone}`)}>
-                        <Phone size={12} />
-                      </button>
-                      <button className="btn-ghost" style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Email" onClick={() => lead.email && window.open(`mailto:${lead.email}`)}>
-                        <Mail size={12} />
-                      </button>
-                      {lead.phone && (
-                        <button className="btn-ghost" style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }} title="WhatsApp" onClick={() => window.open(whatsappUrl(lead.phone!), '_blank')}>
-                          <MessageCircle size={12} />
-                        </button>
-                      )}
-                    </div>
                   </div>
                 );
               })}
