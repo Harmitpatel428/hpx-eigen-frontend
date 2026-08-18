@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
-  MessageCircle, Copy, Check, Clock, User, Activity, ChevronDown,
+  MessageCircle, Copy, Check, Clock, User, ChevronDown,
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadPriority, CustomFieldDef, LeadActivity } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
@@ -243,20 +243,26 @@ const CSS = `
 
 // ── stage selector ────────────────────────────────────────────────────────────
 
+// Stages that require an explicit follow-up date before saving.
+const DATE_REQUIRED = new Set<LeadStage>(['CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'DISQUALIFIED']);
+
 function LeadStageSelector({
-  currentStage, onSelect, variant = 'badge',
+  currentStage, onSelect,
 }: {
   currentStage: LeadStage;
-  onSelect: (stage: LeadStage) => void;
-  variant?: 'badge' | 'action-button' | 'text-button';
+  onSelect: (stage: LeadStage, followUpDate?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [pendingStage, setPendingStage] = useState<LeadStage | null>(null);
+  const [pendingDate, setPendingDate] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false); setPendingStage(null); setPendingDate('');
+      }
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
@@ -264,12 +270,8 @@ function LeadStageSelector({
 
   const sc = STAGE_COLORS[currentStage];
 
-  let trigger: React.ReactNode;
-  let wrapperStyle: React.CSSProperties;
-
-  if (variant === 'badge') {
-    wrapperStyle = { position: 'relative', display: 'inline-block' };
-    trigger = (
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
@@ -282,77 +284,85 @@ function LeadStageSelector({
         {STAGE_LABELS[currentStage]}
         <ChevronDown size={9} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
       </button>
-    );
-  } else if (variant === 'action-button') {
-    wrapperStyle = { flex: 1, position: 'relative' };
-    trigger = (
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="ldp-act"
-        style={{
-          width: '100%', height: 34, borderRadius: 8,
-          border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
-          color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        }}
-      >
-        <Activity size={13} /> Status
-      </button>
-    );
-  } else {
-    wrapperStyle = { position: 'relative', display: 'inline-block' };
-    trigger = (
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: 'var(--text-tertiary)', fontSize: 11, fontWeight: 600, padding: 0,
-        }}
-      >
-        <ChevronDown size={11} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
-        Change Stage
-      </button>
-    );
-  }
-
-  return (
-    <div ref={ref} style={wrapperStyle}>
-      {trigger}
       {open && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 200,
           background: 'var(--bg-app)', border: '1px solid var(--border-medium)',
           borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-          minWidth: 190, overflow: 'hidden',
+          minWidth: 210, overflow: 'hidden',
         }}>
-          <div style={{
-            padding: '8px 12px 4px', fontSize: 10, fontWeight: 700,
-            color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase',
-          }}>
-            Stage
-          </div>
-          {PIPELINE.map(stage => {
-            const s = STAGE_COLORS[stage];
-            const active = stage === currentStage;
-            return (
-              <button
-                key={stage}
-                onClick={() => { onSelect(stage); setOpen(false); }}
+          {pendingStage ? (
+            <div style={{ padding: '10px 12px 12px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: STAGE_COLORS[pendingStage].text, marginBottom: 8 }}>
+                {STAGE_LABELS[pendingStage]} — Follow-up Date
+              </div>
+              <input
+                type="date"
+                autoFocus
+                value={pendingDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={e => setPendingDate(e.target.value)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  width: '100%', padding: '7px 12px', border: 'none', textAlign: 'left',
-                  background: active ? s.bg : 'transparent', cursor: 'pointer',
-                  color: active ? s.text : 'var(--text-primary)',
-                  fontSize: 12, fontWeight: active ? 700 : 450,
+                  width: '100%', fontSize: 12, padding: '5px 8px', borderRadius: 6,
+                  border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+                  color: 'var(--text-primary)', boxSizing: 'border-box',
                 }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
-                {STAGE_LABELS[stage]}
-                {active && <Check size={11} style={{ marginLeft: 'auto' }} strokeWidth={2.5} />}
-              </button>
-            );
-          })}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => { setPendingStage(null); setPendingDate(''); }}
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                >
+                  Back
+                </button>
+                <button
+                  disabled={!pendingDate}
+                  onClick={() => {
+                    if (!pendingDate) return;
+                    onSelect(pendingStage, pendingDate);
+                    setOpen(false); setPendingStage(null); setPendingDate('');
+                  }}
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, border: 'none', background: '#0f172a', color: '#fff', cursor: pendingDate ? 'pointer' : 'not-allowed', opacity: pendingDate ? 1 : 0.5 }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ padding: '8px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Stage
+              </div>
+              {PIPELINE.map(stage => {
+                const s = STAGE_COLORS[stage];
+                const active = stage === currentStage;
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => {
+                      if (DATE_REQUIRED.has(stage)) { setPendingStage(stage); setPendingDate(''); }
+                      else { onSelect(stage); setOpen(false); }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      width: '100%', padding: '7px 12px', border: 'none', textAlign: 'left',
+                      background: active ? s.bg : 'transparent', cursor: 'pointer',
+                      color: active ? s.text : 'var(--text-primary)',
+                      fontSize: 12, fontWeight: active ? 700 : 450,
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
+                    {STAGE_LABELS[stage]}
+                    {active
+                      ? <Check size={11} style={{ marginLeft: 'auto' }} strokeWidth={2.5} />
+                      : DATE_REQUIRED.has(stage)
+                      ? <Calendar size={10} style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }} />
+                      : null}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -562,15 +572,18 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const [localStage, setLocalStage] = useState<LeadStage>(lead.stage ?? 'NEW');
   useEffect(() => { setLocalStage(lead.stage ?? 'NEW'); }, [lead.stage]);
 
-  const handleStageChange = async (stage: LeadStage) => {
+  const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
     if (stage === localStage) return;
     const prev = localStage;
     setLocalStage(stage);
     try {
-      const needsDate = (['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED'] as LeadStage[]).includes(stage);
       await leadService.update(lead.id, {
         stage,
-        ...(needsDate && !lead.followUpDate ? { followUpDate: new Date().toISOString() } : {}),
+        ...(followUpDate
+          ? { followUpDate: new Date(followUpDate).toISOString() }
+          : stage === 'FOLLOW_UP' && !lead.followUpDate
+          ? { followUpDate: new Date().toISOString() }
+          : {}),
       });
       qc.invalidateQueries({ queryKey: ['leads'] });
     } catch {
@@ -733,7 +746,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           {/* stage + medium cards */}
           <div style={{ display: 'flex', gap: 12, paddingTop: 12, paddingBottom: 2 }}>
             <div>
-              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} variant="badge" />
+              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} />
               <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
             </div>
             <div>
@@ -996,7 +1009,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               >
                 {leadCopied ? <><Check size={13} strokeWidth={2.5} /> Copied</> : <><Copy size={13} /> Copy</>}
               </button>
-              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} variant="action-button" />
             </div>
           </Section>
 
@@ -1010,9 +1022,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 legacyNote={lead.notes}
                 anchorRight={480}
               />
-              <div style={{ marginTop: 8 }}>
-                <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} variant="text-button" />
-              </div>
             </Section>
           </>
 

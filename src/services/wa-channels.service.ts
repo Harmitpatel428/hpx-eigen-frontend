@@ -55,12 +55,17 @@ export const waChannelsService = {
 };
 
 export function buildWaUrl(channel: WaChannel): string {
-  if (channel.channelType === 'GROUP') {
-    return channel.identifier.startsWith('http')
-      ? channel.identifier
-      : `https://chat.whatsapp.com/${channel.identifier}`;
+  const { channelType, identifier } = channel;
+  if (channelType === 'GROUP') {
+    if (identifier.startsWith('http')) return identifier;
+    return `https://chat.whatsapp.com/${identifier.replace(/^\//, '')}`;
   }
-  return `https://wa.me/${channel.identifier.replace(/\D/g, '')}`;
+  if (channelType === 'USERNAME') {
+    // WA usernames must not have digits stripped — pass as-is
+    return `https://wa.me/${identifier.trim()}`;
+  }
+  // INDIVIDUAL_NUMBER + BUSINESS_ACCOUNT: digits only
+  return `https://wa.me/${identifier.replace(/\D/g, '')}`;
 }
 
 export const CHANNEL_TYPE_LABELS: Record<WaChannelType, string> = {
