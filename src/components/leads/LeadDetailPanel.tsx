@@ -571,11 +571,16 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const qc = useQueryClient();
   const [localStage, setLocalStage] = useState<LeadStage>(lead.stage ?? 'NEW');
   useEffect(() => { setLocalStage(lead.stage ?? 'NEW'); }, [lead.stage]);
+  const [localFollowUpDate, setLocalFollowUpDate] = useState(lead.followUpDate);
+  useEffect(() => { setLocalFollowUpDate(lead.followUpDate); }, [lead.followUpDate]);
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
     if (stage === localStage) return;
     const prev = localStage;
+    const prevFollowUpDate = localFollowUpDate;
     setLocalStage(stage);
+    if (followUpDate) setLocalFollowUpDate(new Date(followUpDate).toISOString());
+    else if (stage === 'FOLLOW_UP' && !lead.followUpDate) setLocalFollowUpDate(new Date().toISOString());
     try {
       await leadService.update(lead.id, {
         stage,
@@ -588,6 +593,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
       qc.invalidateQueries({ queryKey: ['leads'] });
     } catch {
       setLocalStage(prev);
+      setLocalFollowUpDate(prevFollowUpDate);
     }
   };
 
@@ -749,7 +755,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} />
               <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
             </div>
-            {lead.followUpDate && (
+            {localFollowUpDate && (
               <div>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -758,7 +764,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   fontSize: 10, fontWeight: 600,
                 }}>
                   <Calendar size={9} />
-                  {fmtDate(lead.followUpDate)}
+                  {fmtDate(localFollowUpDate)}
                 </span>
                 <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Follow-up</div>
               </div>

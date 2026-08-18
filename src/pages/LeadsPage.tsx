@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, memo, type CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine,
+  Search, Plus, ArrowUpFromLine,
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
   MessageCircle, Copy, Check, UserCheck,
@@ -279,10 +279,6 @@ export function LeadsPage() {
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
             <input className="input" placeholder="Search leads…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: 30, height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }} />
           </div>
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }}><ListFilter size={14} style={{ marginRight: 4 }} /> Filters</button>
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={() => setShowImportWizard(true)}><ArrowDownToLine size={14} style={{ marginRight: 4 }} /> Import</button>
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={handleExport}><ArrowUpFromLine size={14} style={{ marginRight: 4 }} /> Export</button>
-          <div style={{ width: 1, height: 16, backgroundColor: 'var(--border-medium)', margin: '0 4px' }} />
           <button className="btn btn-primary" style={{ height: 28, padding: '0 12px', fontSize: 13, borderRadius: 'var(--radius-sm)' }} onClick={() => setModal({ mode: 'create' })}>
             <Plus size={14} style={{ marginRight: 4 }} /> New Lead
           </button>
