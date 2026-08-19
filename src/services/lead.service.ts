@@ -80,6 +80,7 @@ export const leadService = {
   async findAll(filters?: {
     status?: string;
     source?: string;
+    stage?: string;
     search?: string;
     page?: number;
     pageSize?: number;
@@ -87,6 +88,7 @@ export const leadService = {
     const params = new URLSearchParams();
     if (filters?.status && filters.status !== 'ALL') params.set('status', filters.status);
     if (filters?.source && filters.source !== 'ALL') params.set('source', filters.source);
+    if (filters?.stage) params.set('stage', filters.stage);
     if (filters?.search) params.set('search', filters.search);
     if (filters?.page) params.set('page', String(filters.page));
     if (filters?.pageSize) params.set('pageSize', String(filters.pageSize));
@@ -97,6 +99,11 @@ export const leadService = {
     }
     const arr = Array.isArray(data) ? data : [];
     return { data: arr, total: arr.length, page: 1, pageSize: arr.length };
+  },
+
+  async stageCounts(): Promise<Record<string, number>> {
+    const { data } = await api.get<any>('/api/v1/leads/stage-counts');
+    return data?.data ?? {};
   },
 
   async create(input: CreateLeadPayload): Promise<Lead> {

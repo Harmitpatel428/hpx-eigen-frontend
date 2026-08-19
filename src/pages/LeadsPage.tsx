@@ -108,11 +108,18 @@ export function LeadsPage() {
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<LeadStage | ''>('');
 
   const { data: leadsResponse, isLoading } = useQuery({
-    queryKey: ['leads', { search: debouncedSearch }],
-    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, pageSize: 100 }),
+    queryKey: ['leads', { search: debouncedSearch, stage: selectedStage }],
+    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: selectedStage || undefined, pageSize: 100 }),
     staleTime: 30_000,
+  });
+
+  const { data: stageCounts = {} } = useQuery<Record<string, number>>({
+    queryKey: ['lead-stage-counts'],
+    queryFn: () => leadService.stageCounts(),
+    staleTime: 60_000,
   });
 
   const { data: crmSettings } = useQuery({
@@ -157,6 +164,7 @@ export function LeadsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
       setDeleteTarget(null);
       setSelectedLead(null);
     },
@@ -164,6 +172,7 @@ export function LeadsPage() {
 
   const handleModalSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['leads'] });
+    queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
     setModal(null);
   }, [queryClient]);
 
@@ -234,6 +243,7 @@ export function LeadsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
       setSelectedIds(new Set());
       setBulkDeleteConfirm(false);
     },
@@ -279,6 +289,50 @@ export function LeadsPage() {
           </button>
         </div>
       </div>
+
+      {/* STAGE FILTER PILLS */}
+      {(() => {
+        const STAGES: { key: LeadStage; label: string }[] = [
+          { key: 'NEW', label: 'New' },
+          { key: 'QUALIFIED', label: 'Qualified' },
+          { key: 'FOLLOW_UP', label: 'Follow-Up' },
+          { key: 'CALL_BACK_REQUESTED', label: 'Call Back' },
+          { key: 'CALL_NOT_RECEIVED', label: 'Not Received' },
+          { key: 'DISQUALIFIED', label: 'Disqualified' },
+          { key: 'OTHER', label: 'Others' },
+        ];
+        return (
+          <div style={{ display: 'flex', gap: 6, padding: '6px 12px 4px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+            {STAGES.map(({ key, label }) => {
+              const active = selectedStage === key;
+              const sc = STAGE_COLORS[key];
+              const count = stageCounts[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedStage(active ? '' : key)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 10px', borderRadius: 5, fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                    transition: 'all 0.12s',
+                    background: active ? sc.bg : 'transparent',
+                    color: active ? sc.text : 'var(--text-tertiary)',
+                    border: active ? `1px solid ${sc.text}33` : '1px solid var(--border-light)',
+                  }}
+                >
+                  {label}
+                  {count != null && (
+                    <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 1 : 0.65 }}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* BULK ACTIONS TOOLBAR */}
       {selectedIds.size > 0 && (
@@ -329,6 +383,9 @@ export function LeadsPage() {
               {leads.map(lead => {
                 const ss = STAGE_COLORS[lead.stage ?? 'NEW'] ?? STAGE_COLORS.NEW;
                 const isChecked = selectedIds.has(lead.id);
+                const recentlyWorked = lead.lastMeaningfulActivityAt
+                  ? (Date.now() - new Date(lead.lastMeaningfulActivityAt).getTime()) < 86_400_000
+                  : false;
                 return (
                   <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
 
@@ -341,8 +398,11 @@ export function LeadsPage() {
                     {companyFirst ? (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                          <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                            {(lead.company?.[0] ?? '?').toUpperCase()}
+                          <div style={{ position: 'relative', flexShrink: 0 }}>
+                            <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
+                              {(lead.company?.[0] ?? '?').toUpperCase()}
+                            </div>
+                            {recentlyWorked && <span style={{ position: 'absolute', top: -2, right: -2, width: 5, height: 5, borderRadius: '50%', background: '#22c55e', border: '1px solid var(--bg-app)' }} title="Recently worked" />}
                           </div>
                           <span style={{ fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.company || 'Unnamed'}</span>
                         </div>
@@ -353,8 +413,11 @@ export function LeadsPage() {
                     ) : (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                          <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                            {lead.firstName[0]}{lead.lastName[0]}
+                          <div style={{ position: 'relative', flexShrink: 0 }}>
+                            <div style={{ width: 22, height: 22, borderRadius: '4px', background: 'linear-gradient(135deg,#0f172a 0%,#334155 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
+                              {lead.firstName[0]}{lead.lastName[0]}
+                            </div>
+                            {recentlyWorked && <span style={{ position: 'absolute', top: -2, right: -2, width: 5, height: 5, borderRadius: '50%', background: '#22c55e', border: '1px solid var(--bg-app)' }} title="Recently worked" />}
                           </div>
                           <span style={{ fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.firstName} {lead.lastName}</span>
                         </div>

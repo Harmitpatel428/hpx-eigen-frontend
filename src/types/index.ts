@@ -178,6 +178,7 @@ export interface Lead {
   notes: string | null;
   tags: LeadTag[];
   customFieldValues?: CustomFieldValue[]; // ponytail: needs backend API at /api/v1/lead-fields
+  lastMeaningfulActivityAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
