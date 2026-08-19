@@ -302,7 +302,7 @@ export function LeadsPage() {
           { key: 'OTHER', label: 'Others' },
         ];
         return (
-          <div style={{ display: 'flex', gap: 6, padding: '6px 12px 4px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: 6, padding: '2px 12px 6px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
             {STAGES.map(({ key, label }) => {
               const active = selectedStage === key;
               const sc = STAGE_COLORS[key];
@@ -311,21 +311,13 @@ export function LeadsPage() {
                 <button
                   key={key}
                   onClick={() => setSelectedStage(active ? '' : key)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '3px 10px', borderRadius: 5, fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                    transition: 'all 0.12s',
-                    background: active ? sc.bg : 'transparent',
-                    color: active ? sc.text : 'var(--text-tertiary)',
-                    border: active ? `1px solid ${sc.text}33` : '1px solid var(--border-light)',
-                  }}
+                  className={`stage-pill${active ? ' stage-pill--active' : ''}`}
+                  style={active ? { color: sc.text, background: sc.bg, borderColor: sc.bg } : undefined}
                 >
+                  <span className="stage-pill-dot" style={active ? { background: sc.text, opacity: 1 } : undefined} />
                   {label}
-                  {count != null && (
-                    <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 1 : 0.65 }}>
-                      {count}
-                    </span>
+                  {count != null && count > 0 && (
+                    <span className="stage-pill-count">{count}</span>
                   )}
                 </button>
               );
