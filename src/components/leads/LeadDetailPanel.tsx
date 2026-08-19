@@ -994,15 +994,13 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               <button
                 className="ldp-act ldp-wa"
                 onClick={() => {
-                  if (waChannels.length > 1) { setWaOpen(true); return; }
-                  const dest = primaryWaChannel
-                    ? buildWaUrl(primaryWaChannel)
-                    : contactPhone ? whatsappUrl(contactPhone) : null;
+                  if (waChannels.length >= 1) { setWaOpen(true); return; }
+                  const dest = contactPhone ? whatsappUrl(contactPhone) : null;
                   if (dest) window.open(dest, '_blank');
                   else setWaOpen(true);
                 }}
                 disabled={!primaryWaChannel && !contactPhone && waChannels.length === 0}
-                aria-label={waChannels.length > 1 ? 'Choose WhatsApp channel' : 'Send WhatsApp'}
+                aria-label={waChannels.length >= 1 ? 'Choose WhatsApp channel' : 'Send WhatsApp'}
                 style={{
                   flex: 1, height: 34, borderRadius: 8,
                   border: (primaryWaChannel || contactPhone || waChannels.length > 0) ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
@@ -1013,7 +1011,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <MessageCircle size={13} /> WA{waChannels.length > 1 ? ` (${waChannels.length})` : ''}
+                <MessageCircle size={13} /> WA{waChannels.length > 0 ? ` (${waChannels.length})` : ''}
               </button>
               <button
                 className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}

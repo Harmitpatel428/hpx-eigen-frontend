@@ -1,9 +1,9 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Plus, Star, Trash2, Edit2, Check } from 'lucide-react';
+import { X, Plus, Star, Trash2, Edit2, Check, ExternalLink } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  waChannelsService, WaChannel, WaChannelType, CHANNEL_TYPE_LABELS,
+  waChannelsService, buildWaUrl, WaChannel, WaChannelType, CHANNEL_TYPE_LABELS,
 } from '../../services/wa-channels.service';
 
 interface Props {
@@ -109,6 +109,13 @@ function ChannelRow({
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button
+            onClick={() => window.open(buildWaUrl(channel), '_blank')}
+            title="Open in WhatsApp"
+            style={smBtn('rgba(34,197,94,0.08)', '#16a34a', 'rgba(34,197,94,0.2)')}
+          >
+            <ExternalLink size={11} />
+          </button>
           {!channel.isPrimary && (
             <button onClick={makePrimary} title="Make primary" style={smBtn('transparent', 'var(--text-tertiary)', 'var(--border-light)')}>
               <Star size={11} />
