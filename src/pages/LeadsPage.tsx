@@ -256,9 +256,9 @@ export function LeadsPage() {
   const gridCols = '32px minmax(240px,1.4fr) minmax(240px,1.4fr) minmax(100px,0.75fr) minmax(120px,0.85fr) minmax(90px,0.7fr)';
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, paddingLeft: '1rem', paddingRight: '1rem', paddingBottom: '1rem' }}>
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6" style={{ paddingTop: '1rem' }}>
         <div>
           <h1 className="type-title">Leads</h1>
           <p className="type-body">
