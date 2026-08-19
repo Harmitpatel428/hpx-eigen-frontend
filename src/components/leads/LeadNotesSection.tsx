@@ -46,17 +46,8 @@ export const LeadNotesSection = memo(function LeadNotesSection({
   });
 
   const updateMutation = useMutation({
-    mutationFn: (payload: {
-      noteId: string;
-      content?: string;
-      followUpDate?: string | null;
-      followUpTime?: string | null;
-    }) =>
-      leadNotesService.update(leadId, payload.noteId, {
-        content: payload.content,
-        followUpDate: payload.followUpDate,
-        followUpTime: payload.followUpTime,
-      }),
+    mutationFn: (payload: { noteId: string; content: string }) =>
+      leadNotesService.update(leadId, payload.noteId, { content: payload.content }),
     onSuccess: () => {
       invalidateNotes();
       setEditingNoteId(null);
@@ -76,19 +67,9 @@ export const LeadNotesSection = memo(function LeadNotesSection({
     setEditingNoteId(note.id);
   };
 
-  const handleSaveNote = async (
-    content: string,
-    followUpDate?: string | null,
-    followUpTime?: string | null
-  ) => {
+  const handleSaveNote = async (content: string) => {
     if (!editingNoteId) return;
-
-    await updateMutation.mutateAsync({
-      noteId: editingNoteId,
-      content,
-      followUpDate: followUpDate ?? undefined,
-      followUpTime: followUpTime ?? undefined,
-    });
+    await updateMutation.mutateAsync({ noteId: editingNoteId, content });
   };
 
   const handleDeleteNote = async (noteId: string) => {

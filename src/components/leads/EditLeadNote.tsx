@@ -2,11 +2,10 @@ import { memo, useState } from 'react';
 import { X } from 'lucide-react';
 import type { LeadNote } from '../../services/lead-notes.service';
 import { NoteCharacterCounter } from './NoteCharacterCounter';
-import { FollowUpPicker } from './FollowUpPicker';
 
 interface EditLeadNoteProps {
   note: LeadNote;
-  onSave: (content: string, followUpDate?: string | null, followUpTime?: string | null) => Promise<void>;
+  onSave: (content: string) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -18,8 +17,6 @@ export const EditLeadNote = memo(function EditLeadNote({
   isLoading = false,
 }: EditLeadNoteProps) {
   const [content, setContent] = useState(note.content);
-  const [followUpDate, setFollowUpDate] = useState<string | null>(note.followUpDate);
-  const [followUpTime, setFollowUpTime] = useState<string | null>(note.followUpTime);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
@@ -35,7 +32,7 @@ export const EditLeadNote = memo(function EditLeadNote({
 
     try {
       setError(null);
-      await onSave(content, followUpDate, followUpTime);
+      await onSave(content);
     } catch (err: any) {
       setError(err?.message || 'Failed to update note');
     }
@@ -43,10 +40,7 @@ export const EditLeadNote = memo(function EditLeadNote({
 
   const inp = 'w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition disabled:opacity-50 disabled:cursor-not-allowed';
 
-  const hasChanges =
-    content !== note.content ||
-    followUpDate !== note.followUpDate ||
-    followUpTime !== note.followUpTime;
+  const hasChanges = content !== note.content;
 
   return (
     <div
@@ -124,14 +118,6 @@ export const EditLeadNote = memo(function EditLeadNote({
         />
         <NoteCharacterCounter length={content.length} style={{ marginTop: 4 }} />
       </div>
-
-      <FollowUpPicker
-        followUpDate={followUpDate}
-        followUpTime={followUpTime}
-        onDateChange={setFollowUpDate}
-        onTimeChange={setFollowUpTime}
-        disabled={isLoading}
-      />
 
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
         <button
