@@ -68,16 +68,8 @@ export const LeadNotesSection = memo(function LeadNotesSection({
     onSuccess: invalidateNotes,
   });
 
-  const handleAddNote = async (
-    content: string,
-    followUpDate?: string,
-    followUpTime?: string
-  ) => {
-    await createMutation.mutateAsync({
-      content,
-      followUpDate,
-      followUpTime,
-    });
+  const handleAddNote = async (content: string) => {
+    await createMutation.mutateAsync({ content });
   };
 
   const handleEditNote = (note: LeadNote) => {

@@ -4,13 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
-  X, AlertTriangle, User, Calendar, AlertCircle,
-  UserCheck, Users, Zap, Plus, Trash2, Star, Edit3, Check,
+  X, AlertTriangle, AlertCircle,
+  Plus, Trash2, Star, Edit3, Check,
 } from 'lucide-react';
 import type { Lead, LeadPriority } from '../../types';
 import { leadService, CreateLeadPayload, UpdateLeadPayload, DuplicateLead } from '../../services/lead.service';
 import { leadContactsService, LeadContact, UpsertContactPayload } from '../../services/lead-contacts.service';
-import { userService, TenantUser } from '../../services/user.service';
 import type { CustomFieldDef, CustomFieldValue } from '../../types';
 import { customFieldService } from '../../services/custom-field.service';
 import { CustomFieldRenderer, getFieldValue, setFieldValue } from './CustomFieldRenderer';
@@ -37,8 +36,6 @@ const CONTACT_ROLES = [
   'Decision Maker',
   'Other',
 ];
-
-type OwnerMode = 'auto' | 'user' | 'unassigned';
 
 // ============================================================================
 // FORM SCHEMA
@@ -313,11 +310,6 @@ interface LeadModalProps {
 }
 
 export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSuccess }: LeadModalProps) {
-  const [ownerMode, setOwnerMode] = useState<OwnerMode>(() =>
-    mode === 'edit' && lead?.ownerId ? 'user' : 'auto'
-  );
-  const [selectedOwnerId, setSelectedOwnerId] = useState(lead?.ownerId ?? '');
-  const [ownerSearch, setOwnerSearch] = useState('');
   const [priority, setPriority] = useState<LeadPriority>(lead?.priority ?? 'MEDIUM');
   const [duplicates, setDuplicates] = useState<DuplicateLead[]>([]);
   const [duplicatesDismissed, setDuplicatesDismissed] = useState(false);
@@ -364,22 +356,11 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
     } : { source: 'OTHER', stage: 'NEW' },
   });
 
-  const { data: users = [] } = useQuery<TenantUser[]>({
-    queryKey: ['users-list'],
-    queryFn: () => userService.listAll(),
-    staleTime: 5 * 60_000,
-    enabled: ownerMode === 'user',
-  });
-
   const { data: customFields = [] } = useQuery<CustomFieldDef[]>({
     queryKey: ['custom-fields'],
     queryFn: () => customFieldService.list(),
     staleTime: 60_000,
   });
-
-  const filteredUsers = users.filter(
-    (u) => u.status === 'ACTIVE' && (!ownerSearch || u.email.toLowerCase().includes(ownerSearch.toLowerCase()))
-  );
 
   // ESC to close
   useEffect(() => {
@@ -419,7 +400,6 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   }, [watchedEmail, watchedPhone, watchedCompany, watchedFirst, watchedLast, duplicatesDismissed, mode, lead?.id]);
 
   const onSubmit = async (values: LeadFormData) => {
-    const resolvedOwnerId = ownerMode === 'user' ? selectedOwnerId || undefined : undefined;
     const locationFields = locMode === 'structured'
       ? { country: values.country || undefined, state: values.state || undefined, city: values.city || undefined, area: values.area || undefined, postalCode: values.postalCode || undefined, freeformAddress: undefined }
       : { freeformAddress: values.freeformAddress || undefined, country: undefined, state: undefined, city: undefined, area: undefined, postalCode: undefined };
@@ -435,7 +415,6 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       priority,
       expectedCloseDate: values.expectedCloseDate || undefined,
       ...locationFields,
-      ownerId: resolvedOwnerId,
       notes: values.notes || undefined,
       customFieldValues: customFieldValues.length > 0
         ? customFieldValues.map(v => ({ fieldId: v.fieldId, value: v.value }))
@@ -600,47 +579,6 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
               <Field label="Address">
                 <textarea {...register('freeformAddress')} className={inp} rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }} />
               </Field>
-            </div>
-
-            {/* ── Owner ─── */}
-            <Divider label="Owner Assignment" />
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', gap: 5, marginBottom: '0.625rem' }}>
-                {([
-                  { mode: 'auto' as OwnerMode, label: 'Auto Assign', icon: <Zap size={10} /> },
-                  { mode: 'user' as OwnerMode, label: 'Assign to User', icon: <Users size={10} /> },
-                  { mode: 'unassigned' as OwnerMode, label: 'Leave Unassigned', icon: <User size={10} /> },
-                ] as const).map(opt => {
-                  const active = ownerMode === opt.mode;
-                  return (
-                    <button key={opt.mode} type="button" onClick={() => setOwnerMode(opt.mode)} style={{ flex: 1, padding: '6px', borderRadius: '0.375rem', border: active ? '1.5px solid #0f172a' : '1px solid #e2e8f0', background: active ? '#0f172a' : '#f8fafc', color: active ? '#fff' : '#475569', fontSize: 11, fontWeight: active ? 600 : 400, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all 0.1s' }}>
-                      {opt.icon} {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {ownerMode === 'user' && (
-                <div>
-                  <input value={ownerSearch} onChange={e => setOwnerSearch(e.target.value)} placeholder="Search by email…" className={inp} style={{ marginBottom: 5 }} />
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.375rem', maxHeight: 130, overflowY: 'auto', background: '#f8fafc' }}>
-                    {filteredUsers.length === 0 ? (
-                      <div style={{ padding: '10px', textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>No active users found</div>
-                    ) : filteredUsers.map(u => (
-                      <button key={u.id} type="button" onClick={() => setSelectedOwnerId(u.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '7px 10px', border: 'none', borderBottom: '1px solid #f1f5f9', background: selectedOwnerId === u.id ? 'rgba(15,23,42,0.06)' : 'transparent', cursor: 'pointer', fontSize: 12, textAlign: 'left', color: '#0f172a' }}>
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#0f172a', color: '#fff', fontSize: 8, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {u.email[0].toUpperCase()}
-                        </div>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
-                        {selectedOwnerId === u.id && <Check size={12} color="#0f172a" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {ownerMode === 'auto' && (
-                <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>Lead will be auto-assigned based on territory rules when configured. Currently left unassigned.</p>
-              )}
             </div>
 
             {/* ── Contacts (Edit only) ─── */}

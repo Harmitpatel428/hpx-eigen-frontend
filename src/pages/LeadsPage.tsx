@@ -303,6 +303,22 @@ export function LeadsPage() {
         ];
         return (
           <div style={{ display: 'flex', gap: 6, padding: '2px 12px 6px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+            {/* All Leads pill */}
+            {(() => {
+              const allActive = selectedStage === '';
+              const totalCount = Object.values(stageCounts).reduce((s, n) => s + n, 0);
+              return (
+                <button
+                  onClick={() => setSelectedStage('')}
+                  className={`stage-pill${allActive ? ' stage-pill--active' : ''}`}
+                  style={allActive ? { color: '#0f172a', background: 'rgba(15,23,42,0.07)', borderColor: 'rgba(15,23,42,0.15)' } : undefined}
+                >
+                  <span className="stage-pill-dot" style={allActive ? { background: '#0f172a', opacity: 1 } : undefined} />
+                  All Leads
+                  {totalCount > 0 && <span className="stage-pill-count">{totalCount}</span>}
+                </button>
+              );
+            })()}
             {STAGES.map(({ key, label }) => {
               const active = selectedStage === key;
               const sc = STAGE_COLORS[key];

@@ -1,10 +1,9 @@
 import { memo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { NoteCharacterCounter } from './NoteCharacterCounter';
-import { FollowUpPicker } from './FollowUpPicker';
 
 interface AddLeadNoteProps {
-  onAdd: (content: string, followUpDate?: string, followUpTime?: string) => Promise<void>;
+  onAdd: (content: string) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -14,8 +13,6 @@ export const AddLeadNote = memo(function AddLeadNote({
 }: AddLeadNoteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState('');
-  const [followUpDate, setFollowUpDate] = useState<string | null>(null);
-  const [followUpTime, setFollowUpTime] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -31,10 +28,8 @@ export const AddLeadNote = memo(function AddLeadNote({
 
     try {
       setError(null);
-      await onAdd(content, followUpDate || undefined, followUpTime || undefined);
+      await onAdd(content);
       setContent('');
-      setFollowUpDate(null);
-      setFollowUpTime(null);
       setIsOpen(false);
     } catch (err: any) {
       setError(err?.message || 'Failed to add note');
@@ -158,14 +153,6 @@ export const AddLeadNote = memo(function AddLeadNote({
         />
         <NoteCharacterCounter length={content.length} style={{ marginTop: 4 }} />
       </div>
-
-      <FollowUpPicker
-        followUpDate={followUpDate}
-        followUpTime={followUpTime}
-        onDateChange={setFollowUpDate}
-        onTimeChange={setFollowUpTime}
-        disabled={isLoading}
-      />
 
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
         <button
