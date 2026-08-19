@@ -256,9 +256,9 @@ export function LeadsPage() {
   const gridCols = '32px minmax(240px,1.4fr) minmax(240px,1.4fr) minmax(100px,0.75fr) minmax(120px,0.85fr) minmax(90px,0.7fr)';
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, paddingLeft: '1rem', paddingRight: '1rem', paddingBottom: '1rem' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6" style={{ paddingTop: '1rem' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ padding: '12px 16px' }}>
         <div>
           <h1 className="type-title">Leads</h1>
           <p className="type-body">
@@ -302,7 +302,7 @@ export function LeadsPage() {
       )}
 
       {/* DATA GRID */}
-      <div style={{ flex: 1, overflow: 'auto', marginRight: 'calc(var(--space-4) * -1)', paddingRight: 'var(--space-4)' }}>
+      <div style={{ flex: 1, overflow: 'auto', width: '100%' }}>
         {isLoading ? (
           <div className="type-ui" style={{ color: 'var(--text-tertiary)', padding: 'var(--space-4)' }}>Loading leads…</div>
         ) : leads.length === 0 ? (
@@ -313,7 +313,7 @@ export function LeadsPage() {
         ) : (
           <div style={{ width: '100%', overflow: 'visible' }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 16px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all leads" />
               </div>
@@ -330,7 +330,7 @@ export function LeadsPage() {
                 const ss = STAGE_COLORS[lead.stage ?? 'NEW'] ?? STAGE_COLORS.NEW;
                 const isChecked = selectedIds.has(lead.id);
                 return (
-                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 16px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
 
                     {/* Checkbox */}
                     <div style={{ display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
