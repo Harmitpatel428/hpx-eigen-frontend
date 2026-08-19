@@ -513,8 +513,8 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   <option value="FOLLOW_UP">Follow-Up</option>
                   <option value="CALL_BACK_REQUESTED">Call Back Requested</option>
                   <option value="CALL_NOT_RECEIVED">Call Not Received</option>
-                  <option value="OTHER">Other</option>
                   <option value="DISQUALIFIED">Disqualified</option>
+                  <option value="OTHER">Other</option>
                 </select>
               </Field>
               <Field label="Source">

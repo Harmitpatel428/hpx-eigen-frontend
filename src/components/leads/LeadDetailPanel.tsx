@@ -15,6 +15,7 @@ import { crmSettingsService } from '../../services/crm-settings.service';
 import { leadService } from '../../services/lead.service';
 import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
 import { LeadWaChannelsModal } from './LeadWaChannelsModal';
+import { LeadNotesModal } from './LeadNotesModal';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {
   LOW:      { color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
 };
 
-const PIPELINE: LeadStage[] = ['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'OTHER', 'DISQUALIFIED'];
+const PIPELINE: LeadStage[] = ['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'DISQUALIFIED', 'OTHER'];
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #1e3a5f, #2563eb)',
@@ -249,10 +250,11 @@ const DATE_REQUIRED = new Set<LeadStage>(['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'C
 const NOTES_REQUIRED = new Set<LeadStage>(['OTHER']);
 
 function LeadStageSelector({
-  currentStage, onSelect,
+  currentStage, onSelect, onOpenNotes,
 }: {
   currentStage: LeadStage;
   onSelect: (stage: LeadStage, followUpDate?: string) => void;
+  onOpenNotes?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pendingStage, setPendingStage] = useState<LeadStage | null>(null);
@@ -345,7 +347,7 @@ function LeadStageSelector({
                     key={stage}
                     onClick={() => {
                       if (DATE_REQUIRED.has(stage)) { setPendingStage(stage); setPendingDate(''); }
-                      else if (isNotesStage(stage)) { onSelect(stage); setOpen(false); }
+                      else if (isNotesStage(stage)) { onSelect(stage); setOpen(false); onOpenNotes?.(); }
                       else { onSelect(stage); setOpen(false); }
                     }}
                     style={{
@@ -571,6 +573,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   };
 
   const [waOpen, setWaOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
@@ -759,7 +762,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           {/* Row 1: Stage + Follow-up date / Notes */}
           <div style={{ display: 'flex', gap: 12, paddingTop: 12, paddingBottom: 2 }}>
             <div>
-              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} />
+              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} onOpenNotes={() => setNotesOpen(true)} />
               <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
             </div>
             {localFollowUpDate && (
@@ -774,20 +777,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   {fmtDate(localFollowUpDate)}
                 </span>
                 <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Follow-up</div>
-              </div>
-            )}
-            {localStage === 'OTHER' && (
-              <div>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '3px 9px', borderRadius: 5,
-                  background: 'rgba(99,102,241,0.1)', color: '#6366f1',
-                  fontSize: 10, fontWeight: 600,
-                }}>
-                  <MessageCircle size={9} />
-                  Add Notes
-                </span>
-                <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Action</div>
               </div>
             )}
           </div>
@@ -1171,6 +1160,14 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           leadId={lead.id}
           leadName={fullName}
           onClose={() => setWaOpen(false)}
+          anchorRight={480}
+        />
+      )}
+      {notesOpen && (
+        <LeadNotesModal
+          leadId={lead.id}
+          leadName={fullName}
+          onClose={() => setNotesOpen(false)}
           anchorRight={480}
         />
       )}
