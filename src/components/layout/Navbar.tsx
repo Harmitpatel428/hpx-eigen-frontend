@@ -27,11 +27,11 @@ export function Navbar() {
   };
 
   return (
-    <header style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
+    <header style={{
+      display: 'flex',
+      alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: 'var(--space-4) var(--space-8)',
+      padding: '4px 16px',
       flexShrink: 0
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
