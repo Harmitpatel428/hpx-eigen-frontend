@@ -13,7 +13,7 @@ import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
 import { crmSettingsService } from '../../services/crm-settings.service';
 import { leadService } from '../../services/lead.service';
-import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
+import { waChannelsService, type WaChannel } from '../../services/wa-channels.service';
 import { LeadWaChannelsModal } from './LeadWaChannelsModal';
 import { LeadNotesModal } from './LeadNotesModal';
 
@@ -993,21 +993,15 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               </button>
               <button
                 className="ldp-act ldp-wa"
-                onClick={() => {
-                  if (waChannels.length >= 1) { setWaOpen(true); return; }
-                  const dest = contactPhone ? whatsappUrl(contactPhone) : null;
-                  if (dest) window.open(dest, '_blank');
-                  else setWaOpen(true);
-                }}
-                disabled={!primaryWaChannel && !contactPhone && waChannels.length === 0}
-                aria-label={waChannels.length >= 1 ? 'Choose WhatsApp channel' : 'Send WhatsApp'}
+                onClick={() => setWaOpen(true)}
+                aria-label="WhatsApp channels"
                 style={{
                   flex: 1, height: 34, borderRadius: 8,
-                  border: (primaryWaChannel || contactPhone || waChannels.length > 0) ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
-                  background: (primaryWaChannel || contactPhone || waChannels.length > 0) ? 'rgba(34,197,94,0.05)' : 'var(--bg-subtle)',
-                  color: (primaryWaChannel || contactPhone || waChannels.length > 0) ? '#16a34a' : 'var(--text-tertiary)',
+                  border: '1px solid rgba(34,197,94,0.2)',
+                  background: 'rgba(34,197,94,0.05)',
+                  color: '#16a34a',
                   fontSize: 11, fontWeight: 600,
-                  cursor: (!primaryWaChannel && !contactPhone && waChannels.length === 0) ? 'not-allowed' : 'pointer',
+                  cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
