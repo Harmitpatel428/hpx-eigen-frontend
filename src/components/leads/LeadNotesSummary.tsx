@@ -1,14 +1,13 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { leadNotesService } from '../../services/lead-notes.service';
-import { LeadNotesModal } from './LeadNotesModal';
 
 interface LeadNotesSummaryProps {
   leadId: string;
   leadName: string;
   legacyNote?: string | null;
-  anchorRight?: number;
+  onOpen: () => void;
 }
 
 function fmtDateTime(dateStr: string): string {
@@ -22,9 +21,8 @@ export const LeadNotesSummary = memo(function LeadNotesSummary({
   leadId,
   leadName,
   legacyNote,
-  anchorRight = 0,
+  onOpen,
 }: LeadNotesSummaryProps) {
-  const [showModal, setShowModal] = useState(false);
 
   const { data: summary } = useQuery({
     queryKey: ['notes-summary', leadId],
@@ -36,8 +34,7 @@ export const LeadNotesSummary = memo(function LeadNotesSummary({
   const latest = summary?.latest ?? null;
   const hasNotes = count > 0 || !!legacyNote;
 
-  // Guard: never return null while modal is open (prevents auto-unmount of LeadNotesModal)
-  if (!hasNotes && !summary && !showModal) return null;
+  if (!hasNotes && !summary) return null;
 
   return (
     <>
@@ -82,7 +79,7 @@ export const LeadNotesSummary = memo(function LeadNotesSummary({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             type="button"
-            onClick={() => setShowModal(true)}
+            onClick={onOpen}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -104,14 +101,6 @@ export const LeadNotesSummary = memo(function LeadNotesSummary({
         </div>
       </div>
 
-      {showModal && (
-        <LeadNotesModal
-          leadId={leadId}
-          leadName={leadName}
-          onClose={() => setShowModal(false)}
-          anchorRight={anchorRight}
-        />
-      )}
     </>
   );
 });

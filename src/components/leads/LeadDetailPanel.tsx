@@ -572,8 +572,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     try { localStorage.setItem(HDR_KEY, next ? 'freeze' : 'free'); } catch {}
   };
 
-  const [waOpen, setWaOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<'whatsapp' | 'notes' | null>(null);
   const [leadCopied, setLeadCopied] = useState(false);
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
@@ -762,7 +761,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           {/* Row 1: Stage + Follow-up date / Notes */}
           <div style={{ display: 'flex', gap: 12, paddingTop: 12, paddingBottom: 2 }}>
             <div>
-              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} onOpenNotes={() => setNotesOpen(true)} />
+              <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} onOpenNotes={() => setActivePanel('notes')} />
               <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
             </div>
             {localFollowUpDate && (
@@ -998,7 +997,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                     ? buildWaUrl(primaryWaChannel)
                     : contactPhone ? whatsappUrl(contactPhone) : null;
                   if (dest) window.open(dest, '_blank');
-                  else setWaOpen(true);
+                  else setActivePanel('whatsapp');
                 }}
                 disabled={!primaryWaChannel && !contactPhone}
                 aria-label={primaryWaChannel ? `Open WhatsApp — ${primaryWaChannel.displayName}` : 'Send WhatsApp'}
@@ -1046,7 +1045,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 leadId={lead.id}
                 leadName={fullName}
                 legacyNote={lead.notes}
-                anchorRight={480}
+                onOpen={() => setActivePanel('notes')}
               />
             </Section>
           </>
@@ -1074,7 +1073,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                     </div>
                   )}
                   <button
-                    onClick={() => setWaOpen(true)}
+                    onClick={() => setActivePanel('whatsapp')}
                     style={{
                       background: 'none', border: 'none', padding: '2px 0',
                       fontSize: 11.5, color: '#16a34a', cursor: 'pointer',
@@ -1156,19 +1155,19 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </div>
         )}
       </div>
-      {waOpen && (
+      {activePanel === 'whatsapp' && (
         <LeadWaChannelsModal
           leadId={lead.id}
           leadName={fullName}
-          onClose={() => setWaOpen(false)}
+          onClose={() => setActivePanel(null)}
           anchorRight={480}
         />
       )}
-      {notesOpen && (
+      {activePanel === 'notes' && (
         <LeadNotesModal
           leadId={lead.id}
           leadName={fullName}
-          onClose={() => setNotesOpen(false)}
+          onClose={() => setActivePanel(null)}
           anchorRight={480}
         />
       )}

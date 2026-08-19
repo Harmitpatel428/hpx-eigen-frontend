@@ -17,15 +17,12 @@ const PANEL_W = 420;
 
 const TYPES: WaChannelType[] = ['INDIVIDUAL_NUMBER', 'GROUP', 'USERNAME', 'BUSINESS_ACCOUNT'];
 
-function ChannelTypeIcon({ type, size = 13 }: { type: WaChannelType; size?: number }) {
-  const icons: Record<WaChannelType, string> = {
-    INDIVIDUAL_NUMBER: '👤',
-    GROUP: '👥',
-    USERNAME: '@',
-    BUSINESS_ACCOUNT: '🏢',
-  };
-  return <span style={{ fontSize: size - 2 }}>{icons[type]}</span>;
-}
+const TYPE_CONFIG: Record<WaChannelType, { bg: string; border: string; color: string; glyph: string }> = {
+  INDIVIDUAL_NUMBER: { bg: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.14)', color: '#3b82f6', glyph: '👤' },
+  GROUP:             { bg: 'rgba(139,92,246,0.07)', border: 'rgba(139,92,246,0.14)', color: '#8b5cf6', glyph: '👥' },
+  USERNAME:          { bg: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.14)', color: '#d97706', glyph: '@'  },
+  BUSINESS_ACCOUNT:  { bg: 'rgba(34,197,94,0.07)',  border: 'rgba(34,197,94,0.14)',  color: '#16a34a', glyph: '🏢' },
+};
 
 function ChannelRow({
   channel, leadId, onMutate,
@@ -37,6 +34,7 @@ function ChannelRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(channel.displayName);
   const [saving, setSaving] = useState(false);
+  const cfg = TYPE_CONFIG[channel.channelType];
 
   const save = async () => {
     if (!name.trim() || name.trim() === channel.displayName) { setEditing(false); return; }
@@ -61,12 +59,23 @@ function ChannelRow({
 
   return (
     <div style={{
-      padding: '10px 16px',
+      padding: '10px 14px 10px 16px',
       borderBottom: '1px solid var(--border-light)',
-      display: 'flex', alignItems: 'center', gap: 10,
+      borderLeft: `2px solid ${channel.isPrimary ? '#16a34a' : 'transparent'}`,
+      display: 'flex', alignItems: 'center', gap: 11,
     }}>
-      <ChannelTypeIcon type={channel.channelType} size={16} />
+      {/* Type icon chip */}
+      <div style={{
+        width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+        background: cfg.bg, border: `1px solid ${cfg.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: channel.channelType === 'USERNAME' ? 12 : 14,
+        color: cfg.color, fontWeight: channel.channelType === 'USERNAME' ? 700 : 400,
+      }}>
+        {cfg.glyph}
+      </div>
 
+      {/* Name + meta */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {editing ? (
           <input
@@ -77,29 +86,36 @@ function ChannelRow({
             style={{
               width: '100%', fontSize: 13, fontWeight: 500,
               border: '1px solid var(--border-medium)', borderRadius: 5,
-              padding: '2px 6px', background: 'var(--bg-app)', color: 'var(--text-primary)',
+              padding: '3px 7px', background: 'var(--bg-app)', color: 'var(--text-primary)',
+              outline: 'none',
             }}
           />
         ) : (
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {channel.displayName}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {channel.displayName}
+            </span>
             {channel.isPrimary && (
               <span style={{
-                marginLeft: 6, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                background: 'rgba(34,197,94,0.1)', color: '#16a34a', padding: '1px 5px', borderRadius: 3,
+                fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
+                background: '#dcfce7', color: '#15803d',
+                padding: '2px 6px', borderRadius: 20, flexShrink: 0, lineHeight: 1.5,
               }}>
                 Primary
               </span>
             )}
           </div>
         )}
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-          {CHANNEL_TYPE_LABELS[channel.channelType]} · {channel.identifier}
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.01em' }}>
+          <span style={{ fontWeight: 500 }}>{CHANNEL_TYPE_LABELS[channel.channelType]}</span>
+          <span style={{ margin: '0 5px', opacity: 0.4 }}>·</span>
+          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10.5 }}>{channel.identifier}</span>
         </div>
       </div>
 
+      {/* Action buttons */}
       {editing ? (
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
           <button onClick={save} disabled={saving} style={smBtn('#0f172a', '#fff')}>
             <Check size={11} strokeWidth={2.5} />
           </button>
@@ -108,7 +124,7 @@ function ChannelRow({
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
           <button
             onClick={() => window.open(buildWaUrl(channel), '_blank')}
             title="Open in WhatsApp"
@@ -117,11 +133,11 @@ function ChannelRow({
             <ExternalLink size={11} />
           </button>
           {!channel.isPrimary && (
-            <button onClick={makePrimary} title="Make primary" style={smBtn('transparent', 'var(--text-tertiary)', 'var(--border-light)')}>
+            <button onClick={makePrimary} title="Set as primary" style={smBtn('transparent', 'var(--text-tertiary)', 'var(--border-light)')}>
               <Star size={11} />
             </button>
           )}
-          <button onClick={() => setEditing(true)} title="Edit name" style={smBtn('transparent', 'var(--text-tertiary)', 'var(--border-light)')}>
+          <button onClick={() => setEditing(true)} title="Rename" style={smBtn('transparent', 'var(--text-tertiary)', 'var(--border-light)')}>
             <Edit2 size={11} />
           </button>
           <button onClick={archive} title="Archive" style={smBtn('transparent', '#dc2626', 'rgba(220,38,38,0.12)')}>
