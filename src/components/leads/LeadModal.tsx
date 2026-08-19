@@ -15,6 +15,7 @@ import { customFieldService } from '../../services/custom-field.service';
 import { CustomFieldRenderer, getFieldValue, setFieldValue } from './CustomFieldRenderer';
 import { CustomFieldBuilder } from './CustomFieldBuilder';
 import { LeadNotesSummary } from './LeadNotesSummary';
+import { LeadNotesModal } from './LeadNotesModal';
 
 // ============================================================================
 // CONSTANTS
@@ -324,6 +325,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
     lead?.customFieldValues ?? []
   );
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleLocMode = (m: 'structured' | 'freeform') => {
@@ -621,7 +623,15 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   <LeadNotesSummary
                     leadId={lead.id}
                     leadName={`${lead.firstName} ${lead.lastName}`}
+                    onOpen={() => setNotesOpen(true)}
                   />
+                  {notesOpen && (
+                    <LeadNotesModal
+                      leadId={lead.id}
+                      leadName={`${lead.firstName} ${lead.lastName}`}
+                      onClose={() => setNotesOpen(false)}
+                    />
+                  )}
                 </div>
               </>
             ) : (
