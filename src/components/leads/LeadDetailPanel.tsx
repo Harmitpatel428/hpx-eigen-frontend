@@ -13,7 +13,7 @@ import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
 import { crmSettingsService } from '../../services/crm-settings.service';
 import { leadService } from '../../services/lead.service';
-import { waChannelsService, type WaChannel } from '../../services/wa-channels.service';
+import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
 import { LeadWaChannelsModal } from './LeadWaChannelsModal';
 import { LeadNotesModal } from './LeadNotesModal';
 
@@ -993,19 +993,26 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               </button>
               <button
                 className="ldp-act ldp-wa"
-                onClick={() => setWaOpen(true)}
-                aria-label="WhatsApp channels"
+                onClick={() => {
+                  const dest = primaryWaChannel
+                    ? buildWaUrl(primaryWaChannel)
+                    : contactPhone ? whatsappUrl(contactPhone) : null;
+                  if (dest) window.open(dest, '_blank');
+                  else setWaOpen(true);
+                }}
+                disabled={!primaryWaChannel && !contactPhone}
+                aria-label={primaryWaChannel ? `Open WhatsApp — ${primaryWaChannel.displayName}` : 'Send WhatsApp'}
                 style={{
                   flex: 1, height: 34, borderRadius: 8,
-                  border: '1px solid rgba(34,197,94,0.2)',
-                  background: 'rgba(34,197,94,0.05)',
-                  color: '#16a34a',
+                  border: (primaryWaChannel || contactPhone) ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--border-medium)',
+                  background: (primaryWaChannel || contactPhone) ? 'rgba(34,197,94,0.05)' : 'var(--bg-subtle)',
+                  color: (primaryWaChannel || contactPhone) ? '#16a34a' : 'var(--text-tertiary)',
                   fontSize: 11, fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: (!primaryWaChannel && !contactPhone) ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <MessageCircle size={13} /> WA{waChannels.length > 0 ? ` (${waChannels.length})` : ''}
+                <MessageCircle size={13} /> WA
               </button>
               <button
                 className={`ldp-act${leadCopied ? ' ldp-copy-flash' : ''}`}

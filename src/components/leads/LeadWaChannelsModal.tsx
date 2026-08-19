@@ -151,11 +151,10 @@ function AddChannelForm({ leadId, onDone, onCancel }: { leadId: string; onDone: 
 
   const submit = async () => {
     if (!identifier.trim()) { setErr('Identifier is required.'); return; }
+    if (!displayName.trim()) { setErr('Display name is required.'); return; }
     setSaving(true);
     try {
-      const name = displayName.trim() || identifier.trim();
-      await waChannelsService.create(leadId, { channelType: type, identifier: identifier.trim(), displayName: name, isPrimary });
-      window.open(buildWaUrl({ channelType: type, identifier: identifier.trim() } as WaChannel), '_blank');
+      await waChannelsService.create(leadId, { channelType: type, identifier: identifier.trim(), displayName: displayName.trim(), isPrimary });
       onDone();
     } catch (e: any) {
       setErr(e?.response?.data?.message ?? 'Failed to save.');
@@ -214,8 +213,8 @@ function AddChannelForm({ leadId, onDone, onCancel }: { leadId: string; onDone: 
           <button onClick={onCancel} disabled={saving} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border-medium)', background: 'var(--bg-app)', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={submit} disabled={saving} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Opening…' : 'Save & Open WhatsApp'}
+          <button onClick={submit} disabled={saving} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#0f172a', color: '#fff', fontSize: 11, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
@@ -239,10 +238,6 @@ export const LeadWaChannelsModal = memo(function LeadWaChannelsModal({ leadId, l
     queryFn: () => waChannelsService.list(leadId),
     staleTime: 30_000,
   });
-
-  useEffect(() => {
-    if (!isLoading && channels.length === 0) setAdding(true);
-  }, [isLoading, channels.length]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['wa-channels', leadId] });
 
