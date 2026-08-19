@@ -256,7 +256,7 @@ export function LeadsPage() {
   const gridCols = '32px minmax(240px,1.4fr) minmax(240px,1.4fr) minmax(100px,0.75fr) minmax(120px,0.85fr) minmax(90px,0.7fr)';
 
   return (
-    <div className="p-6 md:p-8" style={{ width: '100%' }}>
+    <div className="p-6 md:p-8" style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
