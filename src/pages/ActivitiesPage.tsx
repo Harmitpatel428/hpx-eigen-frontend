@@ -354,7 +354,7 @@ function ActivityRow({ item }: { item: LeadActivityItem }) {
   const isOverdue = item.state === 'PENDING' && item.scheduledAt && new Date(item.scheduledAt) < new Date();
 
   const completeMut = useMutation({
-    mutationFn: () => leadActivityService.markComplete(item.id),
+    mutationFn: (id: string) => leadActivityService.markComplete(id),
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ['lead-activities'] });
       const snap = qc.getQueriesData<any>({ queryKey: ['lead-activities'] });
@@ -390,7 +390,7 @@ function ActivityRow({ item }: { item: LeadActivityItem }) {
             {item.state === 'PENDING' && (
               <button
                 type="button"
-                onClick={() => completeMut.mutate()}
+                onClick={() => completeMut.mutate(item.id)}
                 disabled={completeMut.isPending}
                 title="Mark complete"
                 style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px solid var(--border-medium)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', flexShrink: 0 }}
@@ -405,10 +405,10 @@ function ActivityRow({ item }: { item: LeadActivityItem }) {
             )}
           </div>
         </div>
-        {item.metadata?.location && (
+        {item.metadata && typeof item.metadata.location === 'string' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
             <MapPin size={11} style={{ color: 'var(--text-tertiary)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{String(item.metadata.location)}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.metadata.location}</span>
           </div>
         )}
         {item.actor && (
