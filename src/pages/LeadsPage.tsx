@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, memo, type CSSProperties } from 'react';
+import { useState, useCallback, useEffect, useMemo, memo, useRef, type CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine,
@@ -46,6 +46,31 @@ const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }>
   CONVERTED:           { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
 };
 
+
+// ── Task 3: stage pill order (per-browser, localStorage-persisted) ────────────
+// ponytail: localStorage only — multi-device sync needs a user-preferences API
+const DEFAULT_STAGES: { key: LeadStage; label: string }[] = [
+  { key: 'NEW',                 label: 'New'          },
+  { key: 'QUALIFIED',           label: 'Qualified'    },
+  { key: 'FOLLOW_UP',           label: 'Follow-Up'    },
+  { key: 'CALL_BACK_REQUESTED', label: 'Call Back'    },
+  { key: 'CALL_NOT_RECEIVED',   label: 'Not Received' },
+  { key: 'DISQUALIFIED',        label: 'Disqualified' },
+  { key: 'OTHER',               label: 'Others'       },
+];
+const STAGE_ORDER_KEY = 'sales_dashboard_stage_order';
+function loadStageOrder(): { key: LeadStage; label: string }[] {
+  try {
+    const raw = localStorage.getItem(STAGE_ORDER_KEY);
+    if (!raw) return DEFAULT_STAGES;
+    const keys = JSON.parse(raw) as string[];
+    const ordered = keys
+      .map(k => DEFAULT_STAGES.find(s => s.key === k))
+      .filter((s): s is { key: LeadStage; label: string } => !!s);
+    const missing = DEFAULT_STAGES.filter(s => !keys.includes(s.key));
+    return [...ordered, ...missing];
+  } catch { return DEFAULT_STAGES; }
+}
 
 // ============================================================================
 // DELETE CONFIRM
@@ -109,6 +134,9 @@ export function LeadsPage() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStage, setSelectedStage] = useState<LeadStage | ''>('');
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [stages, setStages] = useState(loadStageOrder);
+  const dragIdx = useRef<number | null>(null);
 
   const { data: leadsResponse, isLoading } = useQuery({
     queryKey: ['leads', { search: debouncedSearch, stage: selectedStage }],
@@ -156,7 +184,12 @@ export function LeadsPage() {
     staleTime: 60_000,
   });
 
-  const leads: Lead[] = leadsResponse?.data ?? [];
+  const leads: Lead[] = useMemo(() => {
+    const raw = leadsResponse?.data ?? [];
+    if (assignmentFilter === 'assigned')   return raw.filter(l => !!l.owner);
+    if (assignmentFilter === 'unassigned') return raw.filter(l => !l.owner);
+    return raw;
+  }, [leadsResponse, assignmentFilter]);
   const totalCount    = leadsResponse?.total ?? 0;
 
   const deleteMutation = useMutation({
@@ -290,57 +323,76 @@ export function LeadsPage() {
         </div>
       </div>
 
-      {/* STAGE FILTER PILLS */}
-      {(() => {
-        const STAGES: { key: LeadStage; label: string }[] = [
-          { key: 'NEW', label: 'New' },
-          { key: 'QUALIFIED', label: 'Qualified' },
-          { key: 'FOLLOW_UP', label: 'Follow-Up' },
-          { key: 'CALL_BACK_REQUESTED', label: 'Call Back' },
-          { key: 'CALL_NOT_RECEIVED', label: 'Not Received' },
-          { key: 'DISQUALIFIED', label: 'Disqualified' },
-          { key: 'OTHER', label: 'Others' },
-        ];
-        return (
-          <div style={{ display: 'flex', gap: 6, padding: '2px 12px 6px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
-            {/* All Leads pill */}
-            {(() => {
-              const allActive = selectedStage === '';
-              const totalCount = Object.values(stageCounts).reduce((s, n) => s + n, 0);
-              return (
-                <button
-                  onClick={() => setSelectedStage('')}
-                  className={`stage-pill${allActive ? ' stage-pill--active' : ''}`}
-                  style={allActive ? { color: '#0f172a', background: 'rgba(15,23,42,0.07)', borderColor: 'rgba(15,23,42,0.15)' } : undefined}
-                >
-                  <span className="stage-pill-dot" style={allActive ? { background: '#0f172a', opacity: 1 } : undefined} />
-                  All Leads
-                  {totalCount > 0 && <span className="stage-pill-count">{totalCount}</span>}
-                </button>
-              );
-            })()}
-            {STAGES.map(({ key, label }) => {
-              const active = selectedStage === key;
-              const sc = STAGE_COLORS[key];
-              const count = stageCounts[key];
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSelectedStage(active ? '' : key)}
-                  className={`stage-pill${active ? ' stage-pill--active' : ''}`}
-                  style={active ? { color: sc.text, background: sc.bg, borderColor: sc.bg } : undefined}
-                >
-                  <span className="stage-pill-dot" style={active ? { background: sc.text, opacity: 1 } : undefined} />
-                  {label}
-                  {count != null && count > 0 && (
-                    <span className="stage-pill-count">{count}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        );
-      })()}
+      {/* STAGE FILTER PILLS — draggable, keyboard-reorderable, localStorage-persisted */}
+      {/* ponytail: order is per-browser; escalate to product for user-preferences API if multi-device sync needed */}
+      <div style={{ display: 'flex', gap: 6, padding: '2px 12px 6px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+        {/* All Leads pill — fixed position, not draggable */}
+        {(() => {
+          const allActive = selectedStage === '';
+          const allTotal = Object.values(stageCounts).reduce((s, n) => s + n, 0);
+          return (
+            <button
+              onClick={() => setSelectedStage('')}
+              className={`stage-pill${allActive ? ' stage-pill--active' : ''}`}
+              style={allActive ? { color: '#0f172a', background: 'rgba(15,23,42,0.07)', borderColor: 'rgba(15,23,42,0.15)' } : undefined}
+            >
+              <span className="stage-pill-dot" style={allActive ? { background: '#0f172a', opacity: 1 } : undefined} />
+              All Leads
+              {allTotal > 0 && <span className="stage-pill-count">{allTotal}</span>}
+            </button>
+          );
+        })()}
+        {stages.map(({ key, label }, i) => {
+          const active = selectedStage === key;
+          const sc = STAGE_COLORS[key];
+          const count = stageCounts[key];
+          return (
+            <button
+              key={key}
+              draggable
+              onDragStart={() => { dragIdx.current = i; }}
+              onDragOver={e => {
+                e.preventDefault();
+                if (dragIdx.current === null || dragIdx.current === i) return;
+                const next = [...stages];
+                const [moved] = next.splice(dragIdx.current, 1);
+                next.splice(i, 0, moved);
+                dragIdx.current = i;
+                setStages(next);
+              }}
+              onDrop={() => {
+                dragIdx.current = null;
+                localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(stages.map(s => s.key)));
+              }}
+              onKeyDown={e => {
+                if (e.key === 'ArrowLeft' && i > 0) {
+                  e.preventDefault();
+                  const next = [...stages];
+                  [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                  setStages(next);
+                  localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(next.map(s => s.key)));
+                } else if (e.key === 'ArrowRight' && i < stages.length - 1) {
+                  e.preventDefault();
+                  const next = [...stages];
+                  [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                  setStages(next);
+                  localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(next.map(s => s.key)));
+                }
+              }}
+              onClick={() => setSelectedStage(active ? '' : key)}
+              className={`stage-pill${active ? ' stage-pill--active' : ''}`}
+              style={active ? { color: sc.text, background: sc.bg, borderColor: sc.bg, cursor: 'grab' } : { cursor: 'grab' }}
+              aria-label={`${label}${count ? ` (${count})` : ''} — drag or use arrow keys to reorder`}
+            >
+              <span className="stage-pill-dot" style={active ? { background: sc.text, opacity: 1 } : undefined} />
+              {label}
+              {count != null && count > 0 && (
+                <span className="stage-pill-count">{count}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
       {/* BULK ACTIONS TOOLBAR */}
       {selectedIds.size > 0 && (
@@ -383,7 +435,17 @@ export function LeadsPage() {
                 ? <><div>Company</div><div>Lead</div></>
                 : <><div>Lead</div><div>Company</div></>
               }
-              <div>Assigned</div><div>Contact</div><div>Stage</div>
+              <button
+                onClick={() => setAssignmentFilter(f => f === 'all' ? 'assigned' : f === 'assigned' ? 'unassigned' : 'all')}
+                title={assignmentFilter === 'all' ? 'Show all' : assignmentFilter === 'assigned' ? 'Showing assigned' : 'Showing unassigned'}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'inherit', fontWeight: 'inherit', color: assignmentFilter !== 'all' ? 'var(--color-primary,#6366f1)' : 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'inherit' }}
+              >
+                Assigned
+                <span style={{ fontSize: 9, opacity: assignmentFilter === 'all' ? 0.4 : 1 }}>
+                  {assignmentFilter === 'assigned' ? '▲' : assignmentFilter === 'unassigned' ? '▼' : '⇅'}
+                </span>
+              </button>
+              <div>Contact</div><div>Stage</div>
             </div>
 
             {/* Rows */}

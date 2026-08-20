@@ -6,7 +6,6 @@ import { leadNotesService, type LeadNote } from '../../services/lead-notes.servi
 import { LeadNoteItem } from './LeadNoteItem';
 import { EditLeadNote } from './EditLeadNote';
 import { NoteCharacterCounter } from './NoteCharacterCounter';
-import { FollowUpPicker } from './FollowUpPicker';
 
 interface LeadNotesModalProps {
   leadId: string;
@@ -64,8 +63,6 @@ export const LeadNotesModal = memo(function LeadNotesModal({
 
   const [isAdding, setIsAdding] = useState(false);
   const [addContent, setAddContent] = useState('');
-  const [addFollowUpDate, setAddFollowUpDate] = useState<string | null>(null);
-  const [addFollowUpTime, setAddFollowUpTime] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
@@ -88,15 +85,13 @@ export const LeadNotesModal = memo(function LeadNotesModal({
       invalidate();
       setIsAdding(false);
       setAddContent('');
-      setAddFollowUpDate(null);
-      setAddFollowUpTime(null);
       setAddError(null);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (p: { noteId: string; content?: string; followUpDate?: string | null; followUpTime?: string | null }) =>
-      leadNotesService.update(leadId, p.noteId, { content: p.content, followUpDate: p.followUpDate, followUpTime: p.followUpTime }),
+    mutationFn: (p: { noteId: string; content?: string }) =>
+      leadNotesService.update(leadId, p.noteId, { content: p.content }),
     onSuccess: () => { invalidate(); setEditingNoteId(null); },
   });
 
@@ -114,26 +109,20 @@ export const LeadNotesModal = memo(function LeadNotesModal({
     setIsAdding(false);
     setAddContent('');
     setAddError(null);
-    setAddFollowUpDate(null);
-    setAddFollowUpTime(null);
   };
 
   const handleAdd = async () => {
     if (!addContent.trim()) { setAddError('Note cannot be empty'); return; }
     try {
-      await createMutation.mutateAsync({
-        content: addContent,
-        followUpDate: addFollowUpDate || undefined,
-        followUpTime: addFollowUpTime || undefined,
-      });
+      await createMutation.mutateAsync({ content: addContent });
     } catch (e: any) {
       setAddError(e?.message || 'Failed to save');
     }
   };
 
-  const handleSaveEdit = async (content: string, followUpDate?: string | null, followUpTime?: string | null) => {
+  const handleSaveEdit = async (content: string) => {
     if (!editingNoteId) return;
-    await updateMutation.mutateAsync({ noteId: editingNoteId, content, followUpDate, followUpTime });
+    await updateMutation.mutateAsync({ noteId: editingNoteId, content });
   };
 
   const handleDelete = async (noteId: string) => {
@@ -242,13 +231,6 @@ export const LeadNotesModal = memo(function LeadNotesModal({
             disabled={createMutation.isPending}
           />
           <NoteCharacterCounter length={addContent.length} style={{ marginTop: 2, marginBottom: 7 }} />
-          <FollowUpPicker
-            followUpDate={addFollowUpDate}
-            followUpTime={addFollowUpTime}
-            onDateChange={setAddFollowUpDate}
-            onTimeChange={setAddFollowUpTime}
-            disabled={createMutation.isPending}
-          />
           <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', marginTop: 7 }}>
             <button
               onClick={cancelAdd}
