@@ -600,6 +600,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           : {}),
       });
       qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      qc.invalidateQueries({ queryKey: ['lead-activities'] });
     } catch {
       setLocalStage(prev);
       setLocalFollowUpDate(prevFollowUpDate);

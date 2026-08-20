@@ -137,12 +137,33 @@ export function LeadsPage() {
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [stages, setStages] = useState(loadStageOrder);
   const dragIdx = useRef<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const filterKey = `${debouncedSearch}||${selectedStage}`;
+  const prevFilterKey = useRef(filterKey);
 
-  const { data: leadsResponse, isLoading } = useQuery({
-    queryKey: ['leads', { search: debouncedSearch, stage: selectedStage }],
-    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: selectedStage || undefined, pageSize: 100 }),
+  const { data: leadsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['leads', { search: debouncedSearch, stage: selectedStage, page }],
+    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: selectedStage || undefined, pageSize: 100, page }),
     staleTime: 30_000,
   });
+
+  useEffect(() => {
+    if (prevFilterKey.current !== filterKey) {
+      prevFilterKey.current = filterKey;
+      setPage(1);
+      setAllLeads([]);
+    }
+  }, [filterKey]);
+
+  useEffect(() => {
+    if (!leadsResponse?.data) return;
+    if (leadsResponse.page === 1) {
+      setAllLeads(leadsResponse.data);
+    } else {
+      setAllLeads(prev => [...prev, ...leadsResponse.data]);
+    }
+  }, [leadsResponse]);
 
   const { data: stageCounts = {} } = useQuery<Record<string, number>>({
     queryKey: ['lead-stage-counts'],
@@ -185,12 +206,12 @@ export function LeadsPage() {
   });
 
   const leads: Lead[] = useMemo(() => {
-    const raw = leadsResponse?.data ?? [];
-    if (assignmentFilter === 'assigned')   return raw.filter(l => !!l.owner);
-    if (assignmentFilter === 'unassigned') return raw.filter(l => !l.owner);
-    return raw;
-  }, [leadsResponse, assignmentFilter]);
-  const totalCount    = leadsResponse?.total ?? 0;
+    if (assignmentFilter === 'assigned')   return allLeads.filter(l => !!l.owner);
+    if (assignmentFilter === 'unassigned') return allLeads.filter(l => !l.owner);
+    return allLeads;
+  }, [allLeads, assignmentFilter]);
+  const totalCount = leadsResponse?.total ?? allLeads.length;
+  const hasMore    = allLeads.length > 0 && allLeads.length < totalCount;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => leadService.softDelete(id),
@@ -198,6 +219,7 @@ export function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-activities'] });
       setDeleteTarget(null);
       setSelectedLead(null);
     },
@@ -206,6 +228,7 @@ export function LeadsPage() {
   const handleModalSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['leads'] });
     queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['lead-activities'] });
     setModal(null);
   }, [queryClient]);
 
@@ -305,7 +328,7 @@ export function LeadsPage() {
         <div>
           <h1 className="type-title">Leads</h1>
           <p className="type-body">
-            {isLoading ? 'Loading…' : `${totalCount} total · ${leads.filter(l => l.status === 'NEW').length} new`}
+            {isLoading && allLeads.length === 0 ? 'Loading…' : `${totalCount} total · ${allLeads.filter(l => l.status === 'NEW').length} new`}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -417,7 +440,7 @@ export function LeadsPage() {
 
       {/* DATA GRID */}
       <div style={{ flex: 1, overflow: 'auto', width: '100%' }}>
-        {isLoading ? (
+        {isLoading && allLeads.length === 0 ? (
           <div className="type-ui" style={{ color: 'var(--text-tertiary)', padding: 'var(--space-4)' }}>Loading leads…</div>
         ) : leads.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
@@ -538,6 +561,29 @@ export function LeadsPage() {
               })}
               <style>{`.dense-row:hover { background-color: var(--bg-hover, rgba(0,0,0,0.02)) !important; }`}</style>
             </div>
+
+            {/* LOAD MORE */}
+            {hasMore && (
+              <div style={{ padding: '16px 12px', display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={isFetching}
+                  style={{
+                    padding: '7px 20px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-medium)',
+                    background: isFetching ? 'var(--bg-subtle)' : 'var(--bg-app)',
+                    color: isFetching ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: isFetching ? 'not-allowed' : 'pointer',
+                    transition: 'all 120ms ease',
+                  }}
+                >
+                  {isFetching ? 'Loading…' : `Load More (${totalCount - allLeads.length} remaining)`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

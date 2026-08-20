@@ -358,13 +358,15 @@ ul, ol { list-style: none; }
 }
 .stage-pill-count {
   font-size: 10px;
-  font-weight: var(--font-normal);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  opacity: 0.55;
-  min-width: 14px;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  min-width: 18px;
   text-align: center;
-  padding: 0 2px;
-  transition: opacity var(--transition-fast);
+  padding: 1px 4px;
+  transition: background var(--transition-fast);
 }
 
 /* Active state — colors applied via inline style */
@@ -375,7 +377,8 @@ ul, ol { list-style: none; }
   filter: brightness(0.97);
 }
 .stage-pill--active .stage-pill-count {
-  opacity: 0.8;
+  background: rgba(0, 0, 0, 0.14);
+  color: currentColor;
 }
 
 /* ─── AVATARS ─── */
