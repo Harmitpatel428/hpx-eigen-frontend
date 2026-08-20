@@ -353,7 +353,7 @@ function ActivityRow({ item }: { item: LeadActivityItem }) {
   const qc = useQueryClient();
   const isOverdue = item.state === 'PENDING' && item.scheduledAt && new Date(item.scheduledAt) < new Date();
 
-  const completeMut = useMutation({
+  const completeMut = useMutation<LeadActivityItem, Error, string>({
     mutationFn: (id: string) => leadActivityService.markComplete(id),
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ['lead-activities'] });
