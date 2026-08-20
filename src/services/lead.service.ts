@@ -204,4 +204,9 @@ export const leadService = {
     const { data } = await api.get<any>(`/api/v1/leads/check-duplicates?${query}`);
     return data?.data ?? [];
   },
+
+  async findById(id: string): Promise<Lead> {
+    const { data } = await api.get<Lead>(`/api/v1/leads/${id}`);
+    return data;
+  },
 };

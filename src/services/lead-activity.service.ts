@@ -44,8 +44,13 @@ export const leadActivityService = {
     return data.data;
   },
 
-  async markComplete(id: string): Promise<LeadActivityItem> {
-    const { data } = await api.patch<{ data: LeadActivityItem }>(`/api/v1/lead-activities/${id}/complete`);
+  async markComplete(id: string, opts?: { note?: string; nextFollowUp?: string }): Promise<LeadActivityItem> {
+    const { data } = await api.patch<{ data: LeadActivityItem }>(`/api/v1/lead-activities/${id}/complete`, opts ?? {});
     return data.data;
+  },
+
+  async bulkComplete(ids: string[]): Promise<{ count: number }> {
+    const { data } = await api.post<{ count: number }>('/api/v1/lead-activities/bulk-complete', { ids });
+    return data;
   },
 };

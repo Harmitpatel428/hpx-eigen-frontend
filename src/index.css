@@ -381,6 +381,10 @@ ul, ol { list-style: none; }
   color: currentColor;
 }
 
+/* ─── ACTIVITY ROW CHECKBOX ─── */
+.activity-checkbox:hover .activity-icon { display: none; }
+.activity-checkbox:hover .activity-check-input { display: block !important; }
+
 /* ─── AVATARS ─── */
 .avatar {
   width: 40px;
