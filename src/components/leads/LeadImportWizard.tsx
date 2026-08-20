@@ -15,6 +15,27 @@ const LEGACY_STAGES  = new Set(['CONTACTED','CONVERTED']);
 const VALID_SOURCES  = new Set(['WEBSITE','REFERRAL','COLD_CALL','EMAIL_CAMPAIGN','SOCIAL_MEDIA','TRADE_SHOW','OTHER']);
 const VALID_PRIOS    = new Set(['CRITICAL','HIGH','MEDIUM','LOW']);
 
+const STAGE_ALIASES: Record<string, string> = {
+  'FOLLOW UP': 'FOLLOW_UP', 'FOLLOW-UP': 'FOLLOW_UP',
+  'CALLBACK': 'CALL_BACK_REQUESTED', 'CALL BACK': 'CALL_BACK_REQUESTED', 'CALL-BACK': 'CALL_BACK_REQUESTED',
+  'NOT RECEIVED': 'CALL_NOT_RECEIVED', 'CALL NOT RECEIVED': 'CALL_NOT_RECEIVED',
+};
+const SOURCE_ALIASES: Record<string, string> = {
+  LINKEDIN: 'SOCIAL_MEDIA', FACEBOOK: 'SOCIAL_MEDIA', TWITTER: 'SOCIAL_MEDIA',
+  INSTAGRAM: 'SOCIAL_MEDIA', YOUTUBE: 'SOCIAL_MEDIA', SOCIAL: 'SOCIAL_MEDIA',
+  WEB: 'WEBSITE', TRADESHOW: 'TRADE_SHOW', TRADE_SHOWS: 'TRADE_SHOW',
+  EMAIL_CAMPAIGNS: 'EMAIL_CAMPAIGN', EMAILCAMPAIGN: 'EMAIL_CAMPAIGN',
+};
+
+function normalizeStageValue(raw: string): string {
+  const up = raw.trim().toUpperCase();
+  return STAGE_ALIASES[up] ?? up;
+}
+function normalizeSourceValue(raw: string): string {
+  const up = raw.trim().toUpperCase().replace(/ /g, '_');
+  return SOURCE_ALIASES[up] ?? up;
+}
+
 function validateRows(rows: Record<string, string>[], map: Record<string, string>): RowError[] {
   const errors: RowError[] = [];
   rows.forEach((row, idx) => {
@@ -36,23 +57,17 @@ function validateRows(rows: Record<string, string>[], map: Record<string, string
 
     const stage = get('stage');
     if (stage) {
-      const upper = stage.toUpperCase();
-      if (LEGACY_STAGES.has(upper)) {
+      const normalized = normalizeStageValue(stage);
+      if (LEGACY_STAGES.has(normalized)) {
         errors.push({ row: n, column: 'stage', message: `Stage "${stage}" is a legacy stage and is no longer importable.`, suggestedFix: 'Remove this value or use a current stage. The record remains readable in the system.' });
-      } else if (!VALID_STAGES.has(upper)) {
+      } else if (!VALID_STAGES.has(normalized)) {
         errors.push({ row: n, column: 'stage', message: `Unknown stage: "${stage}".`, suggestedFix: `Use one of: ${[...VALID_STAGES].join(', ')}.` });
       }
     }
 
-    const FOLLOW_UP_REQUIRED = new Set(['FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED']);
-    const followUpDate = get('followUpDate');
-    if (stage && FOLLOW_UP_REQUIRED.has(stage.toUpperCase()) && !followUpDate) {
-      errors.push({ row: n, column: 'followUpDate', message: `Stage "${stage}" requires a Follow-Up Date.`, suggestedFix: 'Add a followUpDate column with a date value.' });
-    }
-
     const source = get('source');
-    if (source && !VALID_SOURCES.has(source.toUpperCase().replace(/ /g, '_'))) {
-      errors.push({ row: n, column: 'source', message: `Unknown source: "${source}".`, suggestedFix: `Use one of: ${[...VALID_SOURCES].join(', ')}.` });
+    if (source && !VALID_SOURCES.has(normalizeSourceValue(source))) {
+      errors.push({ row: n, column: 'source', message: `Unknown source: "${source}".`, suggestedFix: `Use one of: ${[...VALID_SOURCES].join(', ')}. Common values like LINKEDIN are mapped to SOCIAL_MEDIA automatically.` });
     }
 
     const prio = get('priority');
@@ -94,8 +109,8 @@ function rowToPayload(row: Record<string, string>, map: Record<string, string>):
   const lastName  = get('lastName');
   if (!firstName || !lastName) return null;
 
-  const stageRaw  = get('stage').toUpperCase();
-  const sourceRaw = get('source').toUpperCase().replace(/ /g, '_');
+  const stageRaw  = normalizeStageValue(get('stage'));
+  const sourceRaw = normalizeSourceValue(get('source'));
   const prioRaw   = get('priority').toUpperCase();
 
   // collect custom field values from cf: prefixed map entries
