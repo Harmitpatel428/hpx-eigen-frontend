@@ -1051,10 +1051,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </>
 
           {/* WhatsApp Channels */}
-          {waChannels.length > 0 && (
-            <>
-              {divider}
-              <Section label="WhatsApp Channels" delay={138}>
+          <>
+            {divider}
+            <Section label="WhatsApp Channels" delay={138}>
+              {waChannels.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {primaryWaChannel && (
                     <div className="ldp-row" style={{ cursor: 'default', padding: '6px 0', margin: 0 }}>
@@ -1083,9 +1083,20 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                     Manage channels →
                   </button>
                 </div>
-              </Section>
-            </>
-          )}
+              ) : (
+                <button
+                  onClick={() => setActivePanel('whatsapp')}
+                  style={{
+                    background: 'none', border: 'none', padding: '2px 0',
+                    fontSize: 11.5, color: '#16a34a', cursor: 'pointer',
+                    fontWeight: 500, textAlign: 'left',
+                  }}
+                >
+                  Link a WhatsApp channel →
+                </button>
+              )}
+            </Section>
+          </>
 
           {/* Custom Fields */}
           {populatedCustomValues.length > 0 && (
