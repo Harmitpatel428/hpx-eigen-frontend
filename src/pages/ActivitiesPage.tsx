@@ -310,7 +310,7 @@ function ScheduleModal({ onClose, initialValues }: ScheduleModalProps) {
   const defaults = defaultScheduledDate();
   const [lead, setLead]           = useState<LeadOption | null>(null);
   const [subject, setSubject]     = useState(initialValues?.subject ?? '');
-  const [duration, setDuration]   = useState(initialValues?.duration ?? 'M30');
+  const [duration, setDuration]   = useState<string>(initialValues?.duration ?? 'M30');
   const [location, setLocation]   = useState(initialValues?.location ?? getLastLocation());
   const [date, setDate]           = useState(defaults.date);
   const [startTime, setStartTime] = useState(defaults.time);
