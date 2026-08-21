@@ -574,11 +574,8 @@ interface ActivityRowProps {
 function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, onExpand, onCheck }: ActivityRowProps) {
   const isOverdue = item.state === 'PENDING' && item.scheduledAt && new Date(item.scheduledAt) < new Date();
 
-  // Company-first display: company is primary identity, person is secondary
-  const company    = item.lead?.company ?? null;
-  const personName = item.lead ? `${item.lead.firstName} ${item.lead.lastName}` : null;
-  const primaryDisplay   = company || personName || '—';
-  const secondaryDisplay = company && personName ? personName : null;
+  const company    = item.lead?.company?.trim() || null;
+  const personName = item.lead ? `${item.lead.firstName} ${item.lead.lastName}`.trim() : null;
 
   return (
     <div style={{ position: 'relative', opacity: locked ? 0.5 : 1 }}>
@@ -609,26 +606,16 @@ function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, on
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-            <div>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{item.subject}</span>
-              {item.lead && (
-                <button
-                  type="button"
-                  onClick={() => !locked && onLeadClick(item.leadId)}
-                  disabled={locked}
-                  style={{ background: 'none', border: 'none', cursor: locked ? 'default' : 'pointer', color: 'var(--color-accent)', fontSize: 13, marginLeft: 8, padding: 0, textDecoration: locked ? 'none' : 'underline', textUnderlineOffset: 2 }}
-                >
-                  <span style={{ display: 'block', lineHeight: 1.3 }}>{primaryDisplay}</span>
-                  {secondaryDisplay && (
-                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400, textDecoration: 'none' }}>{secondaryDisplay}</span>
-                  )}
-                </button>
-              )}
-            </div>
+          {/* Title row + right meta */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {item.subject}
+            </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <span style={{ fontSize: 12, color: isOverdue ? '#ef4444' : 'var(--text-tertiary)' }}>
-                {formatScheduled(item.scheduledAt)}
+              {/* by {actor} · {timestamp} */}
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                {item.actor && <>{`by ${item.actor.firstName} ${item.actor.lastName}`}{' · '}</>}
+                <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-tertiary)' }}>{formatScheduled(item.scheduledAt)}</span>
               </span>
               {!locked && item.state === 'PENDING' && (
                 <button type="button" onClick={() => onExpand(expanded ? null : item.id)} title="Quick complete"
@@ -643,16 +630,54 @@ function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, on
               )}
             </div>
           </div>
+
+          {/* Identity line: [avatar] Company · Person */}
+          {item.lead && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, minWidth: 0, overflow: 'hidden' }}>
+              {!company && !personName ? (
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', cursor: 'default' }}>Unnamed lead</span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="activity-lead-btn"
+                    onClick={() => !locked && onLeadClick(item.leadId)}
+                    disabled={locked}
+                    aria-label={`Open lead: ${company || personName}`}
+                  >
+                    <div className="activity-lead-avatar">
+                      {(company?.[0] ?? personName?.[0] ?? '?').toUpperCase()}
+                    </div>
+                    <span className="activity-lead-name" title={company || personName || undefined}>
+                      {company || personName}
+                    </span>
+                  </button>
+                  {company && personName && personName !== company && (
+                    <>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 12, flexShrink: 0, userSelect: 'none' }}>·</span>
+                      <span
+                        title={personName}
+                        style={{
+                          fontSize: 'var(--text-xs)', color: 'var(--text-secondary)',
+                          fontWeight: 400, cursor: 'default', userSelect: 'none',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+                        }}
+                      >
+                        {personName}
+                      </span>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Location metadata */}
           {item.metadata && typeof item.metadata.location === 'string' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
               <MapPin size={11} style={{ color: 'var(--text-tertiary)' }} />
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.metadata.location}</span>
             </div>
-          )}
-          {item.actor && (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, display: 'block' }}>
-              {item.actor.firstName} {item.actor.lastName}
-            </span>
           )}
         </div>
       </div>
