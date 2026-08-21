@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Check, Clock, Plus, X, ChevronDown, MapPin, User, Keyboard } from 'lucide-react';
+import { Calendar, Check, Clock, Plus, X, ChevronDown, MapPin, User, Keyboard, Lock, Settings } from 'lucide-react';
 import { leadActivityService, GlobalFilter, LeadActivityItem } from '../services/lead-activity.service';
 import { leadService } from '../services/lead.service';
 import { ContextPanel } from '../components/layout/ContextPanel';
@@ -35,6 +35,14 @@ const DURATION_MINUTES: Record<string, number | null> = {
 const LAST_LOCATION_KEY = 'last_activity_location';
 const SAVED_LOCATIONS_KEY = 'hpx-activity-locations';
 const MAX_SAVED_LOCATIONS = 8;
+const UNLOCK_SETTINGS_KEY = 'hpx-activities-unlock';
+
+interface UnlockSettings { enabled: boolean; count: number; }
+
+function getUnlockSettings(): UnlockSettings {
+  try { return JSON.parse(localStorage.getItem(UNLOCK_SETTINGS_KEY) ?? '{"enabled":false,"count":5}'); }
+  catch { return { enabled: false, count: 5 }; }
+}
 
 function getLastLocation(): string {
   return localStorage.getItem(LAST_LOCATION_KEY) || 'Phone';
@@ -48,15 +56,15 @@ function persistLocation(loc: string) {
   localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify([loc, ...prev].slice(0, MAX_SAVED_LOCATIONS)));
 }
 
-// Returns next business day at 11:00 — skips weekends
+// Returns next business day at 11:00 using LOCAL date (not UTC)
 function defaultScheduledDate(): { date: string; time: string } {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-  return {
-    date: d.toISOString().slice(0, 10),
-    time: '11:00',
-  };
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return { date: `${year}-${month}-${day}`, time: '11:00' };
 }
 
 const ACTIVITY_TEMPLATES = [
@@ -252,14 +260,20 @@ function QuickCompleteForm({ item, onClose }: QuickCompleteProps) {
     onError: (_e, _v, ctx: any) => {
       if (ctx?.snaps) ctx.snaps.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
     },
+    onSuccess: () => {
+      // Invalidate notes so the saved note appears immediately in the lead panel
+      qc.invalidateQueries({ queryKey: ['notes-summary', item.leadId] });
+      qc.invalidateQueries({ queryKey: ['notes', item.leadId] });
+      onClose();
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: ['lead-activities'] }),
-    onSuccess: onClose,
   });
 
   function submit() {
     let nextFollowUp: string | undefined;
     if (followUp === 'tomorrow') nextFollowUp = nextFollowUpDate('tomorrow');
     else if (followUp === 'next-week') nextFollowUp = nextFollowUpDate('next-week');
+    // Use local datetime parsing — browser treats YYYY-MM-DDTHH:mm as local time
     else if (followUp === 'custom' && customDate) nextFollowUp = new Date(`${customDate}T${customTime}`).toISOString();
     mut.mutate({ note: note.trim() || undefined, nextFollowUp });
   }
@@ -328,6 +342,7 @@ function ScheduleModal({ onClose, initialValues }: ScheduleModalProps) {
       if (!hideTimes && !startTime) throw new Error('Start time is required');
       if (showEndTime && endTime && endTime <= startTime) throw new Error('End time must be after start time');
 
+      // Use local datetime parsing — browser treats YYYY-MM-DDTHH:mm as local time
       let scheduledAt: string | undefined;
       if (!hideTimes && date && startTime) scheduledAt = new Date(`${date}T${startTime}`).toISOString();
       else if (hideTimes && date) scheduledAt = new Date(`${date}T00:00`).toISOString();
@@ -453,6 +468,96 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Unlock Settings Popover ──────────────────────────────────────────────────
+
+interface UnlockSettingsPopoverProps {
+  settings: UnlockSettings;
+  onChange: (s: UnlockSettings) => void;
+  onClose: () => void;
+}
+
+function UnlockSettingsPopover({ settings, onChange, onClose }: UnlockSettingsPopoverProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  function setCount(raw: string) {
+    const n = parseInt(raw, 10);
+    if (isNaN(n)) return;
+    onChange({ ...settings, count: Math.min(20, Math.max(1, n)) });
+  }
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', top: '100%', right: 0, zIndex: 150, marginTop: 6,
+      background: 'var(--bg-app)', border: '1px solid var(--border-medium)',
+      borderRadius: 10, padding: '14px 16px', width: 260,
+      boxShadow: '0 8px 24px rgba(0,0,0,.12)',
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>
+        Lead Unlock Settings
+      </div>
+
+      {/* Toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Limit unlocked leads</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+            {settings.enabled ? 'Restricts workable leads to configured count' : 'All leads are workable'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange({ ...settings, enabled: !settings.enabled })}
+          style={{
+            position: 'relative', width: 38, height: 22, borderRadius: 999,
+            border: 'none', cursor: 'pointer', flexShrink: 0,
+            background: settings.enabled ? '#0f172a' : '#cbd5e1',
+            transition: 'background 0.15s',
+          }}
+          aria-label={settings.enabled ? 'Disable lead limit' : 'Enable lead limit'}
+        >
+          <span style={{
+            position: 'absolute', top: 2, left: settings.enabled ? 18 : 2,
+            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+            transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          }} />
+        </button>
+      </div>
+
+      {/* Count input — only when enabled */}
+      {settings.enabled && (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 5 }}>
+            Number of unlocked leads (1–20)
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={settings.count}
+            onChange={e => setCount(e.target.value)}
+            style={{
+              width: '100%', padding: '6px 10px', fontSize: 13, boxSizing: 'border-box',
+              border: '1px solid var(--border-medium)', borderRadius: 7,
+              background: 'var(--bg-app)', color: 'var(--text-primary)', outline: 'none',
+            }}
+          />
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+            First {settings.count} lead{settings.count !== 1 ? 's' : ''} in the list are workable. Others are locked.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Activity Row ─────────────────────────────────────────────────────────────
 
 interface ActivityRowProps {
@@ -460,17 +565,23 @@ interface ActivityRowProps {
   focused: boolean;
   checked: boolean;
   expanded: boolean;
+  locked: boolean;
   onLeadClick: (leadId: string) => void;
   onExpand: (id: string | null) => void;
   onCheck: (id: string, shiftKey: boolean) => void;
 }
 
-function ActivityRow({ item, focused, checked, expanded, onLeadClick, onExpand, onCheck }: ActivityRowProps) {
+function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, onExpand, onCheck }: ActivityRowProps) {
   const isOverdue = item.state === 'PENDING' && item.scheduledAt && new Date(item.scheduledAt) < new Date();
-  const leadName  = item.lead ? `${item.lead.firstName} ${item.lead.lastName}` : '—';
+
+  // Company-first display: company is primary identity, person is secondary
+  const company    = item.lead?.company ?? null;
+  const personName = item.lead ? `${item.lead.firstName} ${item.lead.lastName}` : null;
+  const primaryDisplay   = company || personName || '—';
+  const secondaryDisplay = company && personName ? personName : null;
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', opacity: locked ? 0.5 : 1 }}>
       <div
         style={{
           display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0',
@@ -479,9 +590,13 @@ function ActivityRow({ item, focused, checked, expanded, onLeadClick, onExpand, 
           outlineOffset: -2, borderRadius: focused ? 6 : 0,
         }}
       >
-        {/* Checkbox (shown on hover via CSS class) */}
+        {/* Checkbox / icon */}
         <div className="activity-checkbox" style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-          {checked ? (
+          {locked ? (
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+              <Lock size={12} />
+            </div>
+          ) : checked ? (
             <input type="checkbox" checked onChange={() => {}} onClick={e => onCheck(item.id, e.shiftKey)} style={{ cursor: 'pointer', accentColor: 'var(--color-accent)' }} />
           ) : (
             <>
@@ -498,9 +613,16 @@ function ActivityRow({ item, focused, checked, expanded, onLeadClick, onExpand, 
             <div>
               <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{item.subject}</span>
               {item.lead && (
-                <button type="button" onClick={() => onLeadClick(item.leadId)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontSize: 13, marginLeft: 8, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                  {leadName}
+                <button
+                  type="button"
+                  onClick={() => !locked && onLeadClick(item.leadId)}
+                  disabled={locked}
+                  style={{ background: 'none', border: 'none', cursor: locked ? 'default' : 'pointer', color: 'var(--color-accent)', fontSize: 13, marginLeft: 8, padding: 0, textDecoration: locked ? 'none' : 'underline', textUnderlineOffset: 2 }}
+                >
+                  <span style={{ display: 'block', lineHeight: 1.3 }}>{primaryDisplay}</span>
+                  {secondaryDisplay && (
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400, textDecoration: 'none' }}>{secondaryDisplay}</span>
+                  )}
                 </button>
               )}
             </div>
@@ -508,7 +630,7 @@ function ActivityRow({ item, focused, checked, expanded, onLeadClick, onExpand, 
               <span style={{ fontSize: 12, color: isOverdue ? '#ef4444' : 'var(--text-tertiary)' }}>
                 {formatScheduled(item.scheduledAt)}
               </span>
-              {item.state === 'PENDING' && (
+              {!locked && item.state === 'PENDING' && (
                 <button type="button" onClick={() => onExpand(expanded ? null : item.id)} title="Quick complete"
                   style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px solid var(--border-medium)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                   <Check size={13} />
@@ -535,7 +657,7 @@ function ActivityRow({ item, focused, checked, expanded, onLeadClick, onExpand, 
         </div>
       </div>
 
-      {expanded && item.state === 'PENDING' && (
+      {expanded && !locked && item.state === 'PENDING' && (
         <QuickCompleteForm item={item} onClose={() => onExpand(null)} />
       )}
     </div>
@@ -565,15 +687,25 @@ export function ActivitiesPage() {
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showUnlockSettings, setShowUnlockSettings] = useState(false);
+  const [unlockSettings, setUnlockSettings] = useState<UnlockSettings>(getUnlockSettings);
   const [search, setSearch]             = useState('');
   const searchRef                       = useRef<HTMLInputElement>(null);
   const lastSelectedIndex               = useRef<number>(-1);
   const templateMenuRef                 = useRef<HTMLDivElement>(null);
+  const unlockSettingsRef               = useRef<HTMLDivElement>(null);
 
+  // Persist unlock settings to localStorage
+  useEffect(() => {
+    localStorage.setItem(UNLOCK_SETTINGS_KEY, JSON.stringify(unlockSettings));
+  }, [unlockSettings]);
+
+  // staleTime: 0 ensures deleted leads are cleared immediately on re-visit
   const { data, isLoading } = useQuery({
     queryKey: ['lead-activities', filter],
     queryFn: () => leadActivityService.findAll(filter),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const { data: selectedLead } = useQuery({
@@ -588,11 +720,25 @@ export function ActivitiesPage() {
   const filteredItems = search.trim()
     ? items.filter(a =>
         a.subject.toLowerCase().includes(search.toLowerCase()) ||
-        (a.lead && `${a.lead.firstName} ${a.lead.lastName}`.toLowerCase().includes(search.toLowerCase()))
+        (a.lead && `${a.lead.firstName} ${a.lead.lastName}`.toLowerCase().includes(search.toLowerCase())) ||
+        (a.lead?.company && a.lead.company.toLowerCase().includes(search.toLowerCase()))
       )
     : items;
 
-  // ─── Bulk complete (FIX 3 — optimistic) ───────────────────────────────────
+  // Compute unlocked lead IDs for the current filtered list.
+  // Tracks unique leadIds in list order; first N are unlocked.
+  const unlockedLeadIds = useMemo<Set<string> | null>(() => {
+    if (!unlockSettings.enabled) return null; // null = all unlocked
+    const ids = new Set<string>();
+    for (const item of filteredItems) {
+      if (!item.leadId) continue;
+      if (ids.size >= unlockSettings.count) break;
+      ids.add(item.leadId);
+    }
+    return ids;
+  }, [filteredItems, unlockSettings]);
+
+  // ─── Bulk complete ───────────────────────────────────────────────────────────
   const bulkMut = useMutation<{ count: number }, Error, string[]>({
     mutationFn: (ids) => leadActivityService.bulkComplete(ids),
     onMutate: async (ids) => {
@@ -613,7 +759,7 @@ export function ActivitiesPage() {
     },
   });
 
-  // ─── Keyboard shortcuts ────────────────────────────────────────────────────
+  // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -644,6 +790,7 @@ export function ActivitiesPage() {
       if (e.key === 'Escape') {
         setSelectedLeadId(null);
         setShowShortcuts(false);
+        setShowUnlockSettings(false);
         setExpandedId(null);
         setSelectedIds(new Set());
         return;
@@ -668,7 +815,6 @@ export function ActivitiesPage() {
 
   function handleLeadPanelClose() {
     setSelectedLeadId(null);
-    // FIX 2 — sync all caches that depend on lead data
     qc.invalidateQueries({ queryKey: ['lead-activities'] });
     qc.invalidateQueries({ queryKey: ['leads'] });
     qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
@@ -699,7 +845,6 @@ export function ActivitiesPage() {
           {total > 0 && <span style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2, display: 'block' }}>{total} activities</span>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Search bar (Feature 4 — / shortcut) */}
           <input
             ref={searchRef}
             value={search}
@@ -707,11 +852,38 @@ export function ActivitiesPage() {
             placeholder="Search… (/)"
             style={{ padding: '6px 12px', border: '1px solid var(--border-medium)', borderRadius: 8, fontSize: 13, background: 'var(--bg-app)', color: 'var(--text-primary)', outline: 'none', width: 180 }}
           />
-          {/* Shortcuts help button */}
           <button type="button" onClick={() => setShowShortcuts(v => !v)} className="btn btn-secondary" style={{ fontSize: 13, padding: '5px 10px' }} title="Keyboard shortcuts (?)">
             <Keyboard size={14} />
           </button>
-          {/* Template split button (Feature 5) */}
+
+          {/* Unlock settings button */}
+          <div style={{ position: 'relative' }} ref={unlockSettingsRef}>
+            <button
+              type="button"
+              onClick={() => setShowUnlockSettings(v => !v)}
+              className="btn btn-secondary"
+              style={{ fontSize: 13, padding: '5px 10px', position: 'relative' }}
+              title="Lead unlock settings"
+            >
+              <Settings size={14} />
+              {unlockSettings.enabled && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#0f172a', border: '1.5px solid var(--bg-app)',
+                }} />
+              )}
+            </button>
+            {showUnlockSettings && (
+              <UnlockSettingsPopover
+                settings={unlockSettings}
+                onChange={s => setUnlockSettings(s)}
+                onClose={() => setShowUnlockSettings(false)}
+              />
+            )}
+          </div>
+
+          {/* Template split button */}
           <div style={{ position: 'relative' }} ref={templateMenuRef}>
             <div style={{ display: 'flex', gap: 1 }}>
               <button type="button" onClick={() => { setTemplateInit(null); setShowModal(true); }} className="btn btn-primary" style={{ fontSize: 13, gap: 6, borderRadius: '8px 0 0 8px' }}>
@@ -746,6 +918,12 @@ export function ActivitiesPage() {
             {f.label}
           </button>
         ))}
+        {unlockSettings.enabled && (
+          <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>
+            <Lock size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} />
+            {unlockSettings.count} lead{unlockSettings.count !== 1 ? 's' : ''} unlocked
+          </span>
+        )}
       </div>
 
       {/* Activity list */}
@@ -758,22 +936,26 @@ export function ActivitiesPage() {
         </div>
       ) : (
         <div>
-          {filteredItems.map((item, i) => (
-            <ActivityRow
-              key={item.id}
-              item={item}
-              focused={focusedIndex === i}
-              checked={selectedIds.has(item.id)}
-              expanded={expandedId === item.id}
-              onLeadClick={setSelectedLeadId}
-              onExpand={setExpandedId}
-              onCheck={handleCheck}
-            />
-          ))}
+          {filteredItems.map((item, i) => {
+            const locked = unlockedLeadIds !== null && !unlockedLeadIds.has(item.leadId);
+            return (
+              <ActivityRow
+                key={item.id}
+                item={item}
+                focused={focusedIndex === i}
+                checked={selectedIds.has(item.id)}
+                expanded={expandedId === item.id}
+                locked={locked}
+                onLeadClick={setSelectedLeadId}
+                onExpand={setExpandedId}
+                onCheck={handleCheck}
+              />
+            );
+          })}
         </div>
       )}
 
-      {/* Bulk action bar (Feature 3) */}
+      {/* Bulk action bar */}
       {selectedIds.size > 0 && (
         <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 50, background: 'var(--bg-app)', border: '1px solid var(--border-medium)', borderRadius: 12, padding: '10px 16px', display: 'flex', gap: 10, alignItems: 'center', boxShadow: '0 8px 32px rgba(0,0,0,.18)', whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{selectedIds.size} selected</span>
@@ -790,7 +972,7 @@ export function ActivitiesPage() {
       {showModal && <ScheduleModal onClose={() => { setShowModal(false); setTemplateInit(null); }} initialValues={templateInit} />}
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
-      {/* Feature 1 — Inline Lead Panel */}
+      {/* Lead Detail Panel — always opens company-first for Activities context */}
       <ContextPanel isOpen={!!selectedLeadId && !!selectedLead} onClose={handleLeadPanelClose} width={480}>
         {selectedLead && (
           <LeadDetailPanel
@@ -798,6 +980,7 @@ export function ActivitiesPage() {
             onEdit={handleLeadPanelClose}
             onDelete={handleLeadPanelClose}
             onClose={handleLeadPanelClose}
+            displayOverride="company"
           />
         )}
       </ContextPanel>

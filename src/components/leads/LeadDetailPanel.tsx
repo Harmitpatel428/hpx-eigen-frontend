@@ -527,10 +527,12 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
+  /** Override org-level leadHeaderPreference for this panel instance */
+  displayOverride?: 'name' | 'company';
 }
 
 export const LeadDetailPanel = memo(function LeadDetailPanel({
-  lead, onEdit, onDelete, onClose,
+  lead, onEdit, onDelete, onClose, displayOverride,
 }: Props) {
   const { data: contacts = [] } = useQuery<LeadContact[]>({
     queryKey: ['lead-contacts', lead.id],
@@ -618,9 +620,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const locationStr = structuredLocation || lead.freeformAddress || '';
   const fullName     = `${lead.firstName} ${lead.lastName}`;
 
-  const headerPref = crmSettings?.leadHeaderPreference ?? null;
+  // displayOverride takes precedence over org-level setting
+  const headerPref = displayOverride ?? crmSettings?.leadHeaderPreference ?? null;
   const headerIdentity = headerPref === 'company'
-    ? (lead.company || 'Unnamed Lead')
+    ? (lead.company || fullName)
     : fullName;
 
   const storedCustomValues: Array<{ fieldId: string; value: string | null }> =

@@ -15,7 +15,7 @@ export interface LeadActivityItem {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  lead: { id: string; firstName: string; lastName: string; stage: string } | null;
+  lead: { id: string; firstName: string; lastName: string; stage: string; company: string | null } | null;
   actor: { id: string; firstName: string; lastName: string } | null;
 }
 
