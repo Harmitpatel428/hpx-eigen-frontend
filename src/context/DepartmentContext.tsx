@@ -79,7 +79,10 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
   }, [activeDepartmentId, queryClient, navigate]);
 
   useEffect(() => {
-    if (departments?.length && !activeDepartmentId) {
+    // Heal the stored ID when it's missing OR no longer valid for this
+    // account (e.g., department deleted, or a stale value from a previous
+    // login that predates the auth-transition cleanup in AuthContext).
+    if (departments?.length && (!activeDepartmentId || !departments.some(d => d.id === activeDepartmentId))) {
       setActiveDepartmentId(departments[0].id);
       localStorage.setItem(STORAGE_KEY, departments[0].id);
     }

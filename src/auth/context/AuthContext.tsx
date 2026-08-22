@@ -204,6 +204,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('5a. WARN: Failed to sync to tokenStorage class', e);
       }
 
+      // Identity changed — drop any department context left by the PREVIOUS
+      // account. If it leaks into X-Department-Id, every department-scoped
+      // request 403s against the new tenant ("Insufficient permissions.").
+      localStorage.removeItem('hpx:active-department');
+      localStorage.removeItem('activeDepartmentId');
+
       console.log('6. USER FROM RESPONSE:', user);
       if (user) {
         setUser(user);
@@ -257,6 +263,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Ignore transport errors on logout
     } finally {
       tokenStorage.clear();
+      localStorage.removeItem('hpx:active-department');
+      localStorage.removeItem('activeDepartmentId');
       permissionService.current.clear();
       authEventBus.dispatch(AUTH_EVENTS.LOGOUT);
     }
