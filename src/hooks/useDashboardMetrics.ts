@@ -8,6 +8,7 @@ export interface SalesMetrics {
   winRate: number;
   avgVelocity: number;
   currency: string;
+  pipelineByStage?: { stage: string; count: number; value: number }[];
 }
 
 export interface ProcessMetrics {

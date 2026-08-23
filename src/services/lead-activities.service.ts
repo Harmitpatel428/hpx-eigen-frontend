@@ -14,6 +14,6 @@ export async function listLeadActivities(
   pageSize = 50
 ): Promise<LeadActivitiesPage> {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-  const res = await api.get(`/leads/${leadId}/activities?${params}`);
+  const res = await api.get(`/api/v1/leads/${leadId}/activities?${params}`);
   return res.data;
 }

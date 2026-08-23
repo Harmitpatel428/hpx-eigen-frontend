@@ -22,6 +22,8 @@ import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
 import { LeadImportWizard } from '../components/leads/LeadImportWizard';
 import { LeadAssignModal } from '../components/leads/LeadAssignModal';
 import { exportCSV } from '../utils/csv';
+import { loadColourfulFilters, loadStageFilter, saveStageFilter } from '../utils/salesDashboardPrefs';
+import type { AssignmentSummary } from '../services/lead.service';
 
 // ============================================================================
 // HELPERS
@@ -133,7 +135,13 @@ export function LeadsPage() {
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedStage, setSelectedStage] = useState<LeadStage | ''>('');
+  // Session-scoped: defaults to NEW, survives refresh, cleared on logout (see AuthContext)
+  const [selectedStage, setSelectedStageState] = useState<LeadStage | ''>(loadStageFilter);
+  const setSelectedStage = useCallback((stage: LeadStage | '') => {
+    saveStageFilter(stage);
+    setSelectedStageState(stage);
+  }, []);
+  const [colourfulFilters] = useState(loadColourfulFilters);
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [stages, setStages] = useState(loadStageOrder);
   const dragIdx = useRef<number | null>(null);
@@ -171,13 +179,21 @@ export function LeadsPage() {
     staleTime: 60_000,
   });
 
+  const { permissions } = useAuth();
+  const canAssign = permissions.can('lead:assign');
+  const { data: assignmentSummary } = useQuery<AssignmentSummary>({
+    queryKey: ['lead-assignment-summary'],
+    queryFn: () => leadService.assignmentSummary(),
+    enabled: canAssign,
+    staleTime: 30_000,
+  });
+
   const { data: crmSettings } = useQuery({
     queryKey: ['crm-settings'],
     queryFn: () => crmSettingsService.get(),
     staleTime: 5 * 60 * 1000,
   });
   const companyFirst = crmSettings?.leadHeaderPreference === 'company';
-  const { permissions } = useAuth();
   const canImpersonate = permissions.can('user:impersonate') && !!crmSettings?.allowImpersonation;
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
 
@@ -219,17 +235,28 @@ export function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-assignment-summary'] });
       queryClient.invalidateQueries({ queryKey: ['lead-activities'] });
+      toast.success('Lead moved to Recycle Bin');
       setDeleteTarget(null);
       setSelectedLead(null);
     },
+    onError: (err: any) => {
+      // Keep the confirm dialog open — the lead was not deleted
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to delete lead.');
+    },
   });
 
-  const handleModalSuccess = useCallback(() => {
+  const handleModalSuccess = useCallback((updated?: Lead | null) => {
     queryClient.invalidateQueries({ queryKey: ['leads'] });
     queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['lead-assignment-summary'] });
     queryClient.invalidateQueries({ queryKey: ['lead-activities'] });
     setModal(null);
+    // Sync the open detail panel with the saved server state
+    if (updated) {
+      setSelectedLead(prev => prev && prev.id === updated.id ? { ...prev, ...updated, owner: prev.owner } : prev);
+    }
   }, [queryClient]);
 
   const handleDeleteConfirm = useCallback(() => {
@@ -300,8 +327,13 @@ export function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-assignment-summary'] });
+      toast.success('Leads moved to Recycle Bin');
       setSelectedIds(new Set());
       setBulkDeleteConfirm(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to delete leads.');
     },
   });
 
@@ -404,7 +436,11 @@ export function LeadsPage() {
               }}
               onClick={() => setSelectedStage(active ? '' : key)}
               className={`stage-pill${active ? ' stage-pill--active' : ''}`}
-              style={active ? { color: sc.text, background: sc.bg, borderColor: sc.bg, cursor: 'grab' } : { cursor: 'grab' }}
+              style={active
+                ? { color: sc.text, background: sc.bg, borderColor: sc.text, cursor: 'grab' }
+                : colourfulFilters
+                ? { color: sc.text, background: sc.bg, borderColor: 'transparent', cursor: 'grab' }
+                : { cursor: 'grab' }}
               aria-label={`${label}${count ? ` (${count})` : ''} — drag or use arrow keys to reorder`}
             >
               <span className="stage-pill-dot" style={active ? { background: sc.text, opacity: 1 } : undefined} />
@@ -416,6 +452,28 @@ export function LeadsPage() {
           );
         })}
       </div>
+
+      {/* ASSIGNMENT SUMMARY — server-computed per-executive distribution within the caller's scope */}
+      {canAssign && assignmentSummary && (assignmentSummary.perOwner.length > 0 || assignmentSummary.unassigned > 0) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+          {assignmentSummary.perOwner.map(o => (
+            <span key={o.userId} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, border: '1px solid var(--border-light)', background: 'var(--bg-subtle)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              {[o.firstName, o.lastName].filter(Boolean).join(' ') || 'Unnamed'}
+              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{o.count}</span>
+            </span>
+          ))}
+          {assignmentSummary.unassigned > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, border: '1px solid rgba(234,179,8,0.35)', background: 'rgba(234,179,8,0.08)', color: '#a16207', whiteSpace: 'nowrap' }}>
+              Unassigned · {assignmentSummary.unassigned}
+            </span>
+          )}
+          {assignmentSummary.assignedByMe > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#4f46e5', whiteSpace: 'nowrap' }}>
+              Assigned by you · {assignmentSummary.assignedByMe}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* BULK ACTIONS TOOLBAR */}
       {selectedIds.size > 0 && (
@@ -440,16 +498,8 @@ export function LeadsPage() {
 
       {/* DATA GRID */}
       <div style={{ flex: 1, overflow: 'auto', width: '100%' }}>
-        {isLoading && allLeads.length === 0 ? (
-          <div className="type-ui" style={{ color: 'var(--text-tertiary)', padding: 'var(--space-4)' }}>Loading leads…</div>
-        ) : leads.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-            <p style={{ marginBottom: '0.5rem', fontWeight: 500 }}>No leads found</p>
-            <p style={{ fontSize: 13 }}>{searchQuery ? `No results for "${searchQuery}"` : 'Create your first lead to get started'}</p>
-          </div>
-        ) : (
-          <div style={{ width: '100%', overflow: 'visible' }}>
-            {/* Header */}
+        <div style={{ width: '100%', overflow: 'visible' }}>
+          {/* Header — always rendered so a zero-match filter never removes the table shell */}
             <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 12px', borderBottom: '1px solid var(--border-strong)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-app)', zIndex: 10, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all leads" />
@@ -471,7 +521,16 @@ export function LeadsPage() {
               <div>Contact</div><div>Stage</div>
             </div>
 
-            {/* Rows */}
+            {/* Body — loading/empty states live inside the grid shell */}
+            {isLoading && allLeads.length === 0 ? (
+              <div className="type-ui" style={{ color: 'var(--text-tertiary)', padding: 'var(--space-4)' }}>Loading leads…</div>
+            ) : leads.length === 0 ? (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                <p style={{ marginBottom: '0.5rem', fontWeight: 500 }}>No leads found</p>
+                <p style={{ fontSize: 13 }}>{searchQuery ? `No results for "${searchQuery}"` : 'Create your first lead to get started'}</p>
+              </div>
+            ) : (
+            <>
             <div>
               {leads.map(lead => {
                 const ss = STAGE_COLORS[lead.stage ?? 'NEW'] ?? STAGE_COLORS.NEW;
@@ -561,6 +620,8 @@ export function LeadsPage() {
               })}
               <style>{`.dense-row:hover { background-color: var(--bg-hover, rgba(0,0,0,0.02)) !important; }`}</style>
             </div>
+            </>
+            )}
 
             {/* LOAD MORE */}
             {hasMore && (
@@ -585,16 +646,23 @@ export function LeadsPage() {
               </div>
             )}
           </div>
-        )}
       </div>
 
       {/* CONTEXT PANEL */}
-      <ContextPanel isOpen={!!selectedLead} onClose={handleClosePanel} width={480} hideCloseButton>
+      {/* Stays mounted under the Edit modal / delete confirm so closing them returns here,
+          not to the dashboard. onClose is inert while an overlay is stacked above. */}
+      <ContextPanel
+        isOpen={!!selectedLead}
+        onClose={() => { if (!modal && !deleteTarget) handleClosePanel(); }}
+        width={480}
+        hideCloseButton
+      >
         {selectedLead && (
           <LeadDetailPanel
             lead={selectedLead}
-            onEdit={() => { setModal({ mode: 'edit', lead: selectedLead }); setSelectedLead(null); }}
-            onDelete={() => { setDeleteTarget(selectedLead); setSelectedLead(null); }}
+            onEdit={() => setModal({ mode: 'edit', lead: selectedLead })}
+            onDelete={() => setDeleteTarget(selectedLead)}
+            onUpdated={(u) => setSelectedLead(prev => prev && prev.id === u.id ? { ...prev, ...u, owner: prev.owner } : prev)}
             onClose={handleClosePanel}
           />
         )}
@@ -658,6 +726,8 @@ export function LeadsPage() {
           selectedIds={selectedIds}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['lead-assignment-summary'] });
+            toast.success('Leads assigned');
             setSelectedIds(new Set());
             setShowAssignModal(false);
           }}

@@ -1,12 +1,9 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useDashboardMetrics } from '../../hooks/useDashboardMetrics';
 import { KpiCard } from './KpiCard';
 import { formatCurrency } from '../../utils/crm';
 import { ArrowUpRight, ArrowRight } from 'lucide-react';
-import { opportunityService } from '../../services/opportunity.service';
 import type { SalesMetrics } from '../../hooks/useDashboardMetrics';
-import type { Opportunity } from '../../types';
 
 const KEYFRAMES = `
   @keyframes sd-fadeUp {
@@ -32,13 +29,9 @@ const PIPELINE_STAGES = ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATIO
 export const SalesDashboard: React.FC = () => {
   const { data: metrics, isLoading, error } = useDashboardMetrics<SalesMetrics>();
 
-  const { data: opportunities = [] } = useQuery<Opportunity[]>({
-    queryKey: ['opportunities'],
-    queryFn: () => opportunityService.findAll(),
-  });
-
-  const openOpps = opportunities.filter(o => !['CLOSED_WON', 'CLOSED_LOST'].includes(o.stage));
-  const totalPipelineVal = openOpps.reduce((s, o) => s + parseFloat(o.value || '0'), 0);
+  // Per-stage pipeline comes from the metrics endpoint — no full opportunity fetch
+  const stageMap = new Map((metrics?.pipelineByStage ?? []).map(s => [s.stage, s]));
+  const totalPipelineVal = metrics?.pipelineValue ?? 0;
 
   if (isLoading) return <DashboardSkeleton />;
 
@@ -112,9 +105,10 @@ export const SalesDashboard: React.FC = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {PIPELINE_STAGES.map((stage, i) => {
-              const stageOpps = openOpps.filter(o => o.stage === stage);
-              const val       = stageOpps.reduce((s, o) => s + parseFloat(o.value || '0'), 0);
-              const pct       = totalPipelineVal > 0 ? (val / totalPipelineVal) * 100 : 0;
+              const entry = stageMap.get(stage);
+              const deals = entry?.count ?? 0;
+              const val   = entry?.value ?? 0;
+              const pct   = totalPipelineVal > 0 ? (val / totalPipelineVal) * 100 : 0;
 
               return (
                 <div
@@ -134,7 +128,7 @@ export const SalesDashboard: React.FC = () => {
                       {stage.replace('_', ' ')}
                     </div>
                     <div className="type-micro" style={{ color: 'var(--text-tertiary)' }}>
-                      {stageOpps.length} {stageOpps.length === 1 ? 'deal' : 'deals'}
+                      {deals} {deals === 1 ? 'deal' : 'deals'}
                     </div>
                   </div>
 

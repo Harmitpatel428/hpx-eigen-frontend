@@ -527,12 +527,14 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
+  /** Called with the server response after an in-panel update (stage change) so the parent can refresh its copy */
+  onUpdated?: (lead: Lead) => void;
   /** Override org-level leadHeaderPreference for this panel instance */
   displayOverride?: 'name' | 'company';
 }
 
 export const LeadDetailPanel = memo(function LeadDetailPanel({
-  lead, onEdit, onDelete, onClose, displayOverride,
+  lead, onEdit, onDelete, onClose, onUpdated, displayOverride,
 }: Props) {
   const { data: contacts = [] } = useQuery<LeadContact[]>({
     queryKey: ['lead-contacts', lead.id],
@@ -593,7 +595,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     if (followUpDate) setLocalFollowUpDate(new Date(followUpDate).toISOString());
     else if (stage === 'FOLLOW_UP' && !lead.followUpDate) setLocalFollowUpDate(new Date().toISOString());
     try {
-      await leadService.update(lead.id, {
+      const updated = await leadService.update(lead.id, {
         stage,
         ...(followUpDate
           ? { followUpDate: new Date(followUpDate).toISOString() }
@@ -601,6 +603,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           ? { followUpDate: new Date().toISOString() }
           : {}),
       });
+      onUpdated?.(updated);
       qc.invalidateQueries({ queryKey: ['leads'] });
       qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
       qc.invalidateQueries({ queryKey: ['lead-activities'] });
@@ -839,12 +842,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             {/* Phone before Email */}
             {contactPhone ? (
               <a className="ldp-row" href={`tel:${contactPhone}`}
-                style={{ color: 'var(--text-secondary)' }}
+                style={{ color: 'var(--text-primary)' }}
               >
                 <Phone className="ldp-icon" size={14}
                   style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}
                 />
-                <span className="ldp-val" style={{ flex: 1, fontSize: 13 }}>
+                <span className="ldp-val" style={{ flex: 1, fontSize: 15, fontWeight: 500 }}>
                   {contactPhone}
                 </span>
               </a>

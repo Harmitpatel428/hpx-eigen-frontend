@@ -49,7 +49,9 @@ const leadSchema = z.object({
   phone: z.string().optional(),
   company: z.string().optional(),
   source: z.enum(['WEBSITE', 'REFERRAL', 'COLD_CALL', 'EMAIL_CAMPAIGN', 'SOCIAL_MEDIA', 'TRADE_SHOW', 'OTHER']).optional(),
-  stage: z.enum(['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'OTHER', 'DISQUALIFIED']).optional(),
+  // CONTACTED/CONVERTED are legacy read-only stages — accepted here only so an
+  // edit form for a lead already in one of them doesn't silently reset it to NEW.
+  stage: z.enum(['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'OTHER', 'DISQUALIFIED', 'CONTACTED', 'CONVERTED']).optional(),
   followUpDate: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   notes: z.string().optional(),
@@ -307,7 +309,8 @@ interface LeadModalProps {
   mode: 'create' | 'edit';
   lead?: Lead;
   onClose: () => void;
-  onSuccess: () => void;
+  /** Receives the saved lead (null if the form had no lead to save) */
+  onSuccess: (lead: Lead | null) => void;
 }
 
 export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSuccess }: LeadModalProps) {
@@ -345,7 +348,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       phone: lead.phone ?? '',
       company: lead.company ?? '',
       source: lead.source,
-      stage: (lead.stage && ['NEW','QUALIFIED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED'].includes(lead.stage)) ? lead.stage as any : 'NEW',
+      stage: lead.stage ?? 'NEW',
       followUpDate: lead.followUpDate ? lead.followUpDate.split('T')[0] : '',
       expectedCloseDate: lead.expectedCloseDate ? lead.expectedCloseDate.split('T')[0] : '',
       notes: lead.notes ?? '',
@@ -412,7 +415,8 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       phone: values.phone || undefined,
       company: values.company || undefined,
       source: values.source,
-      stage: values.stage,
+      // Omit unchanged stage on edit — never rewrites a legacy stage the backend rejects
+      stage: mode === 'edit' && values.stage === lead?.stage ? undefined : values.stage,
       followUpDate: values.followUpDate || undefined,
       priority,
       expectedCloseDate: values.expectedCloseDate || undefined,
@@ -422,12 +426,12 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
         ? customFieldValues.map(v => ({ fieldId: v.fieldId, value: v.value }))
         : undefined,
     };
-    if (mode === 'create') {
-      await leadService.create(payload as CreateLeadPayload);
-    } else if (lead) {
-      await leadService.update(lead.id, payload);
-    }
-    onSuccess();
+    const saved = mode === 'create'
+      ? await leadService.create(payload as CreateLeadPayload)
+      : lead
+      ? await leadService.update(lead.id, payload)
+      : null;
+    onSuccess(saved as Lead | null);
   };
 
   const inp = 'w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition';
@@ -496,6 +500,9 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   <option value="CALL_NOT_RECEIVED">Call Not Received</option>
                   <option value="DISQUALIFIED">Disqualified</option>
                   <option value="OTHER">Other</option>
+                  {mode === 'edit' && lead && (lead.stage === 'CONTACTED' || lead.stage === 'CONVERTED') && (
+                    <option value={lead.stage}>{lead.stage === 'CONTACTED' ? 'Contacted (legacy)' : 'Converted (legacy)'}</option>
+                  )}
                 </select>
               </Field>
               <Field label="Source">

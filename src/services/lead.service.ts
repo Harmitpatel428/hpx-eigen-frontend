@@ -76,6 +76,13 @@ export interface DuplicateLead {
   createdAt: string;
 }
 
+export interface AssignmentSummary {
+  total: number;
+  unassigned: number;
+  assignedByMe: number;
+  perOwner: { userId: string; firstName: string | null; lastName: string | null; count: number }[];
+}
+
 export const leadService = {
   async findAll(filters?: {
     status?: string;
@@ -104,6 +111,12 @@ export const leadService = {
   async stageCounts(): Promise<Record<string, number>> {
     const { data } = await api.get<any>('/api/v1/leads/stage-counts');
     return data?.data ?? {};
+  },
+
+  /** Assignment distribution within the caller's scope (server-computed source of truth) */
+  async assignmentSummary(): Promise<AssignmentSummary> {
+    const { data } = await api.get<any>('/api/v1/leads/assignment-summary');
+    return data?.data ?? { total: 0, unassigned: 0, assignedByMe: 0, perOwner: [] };
   },
 
   async create(input: CreateLeadPayload): Promise<Lead> {

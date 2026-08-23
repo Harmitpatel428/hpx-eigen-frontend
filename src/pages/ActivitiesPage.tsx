@@ -110,6 +110,14 @@ function formatScheduled(iso: string | null): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
 }
 
+// Completed history: the activity's own completion/creation timestamp, not the scheduled one
+function formatCompleted(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' +
+    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 function nextFollowUpDate(choice: 'tomorrow' | 'next-week'): string {
   const d = new Date();
   if (choice === 'tomorrow') {
@@ -573,6 +581,10 @@ interface ActivityRowProps {
 
 function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, onExpand, onCheck }: ActivityRowProps) {
   const isOverdue = item.state === 'PENDING' && item.scheduledAt && new Date(item.scheduledAt) < new Date();
+  // Pending rows show their due date; completed/cancelled history shows when it actually happened
+  const rowTime = item.state === 'PENDING'
+    ? formatScheduled(item.scheduledAt)
+    : formatCompleted(item.completedAt ?? item.createdAt);
 
   const company    = item.lead?.company?.trim() || null;
   const personName = item.lead ? `${item.lead.firstName} ${item.lead.lastName}`.trim() : null;
@@ -615,7 +627,7 @@ function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, on
               {/* by {actor} · {timestamp} */}
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                 {item.actor && <>{`by ${item.actor.firstName} ${item.actor.lastName}`}{' · '}</>}
-                <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-tertiary)' }}>{formatScheduled(item.scheduledAt)}</span>
+                <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-tertiary)' }}>{rowTime}</span>
               </span>
               {!locked && item.state === 'PENDING' && (
                 <button type="button" onClick={() => onExpand(expanded ? null : item.id)} title="Quick complete"

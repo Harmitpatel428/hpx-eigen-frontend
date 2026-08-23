@@ -5,6 +5,7 @@ import { authEventBus, AUTH_EVENTS } from '../events/authEvents';
 import { tokenStorage } from '../storage/tokenStorage';
 import { api } from '../services/api';
 import { PermissionServiceImpl } from '../services/PermissionServiceImpl';
+import { clearStageFilter } from '../../utils/salesDashboardPrefs';
 import * as Sentry from '@sentry/react';
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -265,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tokenStorage.clear();
       localStorage.removeItem('hpx:active-department');
       localStorage.removeItem('activeDepartmentId');
+      clearStageFilter(); // fresh session starts the Sales Dashboard on "New"
       permissionService.current.clear();
       authEventBus.dispatch(AUTH_EVENTS.LOGOUT);
     }

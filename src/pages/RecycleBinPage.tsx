@@ -1,8 +1,17 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2, RotateCcw, AlertTriangle, X, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Lead } from '../types';
 import { leadService } from '../services/lead.service';
+
+// Restores/deletes change stage counts and assignment distribution too
+function invalidateAfterBinChange(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
+  queryClient.invalidateQueries({ queryKey: ['leads'] });
+  queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+  queryClient.invalidateQueries({ queryKey: ['lead-assignment-summary'] });
+}
 
 const STAGE_LABELS: Record<string, string> = {
   NEW: 'New', CONTACTED: 'Contacted', QUALIFIED: 'Qualified',
@@ -28,20 +37,29 @@ export function RecycleBinPage() {
 
   const restoreMutation = useMutation({
     mutationFn: (ids: string[]) => ids.length === 1 ? leadService.restoreLead(ids[0]).then(() => ({ count: 1 })) : leadService.bulkRestore(ids),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    onSuccess: (_res, ids) => {
+      invalidateAfterBinChange(queryClient);
+      toast.success(`${ids.length} lead${ids.length !== 1 ? 's' : ''} restored`);
       setSelectedIds(new Set());
       setConfirmAction(null);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to restore lead.');
     },
   });
 
   const permanentDeleteMutation = useMutation({
     mutationFn: (ids: string[]) => ids.length === 1 ? leadService.permanentDelete(ids[0]).then(() => ({ count: 1 })) : leadService.bulkPermanentDelete(ids),
-    onSuccess: () => {
+    onSuccess: (_res, ids) => {
       queryClient.invalidateQueries({ queryKey: ['leads-deleted'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-assignment-summary'] });
+      toast.success(`${ids.length} lead${ids.length !== 1 ? 's' : ''} permanently deleted`);
       setSelectedIds(new Set());
       setConfirmAction(null);
+    },
+    onError: (err: any) => {
+      // Keep the dialog open — the action did not succeed
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to delete lead permanently.');
     },
   });
 

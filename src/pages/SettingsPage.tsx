@@ -7,6 +7,7 @@ import { OrgManagement } from './settings/OrgManagement';
 import { useAuth } from '../auth/public';
 import { api } from '../services/api';
 import { crmSettingsService } from '../services/crm-settings.service';
+import { loadColourfulFilters, saveColourfulFilters } from '../utils/salesDashboardPrefs';
 import { toast } from 'sonner';
 
 export function SettingsPage() {
@@ -79,7 +80,12 @@ export function SettingsPage() {
 
       {/* Content */}
       <div style={{ flex: 1, paddingBottom: 'var(--space-24)', marginTop: 72 }}>
-        {activeTab === 'profile' && <ProfileTab user={user} onSaved={refreshUser} />}
+        {activeTab === 'profile' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
+            <ProfileTab user={user} onSaved={refreshUser} />
+            <SalesDashboardSettings />
+          </div>
+        )}
 
         {activeTab === 'security' && <SecurityTab />}
 
@@ -208,6 +214,64 @@ function ProfileTab({ user, onSaved }: { user: any; onSaved: () => Promise<void>
         </div>
       </section>
     </div>
+  );
+}
+
+// ─── Sales Dashboard (personal UI preferences) ────────────────────
+
+function SalesDashboardSettings() {
+  const [colourful, setColourful] = useState(() => loadColourfulFilters());
+
+  const toggle = () => {
+    const next = !colourful;
+    setColourful(next);
+    saveColourfulFilters(next);
+    toast.success(next ? 'Colourful filters enabled' : 'Colourful filters disabled');
+  };
+
+  return (
+    <section>
+      <h2 className="type-h1" style={{ marginBottom: 'var(--space-2)' }}>Sales Dashboard</h2>
+      <p className="type-body" style={{ marginBottom: 'var(--space-8)', color: 'var(--text-secondary)' }}>
+        Personal display preferences for the Sales Dashboard.
+      </p>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 16px', borderRadius: 10,
+        border: `1px solid ${colourful ? '#0f172a' : 'var(--border-medium)'}`,
+        background: colourful ? 'rgba(15,23,42,0.03)' : 'var(--bg-subtle)',
+        maxWidth: 420,
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+            Colourful Filters: {colourful ? 'ON' : 'OFF'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            {colourful ? 'Stage pills use their stage colours.' : 'Clean, minimal pill styling.'}
+          </div>
+        </div>
+        <button
+          onClick={toggle}
+          style={{
+            position: 'relative', width: 44, height: 24, borderRadius: 999,
+            border: 'none', cursor: 'pointer',
+            background: colourful ? '#0f172a' : '#cbd5e1',
+            transition: 'background 0.15s',
+            flexShrink: 0,
+          }}
+          role="switch"
+          aria-checked={colourful}
+          aria-label="Toggle colourful status pill filters"
+        >
+          <span style={{
+            position: 'absolute', top: 3, left: colourful ? 23 : 3,
+            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+            transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          }} />
+        </button>
+      </div>
+    </section>
   );
 }
 
