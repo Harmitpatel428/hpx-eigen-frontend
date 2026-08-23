@@ -170,7 +170,7 @@ export function RecycleBinPage() {
                   </div>
 
                   <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
-                    {lead.updatedAt ? fmtDate(lead.updatedAt) : '—'}
+                    {lead.deletedAt ? fmtDate(lead.deletedAt) : '—'}
                   </div>
 
                   <div style={{ display: 'flex', gap: 4 }}>

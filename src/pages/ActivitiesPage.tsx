@@ -36,6 +36,18 @@ const LAST_LOCATION_KEY = 'last_activity_location';
 const SAVED_LOCATIONS_KEY = 'hpx-activity-locations';
 const MAX_SAVED_LOCATIONS = 8;
 const UNLOCK_SETTINGS_KEY = 'hpx-activities-unlock';
+const ACTIVITY_TAB_KEY = 'hpx-activities-tab';
+
+// Default landing tab is Due Today; a deliberately chosen tab survives reloads.
+// Saved values are validated against current FILTERS so renamed/removed tabs
+// fall back to the default instead of breaking the page.
+function getInitialFilter(): GlobalFilter {
+  try {
+    const saved = localStorage.getItem(ACTIVITY_TAB_KEY) as GlobalFilter | null;
+    if (saved && FILTERS.some(f => f.key === saved)) return saved;
+  } catch { /* storage unavailable */ }
+  return 'DUE_TODAY';
+}
 
 interface UnlockSettings { enabled: boolean; count: number; }
 
@@ -715,7 +727,13 @@ const EMPTY: Record<GlobalFilter, { icon: React.ReactNode; msg: string }> = {
 
 export function ActivitiesPage() {
   const qc = useQueryClient();
-  const [filter, setFilter]             = useState<GlobalFilter>('ALL');
+  const [filter, setFilterState]        = useState<GlobalFilter>(getInitialFilter);
+
+  // Persist the chosen tab so refresh/reopen restores it (validated on read).
+  const setFilter = useCallback((f: GlobalFilter) => {
+    setFilterState(f);
+    try { localStorage.setItem(ACTIVITY_TAB_KEY, f); } catch { /* storage unavailable */ }
+  }, []);
   const [showModal, setShowModal]       = useState(false);
   const [templateInit, setTemplateInit] = useState<Partial<Template> | null>(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);

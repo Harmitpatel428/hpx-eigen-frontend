@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Loader2, Shield, Search, AlertCircle } from 'lucide-react';
+import { Check, Loader2, Shield, ShieldCheck, Search, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { permissionService } from '../../services/permission.service';
 import type { Role, Permission } from '../../types';
 
@@ -42,14 +43,34 @@ const FALLBACK_ACTION_MAP: Record<string, string[]> = {
   Opportunities: ['opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:delete'],
   Activities:    ['activity:view', 'activity:create', 'activity:edit', 'activity:delete'],
   Invoices:      ['invoice:view', 'invoice:create', 'invoice:edit', 'invoice:delete'],
-  Payments:      ['payment:view', 'payment:create', 'payment:edit'],
-  Documentation: ['doc:view', 'doc:create', 'doc:edit', 'doc:verify', 'doc:override', 'doc:transfer', 'doc:preset:view', 'doc:preset:manage', 'doc:audit:view'],
-  Admin:         ['role:view', 'role:manage', 'audit:view', 'user:view', 'user:manage', 'department:view', 'department:manage', 'team:view', 'team:manage'],
+  Payments:      ['payment:view', 'payment:create', 'payment:edit', 'payment:delete'],
+  Documentation: ['doc:view', 'doc:create', 'doc:edit', 'doc:verify', 'doc:override', 'doc:transfer', 'doc:preset:view', 'doc:preset:manage'],
+  Admin:         ['role:view', 'role:manage', 'audit:view', 'user:view', 'user:manage', 'user:impersonate', 'department:view', 'department:manage', 'team:view', 'team:manage'],
+};
+
+// Resource-aware labels: "view"/"manage" alone repeat across every module,
+// so chips read as "<Action> <Resource>" — e.g. role:view → "View Roles".
+const RESOURCE_LABELS: Record<string, string> = {
+  lead: 'Leads', contact: 'Contacts', opportunity: 'Opportunities',
+  activity: 'Activities', invoice: 'Invoices', payment: 'Payments',
+  role: 'Roles', user: 'Users', department: 'Departments', team: 'Teams',
+  audit: 'Audit Logs', doc: 'Documentation',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  view: 'View', create: 'Create', edit: 'Edit', delete: 'Delete',
+  assign: 'Assign', manage: 'Manage', verify: 'Verify', override: 'Override',
+  transfer: 'Transfer', impersonate: 'Impersonate',
 };
 
 function slugLabel(slug: string): string {
-  const action = slug.split(':').pop() ?? slug;
-  return action.charAt(0).toUpperCase() + action.slice(1);
+  const parts = slug.split(':');
+  const action = ACTION_LABELS[parts[parts.length - 1]] ?? parts[parts.length - 1];
+  // doc:preset:* → the middle segment names the real resource
+  const resource = parts.length >= 3 && parts[1] === 'preset'
+    ? 'Document Presets'
+    : RESOURCE_LABELS[parts[0]] ?? parts[0];
+  return `${action} ${resource}`;
 }
 
 interface PermissionMatrixProps {
@@ -91,19 +112,22 @@ export function PermissionMatrix({ selectedRoleId }: PermissionMatrixProps) {
     mutationFn: ({ roleId, permissionId }: { roleId: string; permissionId: string }) =>
       permissionService.addRolePermission(roleId, permissionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['role-permissions', selectedRoleId] }),
+    onError: (err: any) => toast.error(err?.response?.data?.error?.message ?? 'Failed to grant permission.'),
   });
 
   const removePermMutation = useMutation({
     mutationFn: ({ roleId, permissionId }: { roleId: string; permissionId: string }) =>
       permissionService.removeRolePermission(roleId, permissionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['role-permissions', selectedRoleId] }),
+    onError: (err: any) => toast.error(err?.response?.data?.error?.message ?? 'Failed to revoke permission.'),
   });
 
   const assignedSlugs = new Set(rolePerms.map((p: Permission) => p.slug));
   const permBySlug = Object.fromEntries(allPerms.map((p: Permission) => [p.slug, p]));
+  const isSystemRole = roles.some((r: Role) => r.id === selectedRoleId && r.isSystem);
 
   const togglePermission = useCallback((slug: string) => {
-    if (!selectedRoleId) return;
+    if (!selectedRoleId || isSystemRole) return;
     const perm = permBySlug[slug];
     if (!perm) return;
     if (assignedSlugs.has(slug)) {
@@ -111,7 +135,7 @@ export function PermissionMatrix({ selectedRoleId }: PermissionMatrixProps) {
     } else {
       addPermMutation.mutate({ roleId: selectedRoleId, permissionId: perm.id });
     }
-  }, [selectedRoleId, assignedSlugs, permBySlug, addPermMutation, removePermMutation]);
+  }, [selectedRoleId, isSystemRole, assignedSlugs, permBySlug, addPermMutation, removePermMutation]);
 
   const filteredModules = searchQuery
     ? modulesOrder.filter(m => {
@@ -150,8 +174,10 @@ export function PermissionMatrix({ selectedRoleId }: PermissionMatrixProps) {
           <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
             {roleName} — {assignedCount}/{totalCount} permissions
           </span>
-          <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-            Toggle permissions for this role. Changes apply immediately.
+          <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {isSystemRole
+              ? (<><ShieldCheck size={12} /> System role — protected. Clone it to customize.</>)
+              : 'Toggle permissions for this role. Changes apply immediately.'}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -197,14 +223,17 @@ export function PermissionMatrix({ selectedRoleId }: PermissionMatrixProps) {
                           onClick={() => togglePermission(slug)}
                           role="checkbox"
                           aria-checked={checked}
+                          aria-disabled={isSystemRole || undefined}
                           aria-label={`${module} ${slugLabel(slug)}`}
-                          tabIndex={0}
+                          tabIndex={isSystemRole ? -1 : 0}
                           onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePermission(slug); } }}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
                             borderRadius: 8, border: `1px solid ${checked ? '#0f172a' : '#e2e8f0'}`,
                             background: checked ? 'rgba(15,23,42,0.04)' : '#fff',
-                            cursor: 'pointer', transition: 'all 120ms',
+                            cursor: isSystemRole ? 'not-allowed' : 'pointer',
+                            opacity: isSystemRole ? 0.55 : 1,
+                            transition: 'all 120ms',
                           }}
                         >
                           <div style={S.checkbox(checked)}>

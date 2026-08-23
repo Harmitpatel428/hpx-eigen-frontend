@@ -37,7 +37,7 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
   const [emailError, setEmailError] = useState('');
-  const [result, setResult] = useState<{ emailStatus: string; sentTo: string } | null>(null);
+  const [result, setResult] = useState<{ emailStatus: string; sentTo: string; devInviteUrl?: string } | null>(null);
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -45,7 +45,7 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
     mutationFn: () => import('../../services/api').then(m => m.api.post('/api/v1/users/invite', { email: email.trim().toLowerCase(), roleId })),
     onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ['tenant-users'] });
-      setResult({ emailStatus: res.data?.emailStatus ?? 'SENT', sentTo: email.trim().toLowerCase() });
+      setResult({ emailStatus: res.data?.emailStatus ?? 'SENT', sentTo: email.trim().toLowerCase(), devInviteUrl: res.data?.devInviteUrl ?? undefined });
     },
   });
 
@@ -60,7 +60,7 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
       ? `Invitation created and email submitted to ${result.sentTo}.`
       : result.emailStatus === 'FAILED'
       ? `Invitation created, but the email could not be sent. The invitation is valid — ask the recipient to contact you for the link.`
-      : `Invitation created. Email delivery is disabled in development.`
+      : `Invitation created, but email delivery is not configured on the server. Share this link with ${result.sentTo}:`
     : null;
 
   return (
@@ -71,9 +71,18 @@ function InviteModal({ roles, onClose }: { roles: Role[]; onClose: () => void })
 
         {result ? (
           <>
-            <p style={{ fontSize: 14, color: result.emailStatus === 'FAILED' ? '#b45309' : result.emailStatus === 'SKIPPED' ? '#6b7280' : '#15803d', marginBottom: 20, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 14, color: result.emailStatus === 'FAILED' ? '#b45309' : result.emailStatus === 'SKIPPED' ? '#6b7280' : '#15803d', marginBottom: result.devInviteUrl ? 8 : 20, lineHeight: 1.5, wordBreak: 'break-word' }}>
               {resultMessage}
             </p>
+            {result.devInviteUrl && (
+              <input
+                readOnly
+                value={result.devInviteUrl}
+                onFocus={e => e.currentTarget.select()}
+                aria-label="Invitation link"
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-muted, #f8fafc)', marginBottom: 20, fontFamily: 'monospace' }}
+              />
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Done</button>
             </div>

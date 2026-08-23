@@ -181,6 +181,7 @@ export interface Lead {
   lastMeaningfulActivityAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null; // set while the lead sits in the Recycle Bin
 }
 
 // ============================================================================
