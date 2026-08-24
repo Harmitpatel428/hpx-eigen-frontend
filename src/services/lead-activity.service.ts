@@ -1,6 +1,6 @@
 import { api } from './api';
 
-export type GlobalFilter = 'ALL' | 'DUE_TODAY' | 'UPCOMING' | 'OVERDUE' | 'MINE';
+export type GlobalFilter = 'DUE_TODAY' | 'UPCOMING' | 'OVERDUE' | 'MINE';
 
 export interface LeadActivityItem {
   id: string;
@@ -27,7 +27,7 @@ export interface LeadActivityPage {
 }
 
 export const leadActivityService = {
-  async findAll(filter: GlobalFilter = 'ALL', page = 1, pageSize = 50): Promise<LeadActivityPage> {
+  async findAll(filter: GlobalFilter = 'DUE_TODAY', page = 1, pageSize = 50): Promise<LeadActivityPage> {
     const params = new URLSearchParams({ filter, page: String(page), pageSize: String(pageSize) });
     const { data } = await api.get<LeadActivityPage>(`/api/v1/lead-activities?${params}`);
     return data;

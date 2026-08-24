@@ -51,7 +51,7 @@ const leadSchema = z.object({
   source: z.enum(['WEBSITE', 'REFERRAL', 'COLD_CALL', 'EMAIL_CAMPAIGN', 'SOCIAL_MEDIA', 'TRADE_SHOW', 'OTHER']).optional(),
   // CONTACTED/CONVERTED are legacy read-only stages — accepted here only so an
   // edit form for a lead already in one of them doesn't silently reset it to NEW.
-  stage: z.enum(['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'OTHER', 'DISQUALIFIED', 'CONTACTED', 'CONVERTED']).optional(),
+  stage: z.enum(['NEW', 'QUALIFIED', 'INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'OTHER', 'DISQUALIFIED', 'CONTACTED', 'CONVERTED']).optional(),
   followUpDate: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   notes: z.string().optional(),
@@ -375,7 +375,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   }, [onClose]);
 
   const watchedStage = watch('stage');
-  const FOLLOW_UP_STAGES = new Set(['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
+  const FOLLOW_UP_STAGES = new Set(['INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
 
   // Duplicate detection
   const watchedEmail   = watch('email');
@@ -495,6 +495,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                 <select {...register('stage')} className={inp} style={{ cursor: 'pointer' }}>
                   <option value="NEW">New</option>
                   <option value="QUALIFIED">Qualified</option>
+                  <option value="INTERESTED">Interested</option>
                   <option value="FOLLOW_UP">Follow-Up</option>
                   <option value="CALL_BACK_REQUESTED">Call Back Requested</option>
                   <option value="CALL_NOT_RECEIVED">Call Not Received</option>

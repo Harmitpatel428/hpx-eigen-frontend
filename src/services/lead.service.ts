@@ -81,7 +81,15 @@ export interface AssignmentSummary {
   unassigned: number;
   assignedByMe: number;
   perOwner: { userId: string; firstName: string | null; lastName: string | null; count: number }[];
+  roleGroups?: { roleId: string; roleName: string; users: { userId: string; firstName: string | null; lastName: string | null; count: number }[] }[];
 }
+
+/** Full-fidelity export rows from GET /leads/export */
+export type LeadExportRow = Lead & {
+  owner: { id: string; firstName: string | null; lastName: string | null; roleNames: string[] } | null;
+  notesCount: number;
+  notesText: string;
+};
 
 export const leadService = {
   async findAll(filters?: {
@@ -89,6 +97,8 @@ export const leadService = {
     source?: string;
     stage?: string;
     search?: string;
+    ownerId?: string;
+    roleId?: string;
     page?: number;
     pageSize?: number;
   }): Promise<LeadsResponse> {
@@ -97,6 +107,8 @@ export const leadService = {
     if (filters?.source && filters.source !== 'ALL') params.set('source', filters.source);
     if (filters?.stage) params.set('stage', filters.stage);
     if (filters?.search) params.set('search', filters.search);
+    if (filters?.ownerId) params.set('ownerId', filters.ownerId);
+    if (filters?.roleId) params.set('roleId', filters.roleId);
     if (filters?.page) params.set('page', String(filters.page));
     if (filters?.pageSize) params.set('pageSize', String(filters.pageSize));
 
@@ -113,10 +125,35 @@ export const leadService = {
     return data?.data ?? {};
   },
 
+  /**
+   * Full-fidelity export — server returns every stored field plus owner,
+   * tags and aggregated LeadNote text. Filters mirror findAll; pass ids for
+   * export-selected.
+   */
+  async exportLeads(filters?: {
+    search?: string;
+    stage?: string;
+    ownerId?: string;
+    roleId?: string;
+    ids?: string[];
+  }): Promise<LeadExportRow[]> {
+    if (filters?.ids) {
+      const { data } = await api.get<any>('/api/v1/leads/export', { params: { ids: filters.ids.join(',') } });
+      return data?.data ?? [];
+    }
+    const params = new URLSearchParams();
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.stage) params.set('stage', filters.stage);
+    if (filters?.ownerId) params.set('ownerId', filters.ownerId);
+    if (filters?.roleId) params.set('roleId', filters.roleId);
+    const { data } = await api.get<any>(`/api/v1/leads/export${params.size ? `?${params}` : ''}`);
+    return data?.data ?? [];
+  },
+
   /** Assignment distribution within the caller's scope (server-computed source of truth) */
   async assignmentSummary(): Promise<AssignmentSummary> {
     const { data } = await api.get<any>('/api/v1/leads/assignment-summary');
-    return data?.data ?? { total: 0, unassigned: 0, assignedByMe: 0, perOwner: [] };
+    return data?.data ?? { total: 0, unassigned: 0, assignedByMe: 0, perOwner: [], roleGroups: [] };
   },
 
   async create(input: CreateLeadPayload): Promise<Lead> {

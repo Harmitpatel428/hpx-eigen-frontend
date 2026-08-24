@@ -84,7 +84,7 @@ export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'DISQUALIFIED' | 'C
 export type LeadSource = 'WEBSITE' | 'REFERRAL' | 'COLD_CALL' | 'EMAIL_CAMPAIGN' | 'SOCIAL_MEDIA' | 'TRADE_SHOW' | 'OTHER';
 export type LeadStage =
   // Active selectable stages
-  | 'NEW' | 'QUALIFIED' | 'FOLLOW_UP' | 'CALL_BACK_REQUESTED' | 'CALL_NOT_RECEIVED' | 'OTHER' | 'DISQUALIFIED'
+  | 'NEW' | 'QUALIFIED' | 'INTERESTED' | 'FOLLOW_UP' | 'CALL_BACK_REQUESTED' | 'CALL_NOT_RECEIVED' | 'OTHER' | 'DISQUALIFIED'
   // Legacy read-only values — historical records only
   | 'CONTACTED' | 'CONVERTED';
 

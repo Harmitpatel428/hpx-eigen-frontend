@@ -10,7 +10,7 @@ import type { LeadSource, LeadStage, LeadPriority, CustomFieldDef } from '../../
 
 interface RowError { row: number; column: string; message: string; suggestedFix?: string }
 
-const VALID_STAGES   = new Set(['NEW','QUALIFIED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED']);
+const VALID_STAGES   = new Set(['NEW','QUALIFIED','INTERESTED','FOLLOW_UP','CALL_BACK_REQUESTED','CALL_NOT_RECEIVED','OTHER','DISQUALIFIED']);
 const LEGACY_STAGES  = new Set(['CONTACTED','CONVERTED']);
 const VALID_SOURCES  = new Set(['WEBSITE','REFERRAL','COLD_CALL','EMAIL_CAMPAIGN','SOCIAL_MEDIA','TRADE_SHOW','OTHER']);
 const VALID_PRIOS    = new Set(['CRITICAL','HIGH','MEDIUM','LOW']);
@@ -62,6 +62,8 @@ function validateRows(rows: Record<string, string>[], map: Record<string, string
         errors.push({ row: n, column: 'stage', message: `Stage "${stage}" is a legacy stage and is no longer importable.`, suggestedFix: 'Remove this value or use a current stage. The record remains readable in the system.' });
       } else if (!VALID_STAGES.has(normalized)) {
         errors.push({ row: n, column: 'stage', message: `Unknown stage: "${stage}".`, suggestedFix: `Use one of: ${[...VALID_STAGES].join(', ')}.` });
+      } else if (normalized === 'INTERESTED' && !parseDateValue(get('followUpDate'))) {
+        errors.push({ row: n, column: 'followUpDate', message: 'Follow-up Date is required for Interested leads.', suggestedFix: 'Add a valid Follow-Up Date for this row.' });
       }
     }
 

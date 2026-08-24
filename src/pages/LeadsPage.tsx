@@ -21,6 +21,7 @@ import { LeadModal } from '../components/leads/LeadModal';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
 import { LeadImportWizard } from '../components/leads/LeadImportWizard';
 import { LeadAssignModal } from '../components/leads/LeadAssignModal';
+import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { exportCSV } from '../utils/csv';
 import { loadColourfulFilters, loadStageFilter, saveStageFilter } from '../utils/salesDashboardPrefs';
 import type { AssignmentSummary } from '../services/lead.service';
@@ -30,7 +31,7 @@ import type { AssignmentSummary } from '../services/lead.service';
 // ============================================================================
 
 const STAGE_LABELS: Record<LeadStage, string> = {
-  NEW: 'New', QUALIFIED: 'Qualified', FOLLOW_UP: 'Follow-Up',
+  NEW: 'New', QUALIFIED: 'Qualified', INTERESTED: 'Interested', FOLLOW_UP: 'Follow-Up',
   CALL_BACK_REQUESTED: 'Call Back Requested', CALL_NOT_RECEIVED: 'Call Not Received',
   OTHER: 'Other', DISQUALIFIED: 'Disqualified',
   CONTACTED: 'Contacted', CONVERTED: 'Converted',
@@ -39,6 +40,7 @@ const STAGE_LABELS: Record<LeadStage, string> = {
 const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }> = {
   NEW:                 { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
   QUALIFIED:           { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#059669' },
+  INTERESTED:          { bg: 'rgba(13,148,136,0.1)',  text: '#0d9488', dot: '#0d9488' },
   FOLLOW_UP:           { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
   CALL_BACK_REQUESTED: { bg: 'rgba(249,115,22,0.1)',  text: '#ea580c', dot: '#ea580c' },
   CALL_NOT_RECEIVED:   { bg: 'rgba(239,68,68,0.08)',  text: '#dc2626', dot: '#dc2626' },
@@ -54,6 +56,7 @@ const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }>
 const DEFAULT_STAGES: { key: LeadStage; label: string }[] = [
   { key: 'NEW',                 label: 'New'          },
   { key: 'QUALIFIED',           label: 'Qualified'    },
+  { key: 'INTERESTED',          label: 'Interested'   },
   { key: 'FOLLOW_UP',           label: 'Follow-Up'    },
   { key: 'CALL_BACK_REQUESTED', label: 'Call Back'    },
   { key: 'CALL_NOT_RECEIVED',   label: 'Not Received' },
@@ -72,48 +75,6 @@ function loadStageOrder(): { key: LeadStage; label: string }[] {
     const missing = DEFAULT_STAGES.filter(s => !keys.includes(s.key));
     return [...ordered, ...missing];
   } catch { return DEFAULT_STAGES; }
-}
-
-// ============================================================================
-// DELETE CONFIRM
-// ============================================================================
-
-interface DeleteConfirmProps {
-  lead: Lead;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isDeleting: boolean;
-}
-
-function DeleteConfirm({ lead, onConfirm, onCancel, isDeleting }: DeleteConfirmProps) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onCancel]);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }} />
-      <div style={{ position: 'relative', zIndex: 1, background: '#fff', borderRadius: '0.875rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)', padding: '1.5rem', width: '100%', maxWidth: '360px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.625rem' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Trash2 size={16} color="#dc2626" />
-          </div>
-          <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>Delete Lead</h3>
-        </div>
-        <p style={{ fontSize: '0.8125rem', color: '#475569', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          Delete <strong>{lead.firstName} {lead.lastName}</strong>? This soft-deletes the record.
-        </p>
-        <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-          <button onClick={onConfirm} disabled={isDeleting} style={{ padding: '0.4375rem 1rem', borderRadius: '0.5rem', background: isDeleting ? '#ef4444aa' : '#dc2626', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: isDeleting ? 'not-allowed' : 'pointer', border: 'none' }}>
-            {isDeleting ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ============================================================================
@@ -143,16 +104,25 @@ export function LeadsPage() {
   }, []);
   const [colourfulFilters] = useState(loadColourfulFilters);
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  // Role/assignee dropdown: '' = All · 'UNASSIGNED' · `user:<id>` · `role:<id>`
+  const [assigneeFilter, setAssigneeFilter] = useState('');
   const [stages, setStages] = useState(loadStageOrder);
   const dragIdx = useRef<number | null>(null);
   const [page, setPage] = useState(1);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
-  const filterKey = `${debouncedSearch}||${selectedStage}`;
+  const filterKey = `${debouncedSearch}||${selectedStage}||${assigneeFilter}`;
   const prevFilterKey = useRef(filterKey);
 
+  const assigneeParams = useMemo(() => {
+    if (assigneeFilter.startsWith('user:')) return { ownerId: assigneeFilter.slice(5) };
+    if (assigneeFilter === 'UNASSIGNED')    return { ownerId: 'UNASSIGNED' };
+    if (assigneeFilter.startsWith('role:')) return { roleId: assigneeFilter.slice(5) };
+    return {};
+  }, [assigneeFilter]);
+
   const { data: leadsResponse, isLoading, isFetching } = useQuery({
-    queryKey: ['leads', { search: debouncedSearch, stage: selectedStage, page }],
-    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: selectedStage || undefined, pageSize: 100, page }),
+    queryKey: ['leads', { search: debouncedSearch, stage: selectedStage, page, assignee: assigneeFilter }],
+    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: selectedStage || undefined, pageSize: 100, page, ...assigneeParams }),
     staleTime: 30_000,
   });
 
@@ -274,52 +244,82 @@ export function LeadsPage() {
     return `${dd}/${mm}/${d.getFullYear()}`;
   };
 
-  const buildExportRows = useCallback((source: Lead[]) => {
-    const STATIC_HEADERS = [
-      'First Name','Last Name','Email','Phone','Company',
-      'Stage','Priority','Source',
-      'Score','Expected Value','Owner ID','Tags',
-      'Country','State','City','Area','Postal Code','Full Address',
-      'Notes','Expected Close Date','Created Date',
-    ];
-    const cfHeaders = fieldDefs.map(f => f.name);
-    const rows = source.map(l => {
-      const stored: Array<{ fieldId: string; value: string | null }> =
-        Array.isArray((l as any).customFieldValues) ? (l as any).customFieldValues : [];
-      const tagStr = Array.isArray(l.tags) ? l.tags.map(t => t.name).join(', ') : '';
-      const row: Record<string, unknown> = {
-        'First Name': l.firstName, 'Last Name': l.lastName,
-        'Email': l.email ?? '', 'Phone': l.phone ?? '', 'Company': l.company ?? '',
-        'Stage': l.stage ?? '', 'Priority': l.priority ?? '', 'Source': l.source ?? '',
-        'Score': l.score ?? '', 'Expected Value': l.expectedValue ?? '',
-        'Owner ID': l.ownerId ?? '', 'Tags': tagStr,
-        'Country': l.country ?? '', 'State': l.state ?? '', 'City': l.city ?? '',
-        'Area': l.area ?? '', 'Postal Code': l.postalCode ?? '',
-        'Full Address': (l as any).freeformAddress ?? '',
-        'Notes': l.notes ?? '',
-        'Expected Close Date': fmtExportDate(l.expectedCloseDate),
-        'Created Date': fmtExportDate(l.createdAt),
-      };
-      fieldDefs.forEach(f => {
-        const v = stored.find(sv => sv.fieldId === f.id);
-        row[f.name] = v?.value ?? '';
-      });
-      return row;
-    });
-    return { headers: [...STATIC_HEADERS, ...cfHeaders], rows };
-  }, [fieldDefs]);
+  // Export pulls full-fidelity rows from GET /leads/export (server-side), so
+  // every stored field is included regardless of pagination or page filters.
+  const [exporting, setExporting] = useState(false);
 
-  const handleExport = useCallback(() => {
-    const { headers, rows } = buildExportRows(leads);
-    exportCSV('leads-export', headers, rows);
-  }, [leads, buildExportRows]);
+  const exportViaServer = useCallback(async (ids?: string[], filename = 'leads-export') => {
+    setExporting(true);
+    try {
+      const source = await leadService.exportLeads(
+        ids
+          ? { ids }
+          : { search: debouncedSearch || undefined, stage: selectedStage || undefined, ...assigneeParams }
+      );
+      if (source.length === 0) {
+        toast.info('No leads match the current selection.');
+        return;
+      }
+      const STATIC_HEADERS = [
+        'First Name','Last Name','Email','Phone','Company',
+        'Source','Status','Stage','Priority',
+        'Score','Expected Value','Expected Close Date','Follow-Up Date',
+        'Country','State','City','Area','Postal Code','Full Address',
+        'Owner ID','Owner Name','Owner Role','Assigned By (Manager ID)','Tags',
+        'Notes','Notes Count','Created Date','Updated Date',
+      ];
+      const cfHeaders = fieldDefs.map(f => f.name);
+      const rows = source.map(l => {
+        const stored: Array<{ fieldId: string; value: string | null }> =
+          Array.isArray((l as any).customFieldValues) ? (l as any).customFieldValues : [];
+        const tagStr = Array.isArray((l as any).tags) ? (l as any).tags.map((t: any) => t.name).join(', ') : '';
+        // Real notes live in LeadNote (notesText); legacy scalar kept first so no stored data drops
+        const noteStr = [(l as any).notes ?? '', (l as any).notesText ?? ''].filter(Boolean).join('\n');
+        const ownerLabel = (l as any).owner
+          ? [(l as any).owner.firstName, (l as any).owner.lastName].filter(Boolean).join(' ')
+          : '';
+        const row: Record<string, unknown> = {
+          'First Name': l.firstName, 'Last Name': l.lastName,
+          'Email': l.email ?? '', 'Phone': l.phone ?? '', 'Company': l.company ?? '',
+          'Source': l.source ?? '', 'Status': l.status ?? '', 'Stage': l.stage ?? '',
+          'Priority': l.priority ?? '',
+          'Score': l.score ?? '', 'Expected Value': l.expectedValue ?? '',
+          'Expected Close Date': fmtExportDate(l.expectedCloseDate),
+          'Follow-Up Date': fmtExportDate(l.followUpDate),
+          'Country': l.country ?? '', 'State': l.state ?? '', 'City': l.city ?? '',
+          'Area': l.area ?? '', 'Postal Code': l.postalCode ?? '',
+          'Full Address': (l as any).freeformAddress ?? '',
+          'Owner ID': l.ownerId ?? '', 'Owner Name': ownerLabel,
+          'Owner Role': ((l as any).owner?.roleNames ?? []).join(', '),
+          'Assigned By (Manager ID)': (l as any).managerId ?? '',
+          'Tags': tagStr,
+          'Notes': noteStr,
+          'Notes Count': (l as any).notesCount ?? 0,
+          'Created Date': fmtExportDate(l.createdAt),
+          'Updated Date': fmtExportDate(l.updatedAt),
+        };
+        fieldDefs.forEach(f => {
+          const v = stored.find(sv => sv.fieldId === f.id);
+          row[f.name] = v?.value ?? '';
+        });
+        return row;
+      });
+      exportCSV(filename, [...STATIC_HEADERS, ...cfHeaders], rows);
+      toast.success(`Exported ${rows.length} lead${rows.length !== 1 ? 's' : ''}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message ?? 'Export failed.');
+    } finally {
+      setExporting(false);
+    }
+  }, [debouncedSearch, selectedStage, assigneeParams, fieldDefs]);
+
+  const handleExport = useCallback(() => { void exportViaServer(undefined, 'leads-export'); }, [exportViaServer]);
 
   const handleExportSelected = useCallback(() => {
-    const selected = leads.filter(l => selectedIds.has(l.id));
-    if (selected.length === 0) return;
-    const { headers, rows } = buildExportRows(selected);
-    exportCSV('leads-selected-export', headers, rows);
-  }, [leads, selectedIds, buildExportRows]);
+    const ids = leads.filter(l => selectedIds.has(l.id)).map(l => l.id);
+    if (ids.length === 0) return;
+    void exportViaServer(ids, 'leads-selected-export');
+  }, [leads, selectedIds, exportViaServer]);
 
   const bulkDeleteMutation = useMutation({
     mutationFn: (ids: string[]) => leadService.bulkDelete(ids),
@@ -368,9 +368,38 @@ export function LeadsPage() {
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
             <input className="input" placeholder="Search leads…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: 30, height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }} />
           </div>
+          {/* ROLE / ASSIGNEE FILTER — options are server-computed (assignment-summary),
+              selection filters the list server-side via ownerId/roleId params */}
+          {canAssign && (
+            <select
+              value={assigneeFilter}
+              onChange={e => setAssigneeFilter(e.target.value)}
+              aria-label="Filter by role or assignee"
+              title="Filter by role or assignee"
+              style={{ height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', maxWidth: 220 }}
+            >
+              <option value="">Role / Assignee · All</option>
+              {assignmentSummary && assignmentSummary.unassigned > 0 && (
+                <option value="UNASSIGNED">Unassigned · {assignmentSummary.unassigned}</option>
+              )}
+              {(assignmentSummary?.roleGroups ?? []).map(g => {
+                const roleTotal = g.users.reduce((s, u) => s + u.count, 0);
+                return (
+                  <optgroup key={g.roleId} label={`${g.roleName} (${roleTotal})`}>
+                    <option value={`role:${g.roleId}`}>All {g.roleName} · {roleTotal}</option>
+                    {g.users.map(u => (
+                      <option key={u.userId} value={`user:${u.userId}`}>
+                        {[u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unnamed'} · {u.count}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+          )}
           <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }}><ListFilter size={14} style={{ marginRight: 4 }} /> Filters</button>
           <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={() => setShowImportWizard(true)}><ArrowDownToLine size={14} style={{ marginRight: 4 }} /> Import</button>
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={handleExport}><ArrowUpFromLine size={14} style={{ marginRight: 4 }} /> Export</button>
+          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} disabled={exporting} onClick={handleExport}><ArrowUpFromLine size={14} style={{ marginRight: 4 }} /> {exporting ? 'Exporting…' : 'Export'}</button>
           <div style={{ width: 1, height: 16, backgroundColor: 'var(--border-medium)', margin: '0 4px' }} />
           <button className="btn btn-primary" style={{ height: 28, padding: '0 12px', fontSize: 13, borderRadius: 'var(--radius-sm)' }} onClick={() => setModal({ mode: 'create' })}>
             <Plus size={14} style={{ marginRight: 4 }} /> New Lead
@@ -453,27 +482,7 @@ export function LeadsPage() {
         })}
       </div>
 
-      {/* ASSIGNMENT SUMMARY — server-computed per-executive distribution within the caller's scope */}
-      {canAssign && assignmentSummary && (assignmentSummary.perOwner.length > 0 || assignmentSummary.unassigned > 0) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-          {assignmentSummary.perOwner.map(o => (
-            <span key={o.userId} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, border: '1px solid var(--border-light)', background: 'var(--bg-subtle)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-              {[o.firstName, o.lastName].filter(Boolean).join(' ') || 'Unnamed'}
-              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{o.count}</span>
-            </span>
-          ))}
-          {assignmentSummary.unassigned > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, border: '1px solid rgba(234,179,8,0.35)', background: 'rgba(234,179,8,0.08)', color: '#a16207', whiteSpace: 'nowrap' }}>
-              Unassigned · {assignmentSummary.unassigned}
-            </span>
-          )}
-          {assignmentSummary.assignedByMe > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#4f46e5', whiteSpace: 'nowrap' }}>
-              Assigned by you · {assignmentSummary.assignedByMe}
-            </span>
-          )}
-        </div>
-      )}
+      {/* ASSIGNMENT SUMMARY — replaced by the Role / Assignee dropdown in the header */}
 
       {/* BULK ACTIONS TOOLBAR */}
       {selectedIds.size > 0 && (
@@ -486,8 +495,8 @@ export function LeadsPage() {
           <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#dc2626' }} onClick={() => setBulkDeleteConfirm(true)}>
             <Trash2 size={12} style={{ marginRight: 4 }} /> Delete
           </button>
-          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: 'var(--text-secondary)' }} onClick={handleExportSelected}>
-            <ArrowUpFromLine size={12} style={{ marginRight: 4 }} /> Export Selected
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: 'var(--text-secondary)' }} disabled={exporting} onClick={handleExportSelected}>
+            <ArrowUpFromLine size={12} style={{ marginRight: 4 }} /> {exporting ? 'Exporting…' : 'Export Selected'}
           </button>
           <div style={{ flex: 1 }} />
           <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)' }} onClick={() => setSelectedIds(new Set())}>

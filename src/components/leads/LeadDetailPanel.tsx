@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
@@ -20,7 +21,7 @@ import { LeadNotesModal } from './LeadNotesModal';
 // ── constants ─────────────────────────────────────────────────────────────────
 
 const STAGE_LABELS: Record<LeadStage, string> = {
-  NEW: 'New', QUALIFIED: 'Qualified', FOLLOW_UP: 'Follow-Up',
+  NEW: 'New', QUALIFIED: 'Qualified', INTERESTED: 'Interested', FOLLOW_UP: 'Follow-Up',
   CALL_BACK_REQUESTED: 'Call Back Requested', CALL_NOT_RECEIVED: 'Call Not Received',
   OTHER: 'Other', DISQUALIFIED: 'Disqualified',
   // legacy read-only
@@ -30,6 +31,7 @@ const STAGE_LABELS: Record<LeadStage, string> = {
 const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }> = {
   NEW:                  { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
   QUALIFIED:            { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#059669' },
+  INTERESTED:           { bg: 'rgba(13,148,136,0.1)',  text: '#0d9488', dot: '#0d9488' },
   FOLLOW_UP:            { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
   CALL_BACK_REQUESTED:  { bg: 'rgba(249,115,22,0.1)',  text: '#ea580c', dot: '#ea580c' },
   CALL_NOT_RECEIVED:    { bg: 'rgba(239,68,68,0.08)',  text: '#dc2626', dot: '#dc2626' },
@@ -47,7 +49,7 @@ const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {
   LOW:      { color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
 };
 
-const PIPELINE: LeadStage[] = ['NEW', 'QUALIFIED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'DISQUALIFIED', 'OTHER'];
+const PIPELINE: LeadStage[] = ['NEW', 'QUALIFIED', 'INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED', 'DISQUALIFIED', 'OTHER'];
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #1e3a5f, #2563eb)',
@@ -245,7 +247,7 @@ const CSS = `
 // ── stage selector ────────────────────────────────────────────────────────────
 
 // Stages that require an explicit follow-up date before saving.
-const DATE_REQUIRED = new Set<LeadStage>(['FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
+const DATE_REQUIRED = new Set<LeadStage>(['INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
 // Stages that require notes (no date needed).
 const NOTES_REQUIRED = new Set<LeadStage>(['OTHER']);
 
@@ -372,6 +374,77 @@ function LeadStageSelector({
               })}
             </>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── priority selector ─────────────────────────────────────────────────────────
+
+function PrioritySelector({
+  priority, onSelect,
+}: {
+  priority: LeadPriority;
+  onSelect: (priority: LeadPriority) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const c = PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.MEDIUM;
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        title="Change priority"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+          padding: '3px 9px', borderRadius: 5, border: 'none',
+          background: c.bg, color: c.color,
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+        }}
+      >
+        {priority}
+        <ChevronDown size={9} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 200,
+          background: 'var(--bg-app)', border: '1px solid var(--border-medium)',
+          borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          minWidth: 150, overflow: 'hidden',
+        }}>
+          {(Object.keys(PRIORITY_COLORS) as LeadPriority[]).map(p => {
+            const pc = PRIORITY_COLORS[p];
+            const active = p === priority;
+            return (
+              <button
+                key={p}
+                onClick={() => { onSelect(p); setOpen(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', padding: '7px 12px', border: 'none', textAlign: 'left',
+                  background: active ? pc.bg : 'transparent', cursor: 'pointer',
+                  color: active ? pc.color : 'var(--text-primary)',
+                  fontSize: 12, fontWeight: active ? 700 : 450,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: pc.color, flexShrink: 0 }} />
+                {p}
+                {active && <Check size={11} style={{ marginLeft: 'auto' }} strokeWidth={2.5} />}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -586,6 +659,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   useEffect(() => { setLocalStage(lead.stage ?? 'NEW'); }, [lead.stage]);
   const [localFollowUpDate, setLocalFollowUpDate] = useState(lead.followUpDate);
   useEffect(() => { setLocalFollowUpDate(lead.followUpDate); }, [lead.followUpDate]);
+  const [localPriority, setLocalPriority] = useState<LeadPriority>(lead.priority ?? 'MEDIUM');
+  useEffect(() => { setLocalPriority(lead.priority ?? 'MEDIUM'); }, [lead.priority]);
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
     if (stage === localStage) return;
@@ -613,9 +688,23 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     }
   };
 
+  const handlePriorityChange = async (priority: LeadPriority) => {
+    if (priority === localPriority) return;
+    const prev = localPriority;
+    setLocalPriority(priority);
+    try {
+      const updated = await leadService.update(lead.id, { priority });
+      onUpdated?.(updated);
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+    } catch {
+      setLocalPriority(prev);
+      toast.error('Failed to update priority.');
+    }
+  };
+
   const primaryWaChannel = waChannels.find(c => c.isPrimary) ?? waChannels[0] ?? null;
 
-  const priority     = PRIORITY_COLORS[lead.priority ?? 'MEDIUM'] ?? PRIORITY_COLORS.MEDIUM;
   const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
   const contactPhone = mainContact?.phone ?? lead.phone;
   const contactEmail = mainContact?.email ?? lead.email;
@@ -790,13 +879,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
           {/* Row 2: Priority + Source */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', paddingTop: 2 }}>
-            <span style={{
-              padding: '3px 9px', borderRadius: 5,
-              background: priority.bg, color: priority.color,
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
-            }}>
-              {lead.priority ?? 'MEDIUM'}
-            </span>
+            <PrioritySelector priority={localPriority} onSelect={handlePriorityChange} />
             <span style={{
               padding: '3px 9px', borderRadius: 5,
               background: 'var(--bg-muted)', color: 'var(--text-secondary)',

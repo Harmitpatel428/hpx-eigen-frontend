@@ -3,13 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Check, Clock, Plus, X, ChevronDown, MapPin, User, Keyboard, Lock, Settings } from 'lucide-react';
 import { leadActivityService, GlobalFilter, LeadActivityItem } from '../services/lead-activity.service';
 import { leadService } from '../services/lead.service';
+import { toast } from 'sonner';
 import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
+import { LeadModal } from '../components/leads/LeadModal';
+import { DeleteConfirm } from '../components/leads/DeleteConfirm';
+import type { Lead } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FILTERS: { key: GlobalFilter; label: string }[] = [
-  { key: 'ALL',       label: 'All'           },
   { key: 'DUE_TODAY', label: 'Due Today'     },
   { key: 'UPCOMING',  label: 'Upcoming'      },
   { key: 'OVERDUE',   label: 'Overdue'       },
@@ -716,7 +719,6 @@ function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, on
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 const EMPTY: Record<GlobalFilter, { icon: React.ReactNode; msg: string }> = {
-  ALL:       { icon: <Calendar size={32} />, msg: 'No activities yet. Schedule a meeting to get started.'  },
   DUE_TODAY: { icon: <Clock size={32} />,    msg: "Nothing due today — you're all caught up!"              },
   UPCOMING:  { icon: <Calendar size={32} />, msg: 'No upcoming activities scheduled.'                      },
   OVERDUE:   { icon: <Clock size={32} />,    msg: 'No overdue activities — great work!'                    },
@@ -738,6 +740,10 @@ export function ActivitiesPage() {
   const [templateInit, setTemplateInit] = useState<Partial<Template> | null>(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [selectedLeadId, setSelectedLeadId]     = useState<string | null>(null);
+  // Lead edit modal + delete confirm opened from the detail panel — same
+  // components LeadsPage uses, so saving goes through the existing update path.
+  const [editModal, setEditModal]               = useState<{ mode: 'create' | 'edit'; lead?: Lead } | null>(null);
+  const [deleteTarget, setDeleteTarget]         = useState<Lead | null>(null);
   const [expandedId, setExpandedId]     = useState<string | null>(null);
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
@@ -843,6 +849,9 @@ export function ActivitiesPage() {
         return;
       }
       if (e.key === 'Escape') {
+        // Edit modal / delete confirm handle their own Escape; never yank the
+        // panel out from under them.
+        if (editModal || deleteTarget) return;
         setSelectedLeadId(null);
         setShowShortcuts(false);
         setShowUnlockSettings(false);
@@ -854,7 +863,7 @@ export function ActivitiesPage() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [filteredItems, focusedIndex]);
+  }, [filteredItems, focusedIndex, editModal, deleteTarget]);
 
   // Close template menu on outside click
   useEffect(() => {
@@ -874,6 +883,23 @@ export function ActivitiesPage() {
     qc.invalidateQueries({ queryKey: ['leads'] });
     qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
   }
+
+  // Single-lead soft delete from the panel — mirrors LeadsPage.deleteMutation
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => leadService.softDelete(id),
+    onSuccess: () => {
+      handleLeadPanelClose();
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ['lead-activities'] });
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      toast.success('Lead moved to Recycle Bin');
+    },
+    onError: (err: any) => {
+      // Keep the confirm open — the lead was not deleted
+      toast.error(err?.response?.data?.error?.message ?? 'Failed to delete lead.');
+    },
+  });
 
   function handleCheck(id: string, shiftKey: boolean) {
     const idx = filteredItems.findIndex(i => i.id === id);
@@ -1027,18 +1053,54 @@ export function ActivitiesPage() {
       {showModal && <ScheduleModal onClose={() => { setShowModal(false); setTemplateInit(null); }} initialValues={templateInit} />}
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
-      {/* Lead Detail Panel — always opens company-first for Activities context */}
-      <ContextPanel isOpen={!!selectedLeadId && !!selectedLead} onClose={handleLeadPanelClose} width={480}>
+      {/* Lead Detail Panel — always opens company-first for Activities context.
+          Inert while the edit modal / delete confirm is stacked above it. */}
+      <ContextPanel
+        isOpen={!!selectedLeadId && !!selectedLead}
+        onClose={() => { if (!editModal && !deleteTarget) handleLeadPanelClose(); }}
+        width={480}
+      >
         {selectedLead && (
           <LeadDetailPanel
             lead={selectedLead}
-            onEdit={handleLeadPanelClose}
-            onDelete={handleLeadPanelClose}
+            onEdit={() => setEditModal({ mode: 'edit', lead: selectedLead })}
+            onDelete={() => setDeleteTarget(selectedLead)}
+            onUpdated={(u) => qc.setQueryData(['lead', u.id], u)}
             onClose={handleLeadPanelClose}
             displayOverride="company"
           />
         )}
       </ContextPanel>
+
+      {/* LEAD EDIT MODAL — same component/flow as Sales Dashboard */}
+      {editModal && selectedLead && (
+        <LeadModal
+          mode="edit"
+          lead={editModal.lead ?? selectedLead}
+          onClose={() => setEditModal(null)}
+          onSuccess={(updated) => {
+            // Persist through the existing mutation happened inside LeadModal;
+            // refresh every surface this page touches, then return to the panel.
+            qc.invalidateQueries({ queryKey: ['lead-activities'] });
+            qc.invalidateQueries({ queryKey: ['leads'] });
+            qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+            if (updated) qc.setQueryData(['lead', updated.id], updated);
+            setEditModal(null);
+          }}
+        />
+      )}
+
+      {/* DELETE CONFIRM — shared with LeadsPage */}
+      {deleteTarget && selectedLead && (
+        <DeleteConfirm
+          lead={deleteTarget}
+          onConfirm={() => {
+            deleteMut.mutate(deleteTarget.id);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+          isDeleting={deleteMut.isPending}
+        />
+      )}
     </div>
   );
 }

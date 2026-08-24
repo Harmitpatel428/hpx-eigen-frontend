@@ -2,7 +2,7 @@
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_ROWS = 5_000;
-const MAX_COLS = 50;
+const MAX_COLS = 200;
 
 // ── parser ────────────────────────────────────────────────────────────────────
 
