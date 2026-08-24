@@ -5,53 +5,99 @@ const MAX_ROWS = 5_000;
 const MAX_COLS = 200;
 
 // ── parser ────────────────────────────────────────────────────────────────────
+// Quote-aware state machine over the WHOLE text — quoted fields may span
+// lines. (The previous version split on newlines first, which shredded any
+// multi-line quoted value into phantom rows.)
 
-function parseRow(line: string): string[] {
-  const fields: string[] = [];
+/** Inverse of exportCSV's formula-injection prefix: our writer turns "-5 into
+ *  '-5, so reading strips exactly one leading apostrophe when followed by a
+ *  trigger char. Values users genuinely type with '=… keep their ambiguity,
+ *  same as Excel. */
+function unescapeCell(cell: string): string {
+  return /^'[=+\-@\t\r]/.test(cell) ? cell.slice(1) : cell;
+}
+
+function splitRecords(text: string, delimiter: string): string[][] | null {
+  const records: string[][] = [];
+  let record: string[] = [];
   let field = '';
   let inQuote = false;
+  const pushField = () => { record.push(unescapeCell(field.trim())); field = ''; };
+  const pushRecord = () => { pushField(); records.push(record); record = []; };
+
   let i = 0;
-  while (i < line.length) {
-    const ch = line[i];
+  while (i < text.length) {
+    const ch = text[i];
     if (inQuote) {
-      if (ch === '"' && line[i + 1] === '"') { field += '"'; i += 2; }
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i += 2; }
       else if (ch === '"') { inQuote = false; i++; }
       else { field += ch; i++; }
+    } else if (ch === '"' && field === '') {
+      inQuote = true; i++; // quote opens only at field start; elsewhere literal
+    } else if (ch === delimiter) {
+      pushField(); i++;
+    } else if (ch === '\n' || ch === '\r') {
+      pushRecord();
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      i++;
     } else {
-      if (ch === '"') { inQuote = true; i++; }
-      else if (ch === ',') { fields.push(field); field = ''; i++; }
-      else { field += ch; i++; }
+      field += ch; i++;
     }
   }
-  fields.push(field);
-  return fields;
+  if (inQuote) return null; // unclosed quote
+  if (field !== '' || record.length > 0) pushRecord();
+  return records;
 }
 
 export interface ParseResult {
   headers: string[];
   rows: Record<string, string>[];
+  /** Actual column count of each raw row, parallel to `rows` — used for
+   *  structural validation before any field mapping. */
+  columnCounts: number[];
   error?: string;
 }
 
 export function parseCSV(text: string): ParseResult {
-  if (text.length > MAX_FILE_BYTES) return { headers: [], rows: [], error: 'File too large (max 5 MB).' };
+  return parseDelimited(text, ',');
+}
+
+/** Clipboard tables pasted from Excel / Google Sheets arrive tab-separated
+ *  (multiline cells arrive quoted). Parsed with the same quote-aware machine
+ *  as CSV instead of the old blind tab→comma replacement that shredded cells
+ *  containing commas. */
+export function parseTSV(text: string): ParseResult {
+  return parseDelimited(text, '\t');
+}
+
+function parseDelimited(text: string, delimiter: string): ParseResult {
+  const fail = (error: string): ParseResult => ({ headers: [], rows: [], columnCounts: [], error });
+  if (text.length > MAX_FILE_BYTES) return fail('File too large (max 5 MB).');
 
   // strip BOM
   const clean = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
-  const lines = clean.split(/\r?\n/).filter(l => l.trim());
+  const allRecords = splitRecords(clean, delimiter);
+  if (!allRecords) return fail('Unclosed quoted field — check that every opening quote has a closing quote.');
 
-  if (lines.length < 2) return { headers: [], rows: [], error: 'CSV must have at least one header row and one data row.' };
-  if (lines.length > MAX_ROWS + 1) return { headers: [], rows: [], error: `Too many rows (max ${MAX_ROWS}).` };
+  // drop blank lines / trailing-newline artifacts
+  const records = allRecords.filter(r => !(r.length === 1 && r[0] === ''));
 
-  const headers = parseRow(lines[0]).map(h => h.trim());
-  if (headers.length > MAX_COLS) return { headers: [], rows: [], error: `Too many columns (max ${MAX_COLS}).` };
+  if (records.length < 2) return fail('CSV must have at least one header row and one data row.');
+  if (records.length > MAX_ROWS + 1) return fail(`Too many rows (max ${MAX_ROWS}).`);
 
-  const rows = lines.slice(1).map(line => {
-    const vals = parseRow(line);
-    return Object.fromEntries(headers.map((h, i) => [h, (vals[i] ?? '').trim()]));
-  });
+  const headers = records[0].map(h => h.trim());
+  if (headers.length > MAX_COLS) return fail(`Too many columns (max ${MAX_COLS}).`);
 
-  return { headers, rows };
+  const dup = headers.find((h, i) => headers.indexOf(h, i + 1) !== -1);
+  if (dup) return fail(`Duplicate column header: "${dup}". Columns must be unique.`);
+
+  const rows: Record<string, string>[] = [];
+  const columnCounts: number[] = [];
+  for (const rec of records.slice(1)) {
+    columnCounts.push(rec.length);
+    rows.push(Object.fromEntries(headers.map((h, i) => [h, rec[i] ?? ''])));
+  }
+  return { headers, rows, columnCounts };
 }
 
 // ── exporter ──────────────────────────────────────────────────────────────────
@@ -65,14 +111,19 @@ function escapeCell(value: unknown): string {
   return safe;
 }
 
+/** Pure RFC 4180 serializer — separated so tests can run without a DOM. */
+export function toCSV(headers: string[], rows: Record<string, unknown>[]): string {
+  const header = headers.map(escapeCell).join(',');
+  const body = rows.map(row => headers.map(h => escapeCell(row[h])).join(',')).join('\r\n');
+  return `${header}\r\n${body}`;
+}
+
 export function exportCSV(
   filename: string,
   headers: string[],
   rows: Record<string, unknown>[],
 ): void {
-  const header = headers.map(escapeCell).join(',');
-  const body = rows.map(row => headers.map(h => escapeCell(row[h])).join(',')).join('\r\n');
-  const csv = `${header}\r\n${body}`;
+  const csv = toCSV(headers, rows);
   // UTF-8 BOM so Excel opens correctly
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -92,7 +143,10 @@ const ALIASES: Record<string, string> = {
   'phone': 'phone', 'mobile': 'phone', 'phone number': 'phone', 'telephone': 'phone', 'cell': 'phone', 'contact number': 'phone',
   'company': 'company', 'organization': 'company', 'organisation': 'company', 'firm': 'company', 'business': 'company', 'account': 'company',
   'source': 'source', 'lead source': 'source',
-  'stage': 'stage', 'lead stage': 'stage', 'status': 'stage',
+  // NOTE: no 'status' alias — our own export has BOTH a Status and a Stage
+  // column, and mapping Status→stage silently overwrote the real stage on
+  // every round trip. Status is system-controlled and skipped instead.
+  'stage': 'stage', 'lead stage': 'stage',
   'priority': 'priority',
   'country': 'country',
   'state': 'state', 'province': 'state', 'region': 'state',

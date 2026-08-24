@@ -212,8 +212,10 @@ export function LeadsPage() {
       setSelectedLead(null);
     },
     onError: (err: any) => {
-      // Keep the confirm dialog open — the lead was not deleted
-      toast.error(err?.response?.data?.error?.message ?? 'Failed to delete lead.');
+      // Keep the confirm dialog open — the lead was not deleted.
+      // Surface HTTP status when the server sent no structured message, so
+      // 403/404/500 from prod are diagnosable from the toast alone.
+      toast.error(err?.response?.data?.error?.message ?? err?.response?.data?.message ?? `Failed to delete lead${err?.response?.status ? ` (HTTP ${err.response.status})` : ''}.`);
     },
   });
 
@@ -333,7 +335,10 @@ export function LeadsPage() {
       setBulkDeleteConfirm(false);
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.error?.message ?? 'Failed to delete leads.');
+      // Same diagnosability rule as single delete: bare status beats a generic
+      // message when prod returns 403 (permission not seeded), 404 (stale
+      // deploy) or 500 (audit write failure after a partial delete).
+      toast.error(err?.response?.data?.error?.message ?? err?.response?.data?.message ?? `Failed to delete leads${err?.response?.status ? ` (HTTP ${err.response.status})` : ''}.`);
     },
   });
 

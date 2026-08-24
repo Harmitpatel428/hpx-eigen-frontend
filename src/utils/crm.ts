@@ -162,18 +162,3 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-IN').format(value);
 }
 
-// CSV export helper
-export function downloadCSV(filename: string, data: any[]): void {
-  const csv = [
-    Object.keys(data[0]).join(','),
-    ...data.map((row) => Object.values(row).map((v) => JSON.stringify(v)).join(',')),
-  ].join('\n');
-
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  window.URL.revokeObjectURL(url);
-}
