@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDashboardMetrics } from '../../hooks/useDashboardMetrics';
 import { KpiCard } from './KpiCard';
 import type { DocumentationMetrics } from '../../hooks/useDashboardMetrics';
+import { normaliseCaseIdInput, isValidCaseId } from '../../domain/caseId';
 
 const KEYFRAMES = `
   @keyframes dd-fadeUp {
@@ -77,24 +79,91 @@ export const DocumentationDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* Empty state */}
-        <div className="rounded-3xl bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-gray-100" style={anim(500)}>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
-              <svg className="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900">Document workflows</h3>
-            <p className="mt-1 max-w-sm text-sm text-gray-500">
-              Document lifecycle tracking will be available once the Document data model is added to your schema.
-            </p>
-          </div>
+        {/* Client Portal entry card */}
+        <div style={anim(500)}>
+          <ClientPortalCard />
         </div>
       </div>
     </>
   );
 };
+
+// ── Client Portal entry card (Screen D) ──────────────────────────────────────
+
+function ClientPortalCard() {
+  const navigate = useNavigate();
+  const [value, setValue] = useState('');
+  const isValid = isValidCaseId(value);
+
+  const handleChange = (raw: string) => {
+    setValue(normaliseCaseIdInput(raw));
+  };
+
+  const handleSubmit = () => {
+    if (!isValid) return;
+    navigate(`/client-portal?id=${value}`);
+  };
+
+  return (
+    <div style={{
+      borderRadius: 24, background: 'var(--bg-subtle)',
+      padding: '28px 28px 24px',
+      border: '1px solid #F3F4F6',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          background: 'rgba(124,58,237,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <div>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+            Client Portal
+          </h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Check a case status by entering a Case ID. Clients use the same portal to track their application.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          value={value}
+          onChange={e => handleChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+          placeholder="HPX-••••-••••"
+          style={{
+            flex: 1, height: 36, borderRadius: 10, paddingInline: 12,
+            border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+            outline: 'none', fontSize: 13, fontWeight: 600,
+            fontFamily: 'ui-monospace, "Cascadia Code", Menlo, monospace',
+            letterSpacing: '0.06em', color: 'var(--text-primary)',
+          }}
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!isValid}
+          style={{
+            height: 36, borderRadius: 10, paddingInline: 16,
+            background: isValid ? '#111827' : 'var(--bg-subtle)',
+            color: isValid ? '#fff' : 'var(--text-tertiary)',
+            border: isValid ? 'none' : '1px solid var(--border-medium)',
+            fontSize: 12, fontWeight: 700, cursor: isValid ? 'pointer' : 'not-allowed',
+            whiteSpace: 'nowrap', transition: 'all 0.15s',
+          }}
+        >
+          Enter Case ID
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const DashboardSkeleton: React.FC = () => (
   <div className="space-y-8">

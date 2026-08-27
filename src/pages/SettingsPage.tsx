@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check } from 'lucide-react';
+import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock } from 'lucide-react';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 import { MembersSettings } from './settings/MembersSettings';
 import { OrgManagement } from './settings/OrgManagement';
+import { ClientPortalSettings } from './settings/ClientPortalSettings';
 import { useAuth } from '../auth/public';
 import { api } from '../services/api';
 import { crmSettingsService } from '../services/crm-settings.service';
@@ -19,6 +20,7 @@ export function SettingsPage() {
     ...(permissions.can('user:view') ? ['members'] : []),
     ...(permissions.can('role:manage') ? ['org-management'] : []),
     'billing',
+    'client-portal',
   ];
 
   return (
@@ -71,7 +73,9 @@ export function SettingsPage() {
               {tab === 'members' && <Key size={16} />}
               {tab === 'org-management' && <Users size={16} />}
               {tab === 'billing' && <CreditCard size={16} />}
+              {tab === 'client-portal' && <Lock size={16} />}
               {tab === 'org-management' ? 'Organization Management' :
+               tab === 'client-portal' ? 'Client Portal' :
                tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -104,7 +108,9 @@ export function SettingsPage() {
 
         {activeTab === 'org-management' && <OrgManagement />}
 
-        {!['profile', 'general', 'members', 'org-management', 'security'].includes(activeTab) && (
+        {activeTab === 'client-portal' && <ClientPortalSettings />}
+
+        {!['profile', 'general', 'members', 'org-management', 'security', 'client-portal'].includes(activeTab) && (
           <div style={{ padding: 'var(--space-24) 0', textAlign: 'center' }}>
             <h2 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Coming Soon</h2>
             <p className="type-body" style={{ color: 'var(--text-tertiary)' }}>This settings panel is being rebuilt.</p>
