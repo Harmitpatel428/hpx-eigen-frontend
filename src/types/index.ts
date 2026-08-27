@@ -172,16 +172,24 @@ export interface Lead {
   city: string | null;
   area: string | null; // renamed "Office / Factory Location" in UI
   postalCode: string | null;
-  freeformAddress: string | null; // ponytail: needs backend migration (ALTER TABLE leads ADD COLUMN "freeformAddress" TEXT)
+  freeformAddress: string | null;
   ownerId: string | null;
   owner?: { id: string; firstName: string | null; lastName: string | null } | null;
   notes: string | null;
   tags: LeadTag[];
-  customFieldValues?: CustomFieldValue[]; // ponytail: needs backend API at /api/v1/lead-fields
+  customFieldValues?: CustomFieldValue[];
   lastMeaningfulActivityAt?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null; // set while the lead sits in the Recycle Bin
+  // Case ID & portal fields
+  caseId: string | null;
+  handoffFlag: HandoffFlag | null;
+  handoffReturnCount: number;
+  handoffReturnedAt: string | null;
+  handoffReturnReason: HandoffReturnReason | null;
+  portalPhone: string | null; // snapshotted at portal activation; does not follow lead.phone edits
+  portalPhoneActivatedAt: string | null;
 }
 
 // ============================================================================
@@ -398,7 +406,7 @@ export type DocDocumentStatus =
   | 'APPROVED' | 'REJECTED' | 'RE_REQUESTED' | 'EXPIRED'
   | 'NOT_APPLICABLE' | 'WAIVED' | 'MANAGER_APPROVED';
 export type DocCaseStatus = 'ACTIVE' | 'DOCUMENTATION_READY' | 'TRANSFERRED_TO_PROCESS' | 'CLOSED' | 'CANCELLED';
-export type DocNoteType   = 'INTERNAL' | 'CUSTOMER';
+export type DocNoteType   = 'INTERNAL' | 'CUSTOMER' | 'CLIENT_VISIBLE';
 export type DocStorageType =
   | 'GOOGLE_DRIVE' | 'ONEDRIVE' | 'DROPBOX' | 'SHAREPOINT' | 'NAS_PATH'
   | 'LOCAL_FOLDER' | 'PHYSICAL_CABINET' | 'REFERENCE_NUMBER' | 'EMAIL'
@@ -407,7 +415,88 @@ export type DocEventType =
   | 'CASE_CREATED' | 'PRESET_APPLIED' | 'DOCUMENT_STATUS_CHANGED' | 'DOCUMENT_RECEIVED'
   | 'DOCUMENT_VERIFIED' | 'DOCUMENT_REJECTED' | 'DOCUMENT_WAIVED' | 'DOCUMENT_APPROVED'
   | 'REMINDER_SENT' | 'NOTE_ADDED' | 'STORAGE_REF_ADDED' | 'MANAGER_OVERRIDE'
-  | 'TRANSFERRED_TO_PROCESS' | 'CASE_CLOSED' | 'CASE_CANCELLED' | 'EXPIRY_WARNING';
+  | 'TRANSFERRED_TO_PROCESS' | 'CASE_CLOSED' | 'CASE_CANCELLED' | 'EXPIRY_WARNING'
+  | 'CASE_ID_GENERATED' | 'PORTAL_ACTIVATED' | 'PORTAL_DEACTIVATED'
+  | 'PORTAL_CONTACT_CHANGE_REQUESTED' | 'PORTAL_CONTACT_CHANGED'
+  | 'HANDOFF_SUBMITTED' | 'HANDOFF_ACCEPTED' | 'HANDOFF_REJECTED' | 'CASE_RETURNED'
+  | 'PORTAL_SESSION_STARTED' | 'PORTAL_AUTH_FAILED' | 'PORTAL_AUTH_LOCKED';
+
+// ============================================================================
+// HANDOFF DOMAIN
+// ============================================================================
+
+export type HandoffFlag = 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'RETURNED' | 'TRANSFERRED';
+
+export type HandoffReturnReason =
+  | 'MISSING_DOCUMENTS'
+  | 'INCORRECT_INFORMATION'
+  | 'PENDING_VERIFICATION'
+  | 'COMPLIANCE_ISSUE'
+  | 'OTHER';
+
+export const HANDOFF_RETURN_REASON_LABELS: Record<HandoffReturnReason, string> = {
+  MISSING_DOCUMENTS: 'Missing documents',
+  INCORRECT_INFORMATION: 'Incorrect information',
+  PENDING_VERIFICATION: 'Pending verification',
+  COMPLIANCE_ISSUE: 'Compliance issue',
+  OTHER: 'Other',
+};
+
+// ============================================================================
+// PORTAL DOMAIN
+// ============================================================================
+
+export interface PortalAuthResult {
+  success: boolean;
+  sessionToken?: string;
+  expiresAt?: string;
+  remainingAttempts?: number;
+  lockedUntil?: string;
+}
+
+export interface PortalCaseView {
+  caseId: string;
+  clientName: string;
+  status: DocCaseStatus;
+  portalActivatedAt: string;
+  documents: PortalDocument[];
+  notes: PortalNote[];
+  progressStages: PortalProgressStage[];
+}
+
+export interface PortalDocument {
+  id: string;
+  name: string;
+  status: DocDocumentStatus;
+  clientVisible: boolean;
+  receivedAt: string | null;
+  downloadUrl?: string;
+}
+
+export interface PortalNote {
+  id: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface PortalProgressStage {
+  key: string;
+  label: string;
+  completedAt: string | null;
+  isCurrent: boolean;
+}
+
+export interface PortalContactChangeRequest {
+  id: string;
+  caseId: string;
+  requestedBy: string;
+  newPhone: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
 
 export interface DocPresetItem {
   id: string;
@@ -479,6 +568,7 @@ export interface DocCaseDocument {
   waivedBy: string | null;
   waivedReason: string | null;
   notes: string | null;
+  clientVisible: boolean;
   createdAt: string;
   updatedAt: string;
   storageRefs: DocStorageRef[];
@@ -505,6 +595,7 @@ export interface DocCaseNote {
   caseId: string;
   noteType: DocNoteType;
   content: string;
+  clientVisible: boolean;
   createdBy: string;
   createdAt: string;
 }
@@ -523,6 +614,7 @@ export interface DocCase {
   id: string;
   tenantId: string;
   leadId: string;
+  caseId: string | null; // HPX-XXXX-XXXX public case identifier
   presetId: string | null;
   presetVersion: number | null;
   assignedTo: string | null;
@@ -542,6 +634,10 @@ export interface DocCase {
   transferredBy: string | null;
   closedAt: string | null;
   notes: string | null;
+  portalEnabled: boolean;
+  portalActivatedAt: string | null;
+  clientVisibleNotesCount: number;
+  clientVisibleDocsCount: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

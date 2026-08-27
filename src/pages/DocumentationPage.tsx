@@ -7,7 +7,7 @@ import {
   Search, Plus, FileCheck, Clock, AlertTriangle, CheckCircle2,
   ChevronRight, X, ArrowRight, Building2, FileText, Layers,
   MoreVertical, Shield, RefreshCw, ExternalLink, MessageSquare,
-  FolderOpen, Calendar, AlertCircle, Inbox, History,
+  FolderOpen, Calendar, AlertCircle, Inbox, History, Eye,
 } from 'lucide-react';
 import { documentationService } from '../services/documentation.service';
 import { ContextPanel } from '../components/layout/ContextPanel';
@@ -630,6 +630,18 @@ function CaseDetailPanel({
           )}
         </div>
 
+        {/* Stale case amber strip */}
+        {docCase.status === 'ACTIVE' && docCase.dueDate && new Date(docCase.dueDate) < new Date() && (
+          <div style={{
+            marginBottom: 12, padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#92400e',
+          }}>
+            <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
+            Case overdue — due {new Date(docCase.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          </div>
+        )}
+
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-medium)', marginBottom: 0 }}>
           {(['documents', 'timeline', 'notes'] as const).map(t => (
@@ -720,17 +732,71 @@ function CaseDetailPanel({
 
         {tab === 'notes' && (
           <div>
-            {/* New note */}
+            {/* Portal contact card */}
+            {docCase.lead?.phone && (
+              <div style={{
+                marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+                border: '1px solid #fde68a', background: 'rgba(251,191,36,0.06)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    Portal contact
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, fontFamily: 'ui-monospace, monospace' }}>
+                  ••{docCase.lead.phone.replace(/\D/g, '').slice(-2)}
+                </div>
+                <div style={{ fontSize: 11, color: '#92400e', lineHeight: 1.45 }}>
+                  Changing the portal number requires manager or admin approval. Sessions are revoked on change.
+                </div>
+                <button style={{
+                  marginTop: 8, fontSize: 11, fontWeight: 600, color: '#7C3AED',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                }}>
+                  Request contact change…
+                </button>
+              </div>
+            )}
+
+            {/* Portal activation status */}
+            <div style={{
+              marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+              border: '1px solid var(--border-light)', background: 'var(--bg-subtle)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  Portal activation
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                  background: docCase.portalEnabled && docCase.portalActivatedAt ? 'rgba(5,150,105,0.1)' : 'rgba(156,163,175,0.1)',
+                  color: docCase.portalEnabled && docCase.portalActivatedAt ? '#059669' : '#9ca3af',
+                }}>
+                  {docCase.portalEnabled && docCase.portalActivatedAt ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                {!docCase.portalEnabled
+                  ? 'Portal disabled for this case.'
+                  : !docCase.portalActivatedAt
+                  ? 'Awaiting activation — add a client-visible note or document first.'
+                  : `Activated ${relativeTime(docCase.portalActivatedAt)}`}
+              </div>
+            </div>
+
+            {/* New note composer */}
             <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                {(['INTERNAL', 'CUSTOMER'] as DocNoteType[]).map(nt => (
+                {(['INTERNAL', 'CLIENT_VISIBLE'] as DocNoteType[]).map(nt => (
                   <button key={nt} onClick={() => setNoteType(nt)} style={{
                     fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-full)',
-                    background: noteType === nt ? 'var(--color-accent)' : 'var(--bg-muted)',
+                    background: noteType === nt
+                      ? nt === 'CLIENT_VISIBLE' ? '#111827' : 'var(--color-accent)'
+                      : 'var(--bg-muted)',
                     color: noteType === nt ? 'var(--text-inverse)' : 'var(--text-secondary)',
                     border: 'none', cursor: 'pointer',
                   }}>
-                    {nt}
+                    {nt === 'CLIENT_VISIBLE' ? 'Client-visible' : 'Internal'}
                   </button>
                 ))}
               </div>
@@ -740,13 +806,18 @@ function CaseDetailPanel({
                 className="input"
                 rows={3}
                 style={{ width: '100%', resize: 'vertical', marginBottom: 8 }}
-                placeholder={noteType === 'INTERNAL' ? 'Internal note (only visible to staff)…' : 'Customer-facing note…'}
+                placeholder={noteType === 'INTERNAL' ? 'Internal note (only visible to staff)…' : 'Client-facing note — will appear in the client portal…'}
               />
-              <button className="btn btn-primary" style={{ fontSize: 12 }}
+              <button
+                style={{
+                  height: 32, borderRadius: 999, paddingInline: 16, border: 'none',
+                  background: noteType === 'CLIENT_VISIBLE' ? '#111827' : 'var(--color-accent)',
+                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
                 onClick={() => noteMutation.mutate()}
                 disabled={!noteInput.trim() || noteMutation.isPending}
               >
-                {noteMutation.isPending ? 'Saving…' : 'Add Note'}
+                {noteMutation.isPending ? 'Saving…' : noteType === 'CLIENT_VISIBLE' ? 'Publish to client' : 'Add Note'}
               </button>
             </div>
 
@@ -754,10 +825,15 @@ function CaseDetailPanel({
             {(docCase.caseNotes ?? []).map(note => (
               <div key={note.id} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                    color: note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
-                  }}>{note.noteType}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      color: note.noteType === 'CLIENT_VISIBLE' ? '#111827' : note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
+                    }}>{note.noteType === 'CLIENT_VISIBLE' ? 'Client-visible' : note.noteType}</span>
+                    {note.clientVisible && (
+                      <Eye size={11} style={{ color: '#6b7280' }} />
+                    )}
+                  </div>
                   <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{relativeTime(note.createdAt)}</span>
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: 8 }}>

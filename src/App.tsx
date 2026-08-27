@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
+import { ClientPortalPage } from './pages/ClientPortalPage';
 
 // ─── Error Boundary that wraps EVERYTHING ──────────────────────────
 class GlobalErrorBoundary extends React.Component<
@@ -108,11 +109,12 @@ export const App: React.FC = () => {
           <AuthProvider>
             <Sentry.ErrorBoundary fallback={<p>An unexpected error occurred. Please refresh.</p>} showDialog>
               <Routes>
-              {/* Login is completely isolated — no DepartmentProvider */}
+              {/* Public routes — no auth required */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/accept-invite" element={<AcceptInvitePage />} />
+              <Route path="/client-portal" element={<ClientPortalPage />} />
               
               {/* Everything else loads the full app shell with providers */}
               <Route path="/*" element={

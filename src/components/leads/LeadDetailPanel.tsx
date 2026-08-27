@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Phone, Mail, X, Edit2, Trash2,
   Building2, Calendar, MapPin,
   MessageCircle, Copy, Check, Clock, User, ChevronDown,
+  Hash, Share2, Eye, QrCode, Smartphone,
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadPriority, CustomFieldDef, LeadActivity } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
@@ -17,6 +18,8 @@ import { leadService } from '../../services/lead.service';
 import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
 import { LeadWaChannelsModal } from './LeadWaChannelsModal';
 import { LeadNotesModal } from './LeadNotesModal';
+import { caseIdService } from '../../services/caseId.service';
+import { phoneLast4 } from '../../domain/caseId';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -482,6 +485,205 @@ function CopyBtn({ text, tooltip }: { text: string; tooltip: string }) {
   );
 }
 
+// ── Case ID section ───────────────────────────────────────────────────────────
+
+function CaseIdSection({ lead, onCaseIdGenerated }: {
+  lead: Lead;
+  onCaseIdGenerated: (caseId: string) => void;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  const isQualified = lead.stage === 'QUALIFIED';
+  const hasId = !!lead.caseId;
+  const portalLast4 = lead.portalPhone ? phoneLast4(lead.portalPhone) : null;
+
+  const handleGenerate = useCallback(async () => {
+    if (generating || hasId) return;
+    setGenerating(true);
+    try {
+      const key = `gen-caseid-${lead.id}-${Date.now()}`;
+      const result = await caseIdService.generate(lead.id, key);
+      onCaseIdGenerated(result.caseId);
+      toast.success('Case ID generated');
+    } catch {
+      toast.error('Failed to generate Case ID');
+    } finally {
+      setGenerating(false);
+    }
+  }, [lead.id, generating, hasId, onCaseIdGenerated]);
+
+  const handleCopy = useCallback(() => {
+    if (!lead.caseId) return;
+    navigator.clipboard.writeText(lead.caseId).then(() => {
+      setCopied(true);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [lead.caseId]);
+
+  const handleSharePortal = useCallback(() => {
+    if (!lead.caseId) return;
+    const url = `${window.location.origin}/client-portal?id=${lead.caseId}`;
+    navigator.clipboard.writeText(url).then(() => toast.success('Portal link copied')).catch(() => {});
+  }, [lead.caseId]);
+
+  if (!hasId) {
+    return (
+      <Section label="Case ID" delay={20}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Hash size={18} style={{ color: 'var(--text-tertiary)', opacity: 0.35, flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              Not generated
+            </div>
+            <button
+              className="ldp-act"
+              onClick={handleGenerate}
+              disabled={generating || !isQualified}
+              title={!isQualified ? 'Available once lead reaches Qualified stage' : undefined}
+              style={{
+                height: 34, borderRadius: 8, paddingInline: 14,
+                background: isQualified ? '#111827' : 'var(--bg-subtle)',
+                color: isQualified ? '#fff' : 'var(--text-tertiary)',
+                border: 'none',
+                fontSize: 11, fontWeight: 600, cursor: isQualified ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', gap: 6,
+                opacity: generating ? 0.7 : 1,
+              }}
+            >
+              {generating ? (
+                <span style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+              ) : (
+                <Hash size={12} />
+              )}
+              Generate Case ID
+            </button>
+          </div>
+        </div>
+      </Section>
+    );
+  }
+
+  return (
+    <Section label="Case ID" delay={20}>
+      {/* ID row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{
+          fontFamily: 'ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, monospace',
+          fontSize: 17, fontWeight: 700, letterSpacing: '0.06em',
+          color: 'var(--text-primary)', flex: 1,
+        }}>
+          {lead.caseId}
+        </span>
+        <button
+          className={`ldp-copy-sm${copied ? ' ldp-copy-flash' : ''}`}
+          onClick={handleCopy}
+          title="Copy Case ID"
+          style={{
+            width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+            border: `1px solid ${copied ? 'rgba(5,150,105,0.3)' : 'var(--border-medium)'}`,
+            background: copied ? 'rgba(5,150,105,0.06)' : 'transparent',
+            color: copied ? '#059669' : 'var(--text-tertiary)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} />}
+        </button>
+      </div>
+
+      {/* Action row */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          className="ldp-act"
+          onClick={handleSharePortal}
+          style={{
+            flex: 1, height: 34, borderRadius: 8,
+            border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+            color: 'var(--text-secondary)',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+          }}
+        >
+          <Share2 size={12} /> Share
+        </button>
+        <button
+          className="ldp-act"
+          onClick={() => window.open(`/client-portal?preview=1&id=${lead.caseId}`, '_blank')}
+          style={{
+            flex: 1, height: 34, borderRadius: 8,
+            border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+            color: 'var(--text-secondary)',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+          }}
+        >
+          <Eye size={12} /> Preview
+        </button>
+        <button
+          className="ldp-act"
+          title="QR code — coming soon"
+          disabled
+          style={{
+            height: 34, width: 34, borderRadius: 8,
+            border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+            color: 'var(--text-tertiary)', opacity: 0.5,
+            fontSize: 11, fontWeight: 600, cursor: 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <QrCode size={12} />
+        </button>
+      </div>
+
+      {/* Portal login row */}
+      <div style={{
+        marginTop: 10, padding: '9px 11px', borderRadius: 8,
+        background: 'var(--bg-subtle)', border: '1px solid var(--border-light)',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <Smartphone size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+            Portal login:&nbsp;
+          </span>
+          {portalLast4 ? (
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'ui-monospace, monospace' }}>
+              ••{portalLast4}
+            </span>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+              {lead.phone ? 'Not activated' : 'No phone on lead'}
+            </span>
+          )}
+        </div>
+        {lead.phone && !portalLast4 && (
+          <button
+            style={{
+              fontSize: 10, fontWeight: 600, color: '#7C3AED',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            }}
+          >
+            Activate
+          </button>
+        )}
+        {portalLast4 && (
+          <button
+            style={{
+              fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            }}
+          >
+            Override
+          </button>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 // ── Activity type display config ──────────────────────────────────────────────
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
@@ -661,6 +863,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   useEffect(() => { setLocalFollowUpDate(lead.followUpDate); }, [lead.followUpDate]);
   const [localPriority, setLocalPriority] = useState<LeadPriority>(lead.priority ?? 'MEDIUM');
   useEffect(() => { setLocalPriority(lead.priority ?? 'MEDIUM'); }, [lead.priority]);
+
+  const [localCaseId, setLocalCaseId] = useState<string | null>(lead.caseId ?? null);
+  useEffect(() => { setLocalCaseId(lead.caseId ?? null); }, [lead.caseId]);
+  const localLead = { ...lead, caseId: localCaseId };
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
     if (stage === localStage) return;
@@ -904,6 +1110,18 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
   const bodyContent = (
         <div style={{ padding: `1.375rem ${px}` }}>
+
+          {/* Case ID */}
+          <CaseIdSection
+            lead={localLead}
+            onCaseIdGenerated={(id) => {
+              setLocalCaseId(id);
+              onUpdated?.({ ...lead, caseId: id } as Lead);
+              qc.invalidateQueries({ queryKey: ['leads'] });
+            }}
+          />
+
+          {divider}
 
           {/* Contact Information */}
           <Section
