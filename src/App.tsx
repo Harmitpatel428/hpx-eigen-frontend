@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Agentation } from 'agentation';
 import { AuthProvider } from './auth/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
@@ -114,7 +113,7 @@ export const App: React.FC = () => {
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/accept-invite" element={<AcceptInvitePage />} />
-
+              
               {/* Everything else loads the full app shell with providers */}
               <Route path="/*" element={
                 <React.Suspense fallback={
@@ -131,7 +130,6 @@ export const App: React.FC = () => {
         </BrowserRouter>
       </QueryClientProvider>
       </ThemeProvider>
-      <Agentation />
     </GlobalErrorBoundary>
   );
 };
