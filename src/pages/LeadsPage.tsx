@@ -26,7 +26,7 @@ import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { exportCSV } from '../utils/csv';
 import { loadColourfulFilters, loadStageFilter, saveStageFilter } from '../utils/salesDashboardPrefs';
 import type { AssignmentSummary } from '../services/lead.service';
-import { normaliseCaseId, validateCaseId } from '../domain/caseId';
+import { normaliseCaseIdInput, isValidCaseId } from '../domain/caseId';
 
 // ============================================================================
 // HELPERS
@@ -362,8 +362,8 @@ export function LeadsPage() {
 
   const gridCols = '32px minmax(240px,1.4fr) minmax(240px,1.4fr) minmax(100px,0.75fr) minmax(120px,0.85fr) minmax(90px,0.7fr)';
 
-  const normalisedCaseId = normaliseCaseId(caseIdInput);
-  const isCaseIdValid = validateCaseId(normalisedCaseId);
+  const normalisedCaseId = normaliseCaseIdInput(caseIdInput);
+  const isCaseIdValid = isValidCaseId(normalisedCaseId);
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
