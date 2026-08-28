@@ -806,10 +806,11 @@ interface Props {
   onUpdated?: (lead: Lead) => void;
   /** Override org-level leadHeaderPreference for this panel instance */
   displayOverride?: 'name' | 'company';
+  showCaseId?: boolean;
 }
 
 export const LeadDetailPanel = memo(function LeadDetailPanel({
-  lead, onEdit, onDelete, onClose, onUpdated, displayOverride,
+  lead, onEdit, onDelete, onClose, onUpdated, displayOverride, showCaseId = false,
 }: Props) {
   const { data: contacts = [] } = useQuery<LeadContact[]>({
     queryKey: ['lead-contacts', lead.id],
@@ -1111,17 +1112,19 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const bodyContent = (
         <div style={{ padding: `1.375rem ${px}` }}>
 
-          {/* Case ID */}
-          <CaseIdSection
-            lead={localLead}
-            onCaseIdGenerated={(id) => {
-              setLocalCaseId(id);
-              onUpdated?.({ ...lead, caseId: id } as Lead);
-              qc.invalidateQueries({ queryKey: ['leads'] });
-            }}
-          />
+          {/* Case ID — visible only when Qualified filter is active */}
+          {showCaseId && (
+            <CaseIdSection
+              lead={localLead}
+              onCaseIdGenerated={(id) => {
+                setLocalCaseId(id);
+                onUpdated?.({ ...lead, caseId: id } as Lead);
+                qc.invalidateQueries({ queryKey: ['leads'] });
+              }}
+            />
+          )}
 
-          {divider}
+          {showCaseId && divider}
 
           {/* Contact Information */}
           <Section

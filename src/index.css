@@ -258,6 +258,8 @@ ul, ol { list-style: none; }
 }
 .input:focus { background-color: var(--bg-app); border-color: var(--border-medium); }
 .input::placeholder { color: var(--text-tertiary); }
+.case-id-input { font-family: monospace; font-weight: 600; letter-spacing: 0.04em; }
+.case-id-input::placeholder { font-family: var(--font-sans); font-weight: var(--font-normal); letter-spacing: normal; }
 
 /* Transparent massive inputs for editorial headers */
 .input-hero {

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, memo, useRef, type CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine,
@@ -25,6 +26,7 @@ import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { exportCSV } from '../utils/csv';
 import { loadColourfulFilters, loadStageFilter, saveStageFilter } from '../utils/salesDashboardPrefs';
 import type { AssignmentSummary } from '../services/lead.service';
+import { normaliseCaseId, validateCaseId } from '../domain/caseId';
 
 // ============================================================================
 // HELPERS
@@ -83,6 +85,8 @@ function loadStageOrder(): { key: LeadStage; label: string }[] {
 
 export function LeadsPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [caseIdInput, setCaseIdInput] = useState('');
   const [searchQuery, setSearchQuery]   = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
@@ -358,6 +362,9 @@ export function LeadsPage() {
 
   const gridCols = '32px minmax(240px,1.4fr) minmax(240px,1.4fr) minmax(100px,0.75fr) minmax(120px,0.85fr) minmax(90px,0.7fr)';
 
+  const normalisedCaseId = normaliseCaseId(caseIdInput);
+  const isCaseIdValid = validateCaseId(normalisedCaseId);
+
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* HEADER */}
@@ -486,6 +493,29 @@ export function LeadsPage() {
           );
         })}
       </div>
+
+      {/* CASE ID SEARCH — visible only in Qualified filter */}
+      {selectedStage === 'QUALIFIED' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '4px 12px 6px' }}>
+          <div style={{ position: 'relative', width: 190 }}>
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+            <input
+              className="input case-id-input"
+              aria-label="Search by Case ID"
+              value={caseIdInput}
+              onChange={e => setCaseIdInput(e.target.value.toUpperCase())}
+              placeholder="Case ID (HPX-XXXX-XXXX)"
+              style={{ paddingLeft: 30, height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }}
+            />
+          </div>
+          {isCaseIdValid && (
+            <>
+              <button onClick={() => { setCaseIdInput(''); navigate(`/documentation?caseId=${encodeURIComponent(normalisedCaseId)}`); }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--border-medium)', background: 'var(--bg-subtle)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 500 }}>Open case</button>
+              <button onClick={() => { setCaseIdInput(''); navigate(`/client-portal?caseId=${encodeURIComponent(normalisedCaseId)}`); }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 7, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Portal preview</button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ASSIGNMENT SUMMARY — replaced by the Role / Assignee dropdown in the header */}
 
@@ -678,6 +708,7 @@ export function LeadsPage() {
             onDelete={() => setDeleteTarget(selectedLead)}
             onUpdated={(u) => setSelectedLead(prev => prev && prev.id === u.id ? { ...prev, ...u, owner: prev.owner } : prev)}
             onClose={handleClosePanel}
+            showCaseId={selectedStage === 'QUALIFIED'}
           />
         )}
       </ContextPanel>
