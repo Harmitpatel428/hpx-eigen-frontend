@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -86,6 +86,18 @@ class GlobalErrorBoundary extends React.Component<
   }
 }
 
+// ─── Dev-only: agentation visual feedback (lives in parent node_modules) ──
+function DevAgentation() {
+  const [Comp, setComp] = useState<React.ComponentType | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    import('agentation')
+      .then(m => setComp(() => m.Agentation))
+      .catch(() => {});
+  }, []);
+  return Comp ? <Comp /> : null;
+}
+
 // ─── Protected App Shell (lazy loaded) ─────────────────────────────
 const ProtectedApp = React.lazy(() => import('./ProtectedApp'));
 
@@ -132,6 +144,7 @@ export const App: React.FC = () => {
         </BrowserRouter>
       </QueryClientProvider>
       </ThemeProvider>
+      <DevAgentation />
     </GlobalErrorBoundary>
   );
 };

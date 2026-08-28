@@ -1,3 +1,5 @@
+import path from 'path'
+import fs from 'fs'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from "@sentry/vite-plugin"
@@ -5,6 +7,9 @@ import { sentryVitePlugin } from "@sentry/vite-plugin"
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+
+  const agentationPath = path.resolve(__dirname, '../node_modules/agentation')
+  const hasAgentation = fs.existsSync(agentationPath)
 
   return {
     plugins: [
@@ -20,6 +25,11 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       host: '127.0.0.1',
+    },
+    resolve: {
+      alias: {
+        ...(hasAgentation ? { agentation: agentationPath } : {}),
+      },
     },
     build: {
       sourcemap: true,
