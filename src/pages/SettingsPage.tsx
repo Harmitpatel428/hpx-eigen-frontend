@@ -19,6 +19,7 @@ export function SettingsPage() {
     'general',
     ...(permissions.can('user:view') ? ['members'] : []),
     ...(permissions.can('role:manage') ? ['org-management'] : []),
+    'client-portal',
     'billing',
     'client-portal',
   ];
@@ -72,6 +73,7 @@ export function SettingsPage() {
               {tab === 'general' && <Building2 size={16} />}
               {tab === 'members' && <Key size={16} />}
               {tab === 'org-management' && <Users size={16} />}
+              {tab === 'client-portal' && <Lock size={16} />}
               {tab === 'billing' && <CreditCard size={16} />}
               {tab === 'client-portal' && <Lock size={16} />}
               {tab === 'org-management' ? 'Organization Management' :
