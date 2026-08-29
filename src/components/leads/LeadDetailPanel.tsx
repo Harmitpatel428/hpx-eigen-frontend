@@ -264,13 +264,14 @@ function LeadStageSelector({
   const [open, setOpen] = useState(false);
   const [pendingStage, setPendingStage] = useState<LeadStage | null>(null);
   const [pendingDate, setPendingDate] = useState('');
+  const [pendingTime, setPendingTime] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false); setPendingStage(null); setPendingDate('');
+        setOpen(false); setPendingStage(null); setPendingDate(''); setPendingTime('');
       }
     };
     document.addEventListener('mousedown', close);
@@ -305,7 +306,7 @@ function LeadStageSelector({
           {pendingStage ? (
             <div style={{ padding: '10px 12px 12px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: STAGE_COLORS[pendingStage].text, marginBottom: 8 }}>
-                {STAGE_LABELS[pendingStage]} — Follow-up Date
+                {STAGE_LABELS[pendingStage]} — Follow-up
               </div>
               <input
                 type="date"
@@ -319,9 +320,20 @@ function LeadStageSelector({
                   color: 'var(--text-primary)', boxSizing: 'border-box',
                 }}
               />
+              <input
+                type="time"
+                value={pendingTime}
+                onChange={e => setPendingTime(e.target.value)}
+                placeholder="Time (optional)"
+                style={{
+                  width: '100%', fontSize: 12, padding: '5px 8px', borderRadius: 6, marginTop: 6,
+                  border: '1px solid var(--border-medium)', background: 'var(--bg-app)',
+                  color: 'var(--text-primary)', boxSizing: 'border-box',
+                }}
+              />
               <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
                 <button
-                  onClick={() => { setPendingStage(null); setPendingDate(''); }}
+                  onClick={() => { setPendingStage(null); setPendingDate(''); setPendingTime(''); }}
                   style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                 >
                   Back
@@ -330,8 +342,9 @@ function LeadStageSelector({
                   disabled={!pendingDate}
                   onClick={() => {
                     if (!pendingDate) return;
-                    onSelect(pendingStage, pendingDate);
-                    setOpen(false); setPendingStage(null); setPendingDate('');
+                    const combined = pendingTime ? `${pendingDate}T${pendingTime}` : pendingDate;
+                    onSelect(pendingStage, combined);
+                    setOpen(false); setPendingStage(null); setPendingDate(''); setPendingTime('');
                   }}
                   style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, border: 'none', background: '#0f172a', color: '#fff', cursor: pendingDate ? 'pointer' : 'not-allowed', opacity: pendingDate ? 1 : 0.5 }}
                 >

@@ -9,6 +9,7 @@ import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
 import { LeadModal } from '../components/leads/LeadModal';
 import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import type { Lead } from '../types';
+import { formatScheduled, formatCompleted } from '../utils/activity-format';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -113,27 +114,7 @@ function activityIcon(type: string) {
   }
 }
 
-function formatScheduled(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-  const dDay = new Date(d); dDay.setHours(0, 0, 0, 0);
-  // Date-only entries are stored as UTC midnight — skip the meaningless time
-  const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
-  const time = isDateOnly ? '' : ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (dDay.getTime() === today.getTime())    return `Today${time}`;
-  if (dDay.getTime() === tomorrow.getTime()) return `Tomorrow${time}`;
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + time;
-}
-
-// Completed history: the activity's own completion/creation timestamp, not the scheduled one
-function formatCompleted(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' +
-    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
+// formatScheduled and formatCompleted imported from utils/activity-format
 
 function nextFollowUpDate(choice: 'tomorrow' | 'next-week'): string {
   const d = new Date();
@@ -606,7 +587,7 @@ function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, on
   })();
   // Pending rows show their due date; completed/cancelled history shows when it actually happened
   const rowTime = item.state === 'PENDING'
-    ? formatScheduled(item.scheduledAt)
+    ? formatScheduled(item.scheduledAt, item.metadata)
     : formatCompleted(item.completedAt ?? item.createdAt);
 
   const company    = item.lead?.company?.trim() || null;
