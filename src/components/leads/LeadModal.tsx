@@ -315,12 +315,6 @@ interface LeadModalProps {
 
 export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSuccess }: LeadModalProps) {
   const [priority, setPriority] = useState<LeadPriority>(lead?.priority ?? 'MEDIUM');
-  const [followUpTime, setFollowUpTime] = useState(() => {
-    if (!lead?.followUpDate) return '';
-    const d = new Date(lead.followUpDate);
-    if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return '';
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  });
   const [duplicates, setDuplicates] = useState<DuplicateLead[]>([]);
   const [duplicatesDismissed, setDuplicatesDismissed] = useState(false);
   const duplicateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -423,9 +417,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       source: values.source,
       // Omit unchanged stage on edit — never rewrites a legacy stage the backend rejects
       stage: mode === 'edit' && values.stage === lead?.stage ? undefined : values.stage,
-      followUpDate: values.followUpDate
-        ? (followUpTime ? new Date(`${values.followUpDate}T${followUpTime}`).toISOString() : values.followUpDate)
-        : undefined,
+      followUpDate: values.followUpDate || undefined,
       priority,
       expectedCloseDate: values.expectedCloseDate || undefined,
       ...locationFields,
@@ -527,14 +519,11 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
               </Field>
             </div>
 
-            {/* Follow-Up Date + Time — required for FOLLOW_UP / CALL_BACK_REQUESTED / CALL_NOT_RECEIVED */}
+            {/* Follow-Up Date — required for FOLLOW_UP / CALL_BACK_REQUESTED / CALL_NOT_RECEIVED */}
             {watchedStage && FOLLOW_UP_STAGES.has(watchedStage) && (
               <div style={{ marginBottom: '0.75rem' }}>
                 <Field label="Follow-Up Date *" error={errors.followUpDate?.message}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <input type="date" {...register('followUpDate', { required: 'Follow-up date is required for this stage.' })} className={inp} />
-                    <input type="time" value={followUpTime} onChange={e => setFollowUpTime(e.target.value)} className={inp} placeholder="Time" />
-                  </div>
+                  <input type="date" {...register('followUpDate', { required: 'Follow-up date is required for this stage.' })} className={inp} />
                 </Field>
               </div>
             )}
