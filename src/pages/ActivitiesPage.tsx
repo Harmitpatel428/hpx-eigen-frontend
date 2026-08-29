@@ -367,10 +367,11 @@ function ScheduleModal({ onClose, initialValues }: ScheduleModalProps) {
       if (!hideTimes && !startTime) throw new Error('Start time is required');
       if (showEndTime && endTime && endTime <= startTime) throw new Error('End time must be after start time');
 
-      // Use local datetime parsing — browser treats YYYY-MM-DDTHH:mm as local time
+      // Timed events: local datetime parsing — browser treats YYYY-MM-DDTHH:mm as local time
+      // Date-only events (HALF_DAY/WHOLE_DAY): UTC midnight so isDateOnly detection works
       let scheduledAt: string | undefined;
       if (!hideTimes && date && startTime) scheduledAt = new Date(`${date}T${startTime}`).toISOString();
-      else if (hideTimes && date) scheduledAt = new Date(`${date}T00:00`).toISOString();
+      else if (hideTimes && date) scheduledAt = `${date}T00:00:00.000Z`;
 
       const mins = DURATION_MINUTES[duration];
       const meta: Record<string, unknown> = { duration };

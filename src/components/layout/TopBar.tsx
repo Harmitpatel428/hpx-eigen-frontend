@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DepartmentSwitcher } from '../ui/DepartmentSwitcher';
+import { HeaderTimeStat } from './HeaderTimeStat';
 import { Bell, Sun, Moon, LogOut, CheckCheck, User, Settings, Shield } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../auth/public';
@@ -329,6 +330,8 @@ export const TopBar: React.FC = () => {
       <DepartmentSwitcher />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 'auto' }}>
+
+        <HeaderTimeStat />
 
         {/* ── Theme toggle ── */}
         <button
