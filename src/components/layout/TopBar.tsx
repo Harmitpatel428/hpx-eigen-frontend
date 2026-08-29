@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DepartmentSwitcher } from '../ui/DepartmentSwitcher';
-import { Bell, Sun, Moon, LogOut, CheckCheck, User, Settings, Shield, Search, Hash, ExternalLink, Eye } from 'lucide-react';
+import { Bell, Sun, Moon, LogOut, CheckCheck, User, Settings, Shield } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../auth/public';
 import type { User as UserType } from '../../auth/public';
 import { api } from '../../services/api';
-import { caseIdService, type CaseIdSearchResult } from '../../services/caseId.service';
-import { isValidCaseId, normaliseCaseIdInput } from '../../domain/caseId';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -237,141 +235,6 @@ const ProfilePanel: React.FC<{
   </Panel>
 );
 
-// ── Case ID Search ────────────────────────────────────────────────────────────
-
-const CaseIdSearch: React.FC = () => {
-  const navigate = useNavigate();
-  const [value, setValue] = useState('');
-  const [results, setResults] = useState<CaseIdSearchResult[]>([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  const handleChange = (raw: string) => {
-    const normalised = normaliseCaseIdInput(raw);
-    setValue(normalised);
-    clearTimeout(debounceTimer.current);
-    if (normalised.length < 4) { setResults([]); setOpen(false); return; }
-    debounceTimer.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const hits = await caseIdService.search(normalised);
-        setResults(hits);
-        setOpen(hits.length > 0 || isValidCaseId(normalised));
-      } catch { setResults([]); }
-      finally { setLoading(false); }
-    }, 260);
-  };
-
-  useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, []);
-
-  useEffect(() => () => clearTimeout(debounceTimer.current), []);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { setOpen(false); setValue(''); }
-    if (e.key === 'Enter' && results.length > 0) {
-      navigate(`/documentation?lead=${results[0].leadId}`);
-      setOpen(false); setValue('');
-    }
-  };
-
-  return (
-    <div ref={containerRef} style={{ position: 'relative', width: 260 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 7,
-        background: 'var(--bg-app)', border: '1px solid var(--border-medium)',
-        borderRadius: 10, padding: '0 10px', height: 34,
-        transition: 'border-color 0.15s',
-      }}>
-        <Search size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-        <input
-          value={value}
-          onChange={e => handleChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => { if (results.length > 0) setOpen(true); }}
-          placeholder="HPX-XXXX-XXXX"
-          style={{
-            flex: 1, border: 'none', background: 'transparent', outline: 'none',
-            fontSize: 12, fontWeight: 500, color: 'var(--text-primary)',
-            fontFamily: 'ui-monospace, "Cascadia Code", Menlo, monospace',
-            letterSpacing: '0.04em',
-          }}
-        />
-        {loading && (
-          <span style={{
-            width: 12, height: 12, border: '1.5px solid var(--border-medium)',
-            borderTopColor: 'var(--text-tertiary)', borderRadius: '50%',
-            animation: 'topbar-ping 0.8s linear infinite',
-            flexShrink: 0,
-          }} />
-        )}
-      </div>
-
-      {open && (
-        <Panel width={320}>
-          {/* Case match header */}
-          <div style={{
-            padding: '10px 14px 6px',
-            borderBottom: results.length > 0 ? '1px solid var(--border-light)' : undefined,
-          }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              Case match
-            </span>
-          </div>
-
-          {results.length === 0 && isValidCaseId(value) && (
-            <div style={{ padding: '14px 16px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              No case found for <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-secondary)' }}>{value}</span>
-            </div>
-          )}
-
-          {results.map(r => (
-            <div key={r.caseId} style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-light)' }}>
-              <div style={{
-                fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, fontWeight: 700,
-                color: '#7C3AED', marginBottom: 4, letterSpacing: '0.04em',
-              }}>
-                {r.caseId}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-primary)', marginBottom: 8 }}>
-                {r.clientName}{r.company ? ` · ${r.company}` : ''}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[
-                  { label: 'Open case', icon: Hash, action: () => { navigate(`/documentation?case=${r.docCaseId ?? ''}`); setOpen(false); setValue(''); } },
-                  { label: 'Open lead', icon: ExternalLink, action: () => { navigate(`/leads?id=${r.leadId}`); setOpen(false); setValue(''); } },
-                  { label: 'Portal preview', icon: Eye, action: () => { window.open(`/client-portal?preview=1&id=${r.caseId}`, '_blank'); setOpen(false); } },
-                ].map(item => (
-                  <button
-                    key={item.label}
-                    onClick={item.action}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '5px 8px', borderRadius: 6, border: 'none',
-                      background: 'rgba(124,58,237,0.08)', color: '#7C3AED',
-                      fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    <item.icon size={10} />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </Panel>
-      )}
-    </div>
-  );
-};
-
 // ── TopBar ─────────────────────────────────────────────────────────────────────
 
 export const TopBar: React.FC = () => {
@@ -465,11 +328,7 @@ export const TopBar: React.FC = () => {
     }}>
       <DepartmentSwitcher />
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', paddingInline: 16 }}>
-        <CaseIdSearch />
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 'auto' }}>
 
         {/* ── Theme toggle ── */}
         <button
