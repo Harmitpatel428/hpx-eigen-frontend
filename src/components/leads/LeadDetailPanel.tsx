@@ -870,7 +870,9 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const localLead = { ...lead, caseId: localCaseId };
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
-    if (stage === localStage) return;
+    const sameStage = stage === localStage;
+    // Allow re-selecting the same stage when a new follow-up date is provided (reschedule)
+    if (sameStage && !followUpDate) return;
     const prev = localStage;
     const prevFollowUpDate = localFollowUpDate;
     setLocalStage(stage);
@@ -878,7 +880,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     else if (stage === 'FOLLOW_UP' && !lead.followUpDate) setLocalFollowUpDate(new Date().toISOString());
     try {
       const updated = await leadService.update(lead.id, {
-        stage,
+        ...(sameStage ? {} : { stage }),
         ...(followUpDate
           ? { followUpDate: new Date(followUpDate).toISOString() }
           : stage === 'FOLLOW_UP' && !lead.followUpDate
@@ -913,8 +915,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const primaryWaChannel = waChannels.find(c => c.isPrimary) ?? waChannels[0] ?? null;
 
   const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
-  const contactPhone = mainContact?.phone ?? lead.phone;
-  const contactEmail = mainContact?.email ?? lead.email;
+  const contactPhone = mainContact?.phone || lead.phone;
+  const contactEmail = mainContact?.email || lead.email;
   const structuredLocation = [lead.area, lead.city, lead.state, lead.country].filter(Boolean).join(', ');
   const locationStr = structuredLocation || lead.freeformAddress || '';
   const fullName     = `${lead.firstName} ${lead.lastName}`;

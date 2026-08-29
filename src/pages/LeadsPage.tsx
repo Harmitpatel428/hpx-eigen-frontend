@@ -232,6 +232,7 @@ export function LeadsPage() {
     // Sync the open detail panel with the saved server state
     if (updated) {
       setSelectedLead(prev => prev && prev.id === updated.id ? { ...prev, ...updated, owner: prev.owner } : prev);
+      queryClient.invalidateQueries({ queryKey: ['lead-contacts', updated.id] });
     }
   }, [queryClient]);
 

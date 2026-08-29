@@ -119,10 +119,12 @@ function formatScheduled(iso: string | null): string {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const dDay = new Date(d); dDay.setHours(0, 0, 0, 0);
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (dDay.getTime() === today.getTime())    return `Today ${time}`;
-  if (dDay.getTime() === tomorrow.getTime()) return `Tomorrow ${time}`;
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+  // Date-only entries are stored as UTC midnight — skip the meaningless time
+  const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
+  const time = isDateOnly ? '' : ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (dDay.getTime() === today.getTime())    return `Today${time}`;
+  if (dDay.getTime() === tomorrow.getTime()) return `Tomorrow${time}`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + time;
 }
 
 // Completed history: the activity's own completion/creation timestamp, not the scheduled one
@@ -595,7 +597,12 @@ interface ActivityRowProps {
 }
 
 function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, onExpand, onCheck }: ActivityRowProps) {
-  const isOverdue = item.state === 'PENDING' && item.scheduledAt && new Date(item.scheduledAt) < new Date();
+  const isOverdue = item.state === 'PENDING' && item.scheduledAt && (() => {
+    const s = new Date(item.scheduledAt!);
+    const now = new Date();
+    const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    return s.getTime() < todayUTC;
+  })();
   // Pending rows show their due date; completed/cancelled history shows when it actually happened
   const rowTime = item.state === 'PENDING'
     ? formatScheduled(item.scheduledAt)
@@ -1084,7 +1091,10 @@ export function ActivitiesPage() {
             qc.invalidateQueries({ queryKey: ['lead-activities'] });
             qc.invalidateQueries({ queryKey: ['leads'] });
             qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
-            if (updated) qc.setQueryData(['lead', updated.id], updated);
+            if (updated) {
+              qc.setQueryData(['lead', updated.id], updated);
+              qc.invalidateQueries({ queryKey: ['lead-contacts', updated.id] });
+            }
             setEditModal(null);
           }}
         />
