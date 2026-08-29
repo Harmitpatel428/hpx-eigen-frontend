@@ -113,15 +113,20 @@ function activityIcon(type: string) {
   }
 }
 
-function formatScheduled(iso: string | null): string {
+function formatScheduled(iso: string | null, eventIso?: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const dDay = new Date(d); dDay.setHours(0, 0, 0, 0);
-  // Date-only entries are stored as UTC midnight — skip the meaningless time
   const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
-  const time = isDateOnly ? '' : ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+  // Date-only scheduledAt → show the event creation time instead (when the update happened)
+  const time = !isDateOnly
+    ? ' · ' + d.toLocaleTimeString([], timeFmt)
+    : eventIso
+      ? ' · ' + new Date(eventIso).toLocaleTimeString([], timeFmt)
+      : '';
   if (dDay.getTime() === today.getTime())    return `Today${time}`;
   if (dDay.getTime() === tomorrow.getTime()) return `Tomorrow${time}`;
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + time;
@@ -606,7 +611,7 @@ function ActivityRow({ item, focused, checked, expanded, locked, onLeadClick, on
   })();
   // Pending rows show their due date; completed/cancelled history shows when it actually happened
   const rowTime = item.state === 'PENDING'
-    ? formatScheduled(item.scheduledAt)
+    ? formatScheduled(item.scheduledAt, item.createdAt)
     : formatCompleted(item.completedAt ?? item.createdAt);
 
   const company    = item.lead?.company?.trim() || null;
