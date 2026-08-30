@@ -1200,7 +1200,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           </Section>
 
           {/* All Contacts */}
-          {contacts.length > 1 && (
+          {contacts.length > 0 && (
             <>
               {divider}
               <Section label={`All Contacts (${contacts.length})`} delay={70}>

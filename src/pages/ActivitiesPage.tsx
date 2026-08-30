@@ -142,12 +142,8 @@ function formatCompleted(iso: string | null): string {
 
 function nextFollowUpDate(choice: 'tomorrow' | 'next-week'): string {
   const d = new Date();
-  if (choice === 'tomorrow') {
-    d.setDate(d.getDate() + 1);
-    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-  } else {
-    d.setDate(d.getDate() + 7);
-  }
+  // "Tomorrow" means literally tomorrow — no weekend skipping, or the label lies.
+  d.setDate(d.getDate() + (choice === 'tomorrow' ? 1 : 7));
   d.setHours(10, 0, 0, 0);
   return d.toISOString();
 }
