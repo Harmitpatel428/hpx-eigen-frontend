@@ -73,6 +73,6 @@ class ApiCaseIdService implements ICaseIdService {
 function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 export const caseIdService: ICaseIdService =
-  import.meta.env.VITE_USE_MOCK_PORTAL === 'true' || import.meta.env.DEV
+  import.meta.env.VITE_USE_MOCK_PORTAL === 'true'
     ? new MockCaseIdService()
     : new ApiCaseIdService();

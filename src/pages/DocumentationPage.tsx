@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -863,10 +864,17 @@ function CaseDetailPanel({
 
 export function DocumentationPage() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreate, setShowCreate]     = useState(false);
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(searchParams.get('caseId'));
+
+  useEffect(() => {
+    if (selectedCaseId && searchParams.has('caseId')) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [selectedCaseId]);
 
   // Cases list
   const { data: casesResponse, isLoading: casesLoading } = useQuery({

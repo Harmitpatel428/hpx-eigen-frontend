@@ -399,7 +399,7 @@ export function LeadsPage() {
           {selectedStage === 'QUALIFIED' && isCaseIdValid && (
             <>
               <button onClick={() => { setCaseIdInput(''); navigate(`/documentation?caseId=${encodeURIComponent(normalisedCaseId)}`); }} style={{ fontSize: 12, padding: '4px 10px', height: 28, borderRadius: 7, border: '1px solid var(--border-medium)', background: 'var(--bg-subtle)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 500 }}>Open case</button>
-              <button onClick={() => { setCaseIdInput(''); navigate(`/client-portal?caseId=${encodeURIComponent(normalisedCaseId)}`); }} style={{ fontSize: 12, padding: '4px 10px', height: 28, borderRadius: 7, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Portal preview</button>
+              <button onClick={() => { setCaseIdInput(''); navigate(`/portal-preview/${encodeURIComponent(normalisedCaseId)}`); }} style={{ fontSize: 12, padding: '4px 10px', height: 28, borderRadius: 7, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Portal preview</button>
             </>
           )}
           {/* ROLE / ASSIGNEE FILTER — options are server-computed (assignment-summary),

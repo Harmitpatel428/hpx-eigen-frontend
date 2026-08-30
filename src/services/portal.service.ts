@@ -102,7 +102,7 @@ function delay(ms: number) {
 class ApiPortalService implements IPortalService {
   async authenticate(caseId: string, phoneDigits: string, idempotencyKey: string): Promise<PortalAuthResult> {
     const { api } = await import('./api');
-    const res = await api.post('/api/v1/portal/auth', { caseId, phoneDigits }, {
+    const res = await api.post('/api/v1/portal/verify', { caseNumber: caseId, phoneLast4: phoneDigits }, {
       headers: { 'Idempotency-Key': idempotencyKey },
     });
     return (res.data as any).data;
@@ -125,6 +125,12 @@ class ApiPortalService implements IPortalService {
 }
 
 export const portalService: IPortalService =
-  import.meta.env.VITE_USE_MOCK_PORTAL === 'true' || import.meta.env.DEV
+  import.meta.env.VITE_USE_MOCK_PORTAL === 'true'
     ? new MockPortalService()
     : new ApiPortalService();
+
+export async function getPortalPreview(caseId: string): Promise<PortalCaseView> {
+  const { api } = await import('./api');
+  const res = await api.get(`/api/v1/portal/preview/${encodeURIComponent(caseId)}`);
+  return (res.data as any).data;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, Download, Clock, AlertCircle } from 'lucide-react';
 import { portalService } from '../services/portal.service';
 import type { PortalCaseView, PortalDocument, DocCaseStatus } from '../types';
@@ -275,6 +275,7 @@ function VerifyScreen({ caseId, onBack, onVerified }: {
             type="text"
             inputMode="numeric"
             maxLength={2}
+            aria-label={`Phone digit ${i + 1} of 4`}
             value={digits[i]}
             onChange={e => handleDigit(i, e.target.value)}
             onKeyDown={e => handleKeyDown(i, e)}
@@ -287,16 +288,18 @@ function VerifyScreen({ caseId, onBack, onVerified }: {
         ))}
       </div>
 
-      {error && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px',
-          borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
-          marginBottom: 16,
-        }}>
-          <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }} />
-          <span style={{ fontSize: 13, color: '#dc2626', lineHeight: 1.45 }}>{error}</span>
-        </div>
-      )}
+      <div role="alert" aria-live="polite">
+        {error && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px',
+            borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
+            marginBottom: 16,
+          }}>
+            <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 13, color: '#dc2626', lineHeight: 1.45 }}>{error}</span>
+          </div>
+        )}
+      </div>
 
       <button
         className="portal-btn"
@@ -353,17 +356,18 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function CaseViewScreen({ sessionToken, caseId }: { sessionToken: string; caseId: string }) {
-  const [data, setData] = useState<PortalCaseView | null>(null);
-  const [loading, setLoading] = useState(true);
+function CaseViewScreen({ sessionToken, caseId, previewData }: { sessionToken: string; caseId: string; previewData?: PortalCaseView }) {
+  const [data, setData] = useState<PortalCaseView | null>(previewData ?? null);
+  const [loading, setLoading] = useState(!previewData);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (previewData) return;
     portalService.getCaseView(sessionToken)
       .then(setData)
       .catch(() => setError('Unable to load case details. Please try again.'))
       .finally(() => setLoading(false));
-  }, [sessionToken]);
+  }, [sessionToken, previewData]);
 
   if (loading) return (
     <div className="portal-screen" style={{ paddingTop: 60, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
@@ -537,8 +541,7 @@ type Screen = 'entry' | 'verify' | 'case';
 
 export function ClientPortalPage() {
   const [params] = useSearchParams();
-  const initialId = params.get('id') ?? '';
-  const isPreview = params.get('preview') === '1';
+  const initialId = params.get('caseId') ?? params.get('id') ?? '';
 
   const [screen, setScreen] = useState<Screen>(initialId && isValidCaseId(initialId) ? 'verify' : 'entry');
   const [caseId, setCaseId] = useState(initialId);
@@ -567,3 +570,45 @@ export function ClientPortalPage() {
 }
 
 export default ClientPortalPage;
+
+export function PortalPreviewPage() {
+  const { caseId } = useParams<{ caseId: string }>();
+  const [data, setData] = useState<PortalCaseView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!caseId) return;
+    import('../services/portal.service').then(({ getPortalPreview }) =>
+      getPortalPreview(caseId).then(setData).catch(e => setError(e?.response?.data?.message ?? 'Unable to load preview.'))
+    ).finally(() => setLoading(false));
+  }, [caseId]);
+
+  if (!caseId) return <PortalShell><div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>No case ID provided.</div></PortalShell>;
+
+  return (
+    <PortalShell>
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 50, padding: '8px 16px',
+        background: '#f59e0b', color: '#000', textAlign: 'center',
+        fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+      }}>
+        Internal Preview — Not Visible to Client
+      </div>
+      {loading ? (
+        <div style={{ paddingTop: 60, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+          <div style={{ width: 28, height: 28, border: '2.5px solid #e5e7eb', borderTopColor: '#7C3AED', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          Loading preview…
+        </div>
+      ) : error || !data ? (
+        <div style={{ padding: '40px 20px' }}>
+          <div style={{ padding: 16, borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#dc2626', fontSize: 14 }}>
+            {error ?? 'Something went wrong.'}
+          </div>
+        </div>
+      ) : (
+        <CaseViewScreen sessionToken="" caseId={caseId} previewData={data} />
+      )}
+    </PortalShell>
+  );
+}
