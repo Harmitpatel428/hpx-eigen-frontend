@@ -30,6 +30,11 @@ const DEFAULT_STAGES: { key: LeadStage; label: string }[] = [
 
 const STAGE_ORDER_KEY = 'sales_dashboard_stage_order';
 
+function saveStageOrder(keys: string[]) {
+  try { localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(keys)); }
+  catch { /* quota / private-browsing — in-memory order survives, just won't persist */ }
+}
+
 function loadStageOrder(): { key: LeadStage; label: string }[] {
   try {
     const raw = localStorage.getItem(STAGE_ORDER_KEY);
@@ -97,7 +102,7 @@ export const StageFilterPills = memo(function StageFilterPills({
             }}
             onDrop={() => {
               dragIdx.current = null;
-              localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(stages.map(s => s.key)));
+              saveStageOrder(stages.map(s => s.key));
             }}
             onKeyDown={e => {
               if (e.key === 'ArrowLeft' && i > 0) {
@@ -105,13 +110,13 @@ export const StageFilterPills = memo(function StageFilterPills({
                 const next = [...stages];
                 [next[i - 1], next[i]] = [next[i], next[i - 1]];
                 setStages(next);
-                localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(next.map(s => s.key)));
+                saveStageOrder(next.map(s => s.key));
               } else if (e.key === 'ArrowRight' && i < stages.length - 1) {
                 e.preventDefault();
                 const next = [...stages];
                 [next[i], next[i + 1]] = [next[i + 1], next[i]];
                 setStages(next);
-                localStorage.setItem(STAGE_ORDER_KEY, JSON.stringify(next.map(s => s.key)));
+                saveStageOrder(next.map(s => s.key));
               }
             }}
             onClick={() => handleClick(active ? '' : key)}
