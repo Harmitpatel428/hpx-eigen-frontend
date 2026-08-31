@@ -24,6 +24,7 @@ import { LeadImportWizard } from '../components/leads/LeadImportWizard';
 import { LeadAssignModal } from '../components/leads/LeadAssignModal';
 import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { exportCSV } from '../utils/csv';
+import { mergeLeadOwner } from '../utils/crm';
 import { loadColourfulFilters, loadStageFilter, saveStageFilter } from '../utils/salesDashboardPrefs';
 import type { AssignmentSummary } from '../services/lead.service';
 import { normaliseCaseIdInput, isValidCaseId } from '../domain/caseId';
@@ -231,7 +232,7 @@ export function LeadsPage() {
     setModal(null);
     // Sync the open detail panel with the saved server state
     if (updated) {
-      setSelectedLead(prev => prev && prev.id === updated.id ? { ...prev, ...updated, owner: prev.owner } : prev);
+      setSelectedLead(prev => prev ? mergeLeadOwner(prev, updated) : prev);
       queryClient.invalidateQueries({ queryKey: ['lead-contacts', updated.id] });
     }
   }, [queryClient]);
@@ -646,7 +647,7 @@ export function LeadsPage() {
                       )}
                     </div>
 
-                    {/* Contact */}
+                    {/* Contact — list shows lead-record data; panel shows resolved primary contact. ponytail: backend include + selector if contact-derived list is needed */}
                     <div style={{ overflow: 'hidden' }}>
                       <div style={{ color: 'var(--text-secondary)', fontSize: 12, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.email || '—'}</div>
                       {lead.phone && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{lead.phone}</div>}
@@ -706,7 +707,7 @@ export function LeadsPage() {
             lead={selectedLead}
             onEdit={() => setModal({ mode: 'edit', lead: selectedLead })}
             onDelete={() => setDeleteTarget(selectedLead)}
-            onUpdated={(u) => setSelectedLead(prev => prev && prev.id === u.id ? { ...prev, ...u, owner: prev.owner } : prev)}
+            onUpdated={(u) => setSelectedLead(prev => prev ? mergeLeadOwner(prev, u) : prev)}
             onClose={handleClosePanel}
             showCaseId={selectedStage === 'QUALIFIED'}
           />

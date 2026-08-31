@@ -14,6 +14,7 @@ import { listLeadActivities } from '../../services/lead-activities.service';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
 import { crmSettingsService } from '../../services/crm-settings.service';
+import { resolveDisplayContact, initialsOf } from '../../utils/crm';
 import { leadService } from '../../services/lead.service';
 import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
 import { LeadWaChannelsModal } from './LeadWaChannelsModal';
@@ -914,12 +915,12 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
 
   const primaryWaChannel = waChannels.find(c => c.isPrimary) ?? waChannels[0] ?? null;
 
-  const mainContact  = contacts.find(c => c.isMain) ?? contacts[0] ?? null;
-  const contactPhone = mainContact?.phone || lead.phone;
-  const contactEmail = mainContact?.email || lead.email;
+  const resolved     = resolveDisplayContact(lead, contacts);
+  const contactPhone = resolved.phone;
+  const contactEmail = resolved.email;
+  const fullName     = resolved.name;
   const structuredLocation = [lead.area, lead.city, lead.state, lead.country].filter(Boolean).join(', ');
   const locationStr = structuredLocation || lead.freeformAddress || '';
-  const fullName     = `${lead.firstName} ${lead.lastName}`;
 
   // displayOverride takes precedence over org-level setting
   const headerPref = displayOverride ?? crmSettings?.leadHeaderPreference ?? null;
@@ -999,7 +1000,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               letterSpacing: '0.02em',
               boxShadow: '0 1px 4px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06)',
             }}>
-              {lead.firstName?.[0] ?? '?'}{lead.lastName?.[0] ?? ''}
+              {initialsOf(fullName)}
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
