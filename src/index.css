@@ -322,6 +322,9 @@ ul, ol { list-style: none; }
 
 /* ─── STAGE FILTER PILLS ─── */
 .stage-pill {
+  position: relative;
+  overflow: visible;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -382,6 +385,24 @@ ul, ol { list-style: none; }
   background: rgba(0, 0, 0, 0.14);
   color: currentColor;
 }
+.stage-pill--active::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  animation: pill-pulse-active 2s ease-in-out infinite;
+}
+@keyframes pill-pulse-active {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%      { opacity: 0.70; transform: scale(1.04); }
+}
+/* PRODUCT OVERRIDE 2026-08-31: stage indicator intentionally ignores
+   prefers-reduced-motion. Do not re-add suppression without product
+   sign-off. */
 
 /* ─── ACTIVITY ROW CHECKBOX ─── */
 .activity-checkbox:hover .activity-icon { display: none; }
