@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CustomFieldDef, CustomFieldType } from '../../types';
@@ -141,6 +141,20 @@ export function CustomFieldBuilder({ onClose }: Props) {
   const [nameError, setNameError] = useState<string | null>(null);
 
   const resetForm = () => { setName(''); setType('text'); setOptions([]); setRequired(false); setNameError(null); };
+
+  // ESC self-close: guard dirty draft so the user doesn't accidentally lose work.
+  // stopPropagation blocks the parent's window listener from also closing LeadModal.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      const dirty = name.trim() !== '' || options.length > 0;
+      if (dirty && !window.confirm('Discard unsaved field draft?')) return;
+      onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, name, options]);
 
   const handleCreate = () => {
     const err = validateName(name, fields);

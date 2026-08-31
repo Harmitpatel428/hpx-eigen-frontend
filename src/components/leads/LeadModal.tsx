@@ -16,6 +16,7 @@ import { CustomFieldRenderer, getFieldValue, setFieldValue } from './CustomField
 import { CustomFieldBuilder } from './CustomFieldBuilder';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { LeadNotesModal } from './LeadNotesModal';
+import { toast } from 'sonner';
 
 // ============================================================================
 // CONSTANTS
@@ -198,27 +199,32 @@ function ContactsManager({ leadId }: ContactsManagerProps) {
     staleTime: 30_000,
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+  const setContacts = (contacts: LeadContact[]) =>
+    queryClient.setQueryData(['lead-contacts', leadId], contacts);
 
   const addMutation = useMutation({
     mutationFn: (payload: UpsertContactPayload) => leadContactsService.add(leadId, payload),
-    onSuccess: () => { invalidate(); setAdding(false); },
+    onSuccess: (contacts) => { setContacts(contacts); setAdding(false); },
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to add contact.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<UpsertContactPayload> }) =>
       leadContactsService.update(leadId, id, payload),
-    onSuccess: () => { invalidate(); setEditingId(null); },
+    onSuccess: (contacts) => { setContacts(contacts); setEditingId(null); },
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update contact.'),
   });
 
   const removeMutation = useMutation({
     mutationFn: (id: string) => leadContactsService.remove(leadId, id),
-    onSuccess: invalidate,
+    onSuccess: setContacts,
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to remove contact.'),
   });
 
   const setMainMutation = useMutation({
     mutationFn: (id: string) => leadContactsService.update(leadId, id, { isMain: true }),
-    onSuccess: invalidate,
+    onSuccess: setContacts,
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to set main contact.'),
   });
 
   return (
@@ -367,12 +373,16 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
     staleTime: 60_000,
   });
 
-  // ESC to close
+  // ESC: both CustomFieldBuilder and LeadNotesModal self-close via document
+  // listeners + stopPropagation, so the event never reaches window when either
+  // is open. Guards are belt-and-suspenders only.
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !notesOpen && !showFieldBuilder) onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [onClose, notesOpen, showFieldBuilder]);
 
   const watchedStage = watch('stage');
   const FOLLOW_UP_STAGES = new Set(['INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
@@ -426,12 +436,16 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
         ? customFieldValues.map(v => ({ fieldId: v.fieldId, value: v.value }))
         : undefined,
     };
-    const saved = mode === 'create'
-      ? await leadService.create(payload as CreateLeadPayload)
-      : lead
-      ? await leadService.update(lead.id, payload)
-      : null;
-    onSuccess(saved as Lead | null);
+    try {
+      const saved = mode === 'create'
+        ? await leadService.create(payload as CreateLeadPayload)
+        : lead
+        ? await leadService.update(lead.id, payload)
+        : null;
+      onSuccess(saved as Lead | null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? err?.response?.data?.error?.message ?? 'Save failed. Please try again.');
+    }
   };
 
   const inp = 'w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition';
