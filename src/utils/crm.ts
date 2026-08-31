@@ -1,3 +1,47 @@
+import type { Lead, Contact } from '../types';
+
+// Merge an updated partial lead into prev, respecting explicit null (unassign).
+// Uses a presence check so `owner: null` (explicit unassign) ≠ key absent (unchanged).
+export function mergeLeadOwner(prev: Lead, updated: Partial<Lead>): Lead {
+  if (prev.id !== updated.id) return prev;
+  const nextOwner = 'owner' in updated ? updated.owner : prev.owner;
+  return { ...prev, ...updated, owner: nextOwner } as Lead;
+}
+
+// Resolve the display identity for a lead: primary contact overrides lead fields.
+export interface DisplayContact {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  source: 'contact' | 'lead';
+}
+
+export function resolveDisplayContact(
+  lead: Pick<Lead, 'firstName' | 'lastName' | 'phone' | 'email'> & { company?: string | null },
+  contacts: (Pick<Contact, 'firstName' | 'lastName' | 'phone' | 'email' | 'isMain'> & { createdAt?: string })[],
+): DisplayContact {
+  const main = contacts.find(c => c.isMain)
+    ?? contacts.filter(c => c.createdAt).sort((a, b) => a.createdAt!.localeCompare(b.createdAt!))[0]
+    ?? contacts[0]
+    ?? null;
+  const contactName = main ? [main.firstName, main.lastName].filter(Boolean).join(' ').trim() : '';
+  const leadName = [lead.firstName, lead.lastName].filter(Boolean).join(' ').trim();
+  const usedContact = !!contactName;
+  return {
+    name: contactName || leadName || lead.company?.trim() || 'Unknown',
+    phone: (main?.phone || lead.phone) ?? null,
+    email: (main?.email || lead.email) ?? null,
+    source: usedContact ? 'contact' : 'lead',
+  };
+}
+
+export function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
 // Display name for a user: "First Last" > email > "Unknown"
 export function displayName(person: { firstName?: string | null; lastName?: string | null; email?: string | null }): string {
   const name = [person.firstName, person.lastName].filter(Boolean).join(' ');
