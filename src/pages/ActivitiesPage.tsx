@@ -66,9 +66,11 @@ function getSavedLocations(): string[] {
   try { return JSON.parse(localStorage.getItem(SAVED_LOCATIONS_KEY) ?? '[]'); } catch { return []; }
 }
 function persistLocation(loc: string) {
-  localStorage.setItem(LAST_LOCATION_KEY, loc);
-  const prev = getSavedLocations().filter(l => l !== loc);
-  localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify([loc, ...prev].slice(0, MAX_SAVED_LOCATIONS)));
+  try {
+    localStorage.setItem(LAST_LOCATION_KEY, loc);
+    const prev = getSavedLocations().filter(l => l !== loc);
+    localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify([loc, ...prev].slice(0, MAX_SAVED_LOCATIONS)));
+  } catch {}
 }
 
 // Returns next business day at 11:00 using LOCAL date (not UTC)
@@ -767,7 +769,7 @@ export function ActivitiesPage() {
 
   // Persist unlock settings to localStorage
   useEffect(() => {
-    localStorage.setItem(UNLOCK_SETTINGS_KEY, JSON.stringify(unlockSettings));
+    try { localStorage.setItem(UNLOCK_SETTINGS_KEY, JSON.stringify(unlockSettings)); } catch {}
   }, [unlockSettings]);
 
   // staleTime: 0 ensures deleted leads are cleared immediately on re-visit

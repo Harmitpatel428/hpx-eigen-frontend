@@ -65,7 +65,7 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     if (deptId === activeDepartmentId) return;
     
     setActiveDepartmentId(deptId);
-    localStorage.setItem(STORAGE_KEY, deptId);
+    try { localStorage.setItem(STORAGE_KEY, deptId); } catch {}
     
     const invalidateKeys = [
       'dashboard', 'leads', 'contacts', 'opportunities',
@@ -84,7 +84,7 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     // login that predates the auth-transition cleanup in AuthContext).
     if (departments?.length && (!activeDepartmentId || !departments.some(d => d.id === activeDepartmentId))) {
       setActiveDepartmentId(departments[0].id);
-      localStorage.setItem(STORAGE_KEY, departments[0].id);
+      try { localStorage.setItem(STORAGE_KEY, departments[0].id); } catch {}
     }
   }, [departments, activeDepartmentId]);
 

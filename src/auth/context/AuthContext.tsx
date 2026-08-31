@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { AuthContextValue, AuthState, User } from '../contracts/AuthContext';
 import { AuthMachine } from '../machine/authMachine';
 import { authEventBus, AUTH_EVENTS } from '../events/authEvents';
-import { tokenStorage } from '../storage/tokenStorage';
+import { tokenStorage, isStorageDegraded } from '../storage/tokenStorage';
+import { toast } from 'sonner';
 import { api } from '../services/api';
 import { PermissionServiceImpl } from '../services/PermissionServiceImpl';
 import { clearStageFilter } from '../../utils/salesDashboardPrefs';
@@ -192,17 +193,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('4. SAVING TOKEN TO tokenStorage');
       Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
-      try {
-        tokenStorage.set({
-          accessToken,
-          refreshToken,
-          sessionId: res.data?.data?.sessionId,
-          userId: user?.id,
-        });
-        console.log('5. TOKEN SAVED TO tokenStorage');
-        Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
-      } catch (e) {
-        console.warn('5a. WARN: Failed to sync to tokenStorage class', e);
+      tokenStorage.set({
+        accessToken,
+        refreshToken,
+        sessionId: res.data?.data?.sessionId,
+        userId: user?.id,
+      });
+      console.log('5. TOKEN SAVED TO tokenStorage');
+      Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
+      if (isStorageDegraded()) {
+        toast.warning("Session can’t be saved on this device — you’ll be signed out when this tab closes.");
       }
 
       // Identity changed — drop any department context left by the PREVIOUS

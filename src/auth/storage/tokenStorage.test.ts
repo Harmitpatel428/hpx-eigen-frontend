@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { LocalTokenStorage } from './tokenStorage';
+import { LocalTokenStorage, isStorageDegraded } from './tokenStorage';
 
 describe('LocalTokenStorage', () => {
   let storage: LocalTokenStorage;
@@ -94,8 +94,46 @@ describe('LocalTokenStorage', () => {
     const validPayload = { exp: Math.floor(Date.now() / 1000) + 3600 };
     const base64Payload = btoa(JSON.stringify(validPayload));
     const validJwt = `header.${base64Payload}.signature`;
-    
+
     storage.set({ accessToken: validJwt, sessionId: 's', userId: 'u' });
     expect(storage.isValid()).toBe(true);
+  });
+
+  describe('storage degradation', () => {
+    it('[S1] throwing setItem -> write via fallback; get returns value; degraded true', () => {
+      const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceeded'); });
+      const s = new LocalTokenStorage();
+      const tokens = { accessToken: 'a', sessionId: 's', userId: 'u' };
+
+      expect(() => s.set(tokens)).not.toThrow();
+      expect(s.get()).toEqual(tokens);
+      expect(isStorageDegraded()).toBe(true);
+      spy.mockRestore();
+    });
+
+    it('[S2] throwing removeItem -> no exception; value gone from fallback', () => {
+      const setMock = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceeded'); });
+      const rmMock = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('SecurityError'); });
+      const s = new LocalTokenStorage();
+      s.set({ accessToken: 'a', sessionId: 's', userId: 'u' });
+
+      expect(() => s.clear()).not.toThrow();
+      expect(s.get()).toBeNull();
+      setMock.mockRestore();
+      rmMock.mockRestore();
+    });
+
+    it('[S3] corrupted JSON on get -> null, no throw', () => {
+      localStorage.setItem('auth:tokens', '{not valid json');
+      expect(() => storage.get()).not.toThrow();
+      expect(storage.get()).toBeNull();
+    });
+
+    it('[S4] non-throwing path unchanged (roundtrip via real localStorage)', () => {
+      const tokens = { accessToken: 'x', sessionId: 'y', userId: 'z' };
+      storage.set(tokens);
+      expect(storage.get()).toEqual(tokens);
+      expect(localStorage.getItem('auth:tokens')).toContain('x');
+    });
   });
 });

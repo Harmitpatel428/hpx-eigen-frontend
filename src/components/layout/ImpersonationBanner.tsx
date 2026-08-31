@@ -12,7 +12,7 @@ const IMPERSONATION_ORIGINAL_KEY = 'auth:impersonation-original-tokens';
 export function saveOriginalTokensForImpersonation(): void {
   const current = tokenStorage.get();
   if (current) {
-    localStorage.setItem(IMPERSONATION_ORIGINAL_KEY, JSON.stringify(current));
+    try { localStorage.setItem(IMPERSONATION_ORIGINAL_KEY, JSON.stringify(current)); } catch {}
   }
 }
 
