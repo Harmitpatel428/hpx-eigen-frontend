@@ -40,6 +40,7 @@ const SAVED_LOCATIONS_KEY = 'hpx-activity-locations';
 const MAX_SAVED_LOCATIONS = 8;
 const UNLOCK_SETTINGS_KEY = 'hpx-activities-unlock';
 const ACTIVITY_TAB_KEY = 'hpx-activities-tab';
+const STICKY_HEADER_KEY = 'hpx-activities-sticky';
 
 // Default landing tab is Due Today; a deliberately chosen tab survives reloads.
 // Saved values are validated against current FILTERS so renamed/removed tabs
@@ -53,6 +54,11 @@ function getInitialFilter(): GlobalFilter {
 }
 
 interface UnlockSettings { enabled: boolean; count: number; }
+
+function getStickyHeader(): boolean {
+  try { return localStorage.getItem(STICKY_HEADER_KEY) === 'true'; }
+  catch { return false; }
+}
 
 function getUnlockSettings(): UnlockSettings {
   try { return JSON.parse(localStorage.getItem(UNLOCK_SETTINGS_KEY) ?? '{"enabled":false,"count":5}'); }
@@ -761,6 +767,7 @@ export function ActivitiesPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showUnlockSettings, setShowUnlockSettings] = useState(false);
   const [unlockSettings, setUnlockSettings] = useState<UnlockSettings>(getUnlockSettings);
+  const [stickyHeader, setStickyHeader] = useState<boolean>(getStickyHeader);
   const [search, setSearch]             = useState('');
   const searchRef                       = useRef<HTMLInputElement>(null);
   const lastSelectedIndex               = useRef<number>(-1);
@@ -771,6 +778,15 @@ export function ActivitiesPage() {
   useEffect(() => {
     try { localStorage.setItem(UNLOCK_SETTINGS_KEY, JSON.stringify(unlockSettings)); } catch {}
   }, [unlockSettings]);
+
+  // Persist sticky header pref
+  const toggleStickyHeader = useCallback(() => {
+    setStickyHeader(prev => {
+      const next = !prev;
+      try { localStorage.setItem(STICKY_HEADER_KEY, String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // staleTime: 0 ensures deleted leads are cleared immediately on re-visit
   const { data, isLoading } = useQuery({
@@ -929,123 +945,157 @@ export function ActivitiesPage() {
   }
 
   return (
-    <div style={{ padding: '24px 32px', minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Activities</h1>
-          {total > 0 && <span style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2, display: 'block' }}>{total} activities</span>}
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            ref={searchRef}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search… (/)"
-            style={{ padding: '6px 12px', border: '1px solid var(--border-medium)', borderRadius: 8, fontSize: 13, background: 'var(--bg-app)', color: 'var(--text-primary)', outline: 'none', width: 180 }}
-          />
-          <button type="button" onClick={() => setShowShortcuts(v => !v)} className="btn btn-secondary" style={{ fontSize: 13, padding: '5px 10px' }} title="Keyboard shortcuts (?)">
-            <Keyboard size={14} />
-          </button>
-
-          {/* Unlock settings button */}
-          <div style={{ position: 'relative' }} ref={unlockSettingsRef}>
-            <button
-              type="button"
-              onClick={() => setShowUnlockSettings(v => !v)}
-              className="btn btn-secondary"
-              style={{ fontSize: 13, padding: '5px 10px', position: 'relative' }}
-              title="Lead unlock settings"
-            >
-              <Settings size={14} />
-              {unlockSettings.enabled && (
-                <span style={{
-                  position: 'absolute', top: -4, right: -4,
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: '#0f172a', border: '1.5px solid var(--bg-app)',
-                }} />
-              )}
-            </button>
-            {showUnlockSettings && (
-              <UnlockSettingsPopover
-                settings={unlockSettings}
-                onChange={s => setUnlockSettings(s)}
-                onClose={() => setShowUnlockSettings(false)}
-              />
-            )}
+    <div style={{ minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+      {/* Header + tabs — always rendered first; sticky when pref is ON */}
+      <div style={{
+        padding: '24px 32px 0',
+        background: 'var(--bg-app)',
+        ...(stickyHeader ? { position: 'sticky', top: 0, zIndex: 10 } : {}),
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Activities</h1>
+            <span data-testid="activities-count" style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2, display: 'block' }}>{total} activities</span>
           </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search… (/)"
+              style={{ padding: '6px 12px', border: '1px solid var(--border-medium)', borderRadius: 8, fontSize: 13, background: 'var(--bg-app)', color: 'var(--text-primary)', outline: 'none', width: 180 }}
+            />
+            <button type="button" onClick={() => setShowShortcuts(v => !v)} className="btn btn-secondary" style={{ fontSize: 13, padding: '5px 10px' }} title="Keyboard shortcuts (?)">
+              <Keyboard size={14} />
+            </button>
 
-          {/* Template split button */}
-          <div style={{ position: 'relative' }} ref={templateMenuRef}>
-            <div style={{ display: 'flex', gap: 1 }}>
-              <button type="button" onClick={() => { setTemplateInit(null); setShowModal(true); }} className="btn btn-primary" style={{ fontSize: 13, gap: 6, borderRadius: '8px 0 0 8px' }}>
-                <Plus size={15} /> Schedule
+            {/* Unlock settings button */}
+            <div style={{ position: 'relative' }} ref={unlockSettingsRef}>
+              <button
+                type="button"
+                onClick={() => setShowUnlockSettings(v => !v)}
+                className="btn btn-secondary"
+                style={{ fontSize: 13, padding: '5px 10px', position: 'relative' }}
+                title="Lead unlock settings"
+              >
+                <Settings size={14} />
+                {unlockSettings.enabled && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -4,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#0f172a', border: '1.5px solid var(--bg-app)',
+                  }} />
+                )}
               </button>
-              <button type="button" onClick={() => setShowTemplateMenu(v => !v)} className="btn btn-primary" style={{ padding: '0 8px', borderRadius: '0 8px 8px 0', borderLeft: '1px solid rgba(255,255,255,.2)' }}>
-                <ChevronDown size={13} />
-              </button>
+              {showUnlockSettings && (
+                <UnlockSettingsPopover
+                  settings={unlockSettings}
+                  onChange={s => setUnlockSettings(s)}
+                  onClose={() => setShowUnlockSettings(false)}
+                />
+              )}
             </div>
-            {showTemplateMenu && (
-              <ul style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, background: 'var(--bg-app)', border: '1px solid var(--border-medium)', borderRadius: 8, marginTop: 4, padding: 4, listStyle: 'none', minWidth: 180, boxShadow: '0 4px 16px rgba(0,0,0,.12)' }}>
-                {ACTIVITY_TEMPLATES.map(t => (
-                  <li key={t.label} onClick={() => { setTemplateInit(t); setShowModal(true); setShowTemplateMenu(false); }}
-                    style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, color: 'var(--text-primary)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-muted)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    {t.label}
-                  </li>
-                ))}
-              </ul>
-            )}
+
+            {/* Template split button */}
+            <div style={{ position: 'relative' }} ref={templateMenuRef}>
+              <div style={{ display: 'flex', gap: 1 }}>
+                <button type="button" onClick={() => { setTemplateInit(null); setShowModal(true); }} className="btn btn-primary" style={{ fontSize: 13, gap: 6, borderRadius: '8px 0 0 8px' }}>
+                  <Plus size={15} /> Schedule
+                </button>
+                <button type="button" onClick={() => setShowTemplateMenu(v => !v)} className="btn btn-primary" style={{ padding: '0 8px', borderRadius: '0 8px 8px 0', borderLeft: '1px solid rgba(255,255,255,.2)' }}>
+                  <ChevronDown size={13} />
+                </button>
+              </div>
+              {showTemplateMenu && (
+                <ul style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, background: 'var(--bg-app)', border: '1px solid var(--border-medium)', borderRadius: 8, marginTop: 4, padding: 4, listStyle: 'none', minWidth: 180, boxShadow: '0 4px 16px rgba(0,0,0,.12)' }}>
+                  {ACTIVITY_TEMPLATES.map(t => (
+                    <li key={t.label} onClick={() => { setTemplateInit(t); setShowModal(true); setShowTemplateMenu(false); }}
+                      style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, color: 'var(--text-primary)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-muted)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                      {t.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Filter pills + sticky toggle */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
+          {FILTERS.map(f => (
+            <button key={f.key} type="button" onClick={() => { setFilter(f.key); setFocusedIndex(-1); }}
+              className={`btn ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: 13, padding: '5px 14px' }}>
+              {f.label}
+            </button>
+          ))}
+          {unlockSettings.enabled && (
+            <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>
+              <Lock size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} />
+              {unlockSettings.count} lead{unlockSettings.count !== 1 ? 's' : ''} unlocked
+            </span>
+          )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <label htmlFor="sticky-toggle" style={{ fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer', userSelect: 'none' }}>
+              Sticky
+            </label>
+            <button
+              id="sticky-toggle"
+              type="button"
+              role="switch"
+              aria-checked={stickyHeader}
+              onClick={toggleStickyHeader}
+              style={{
+                position: 'relative', width: 32, height: 18, borderRadius: 999,
+                border: 'none', cursor: 'pointer', flexShrink: 0,
+                background: stickyHeader ? 'var(--text-primary, #0f172a)' : 'var(--border-medium, #cbd5e1)',
+                transition: 'background 0.15s',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 2, left: stickyHeader ? 16 : 2,
+                width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              }} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Filter pills */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {FILTERS.map(f => (
-          <button key={f.key} type="button" onClick={() => { setFilter(f.key); setFocusedIndex(-1); }}
-            className={`btn ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: 13, padding: '5px 14px' }}>
-            {f.label}
-          </button>
-        ))}
-        {unlockSettings.enabled && (
-          <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>
-            <Lock size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} />
-            {unlockSettings.count} lead{unlockSettings.count !== 1 ? 's' : ''} unlocked
-          </span>
+      {/* Content region — min-height prevents layout shift between populated/empty */}
+      <div style={{ padding: '0 32px 24px', minHeight: 'calc(100vh - 160px)' }}>
+        {/* Activity list */}
+        {isLoading ? (
+          <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>Loading…</div>
+        ) : filteredItems.length === 0 ? (
+          <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+            <div style={{ marginBottom: 12, opacity: 0.4 }}>{EMPTY[filter].icon}</div>
+            <p style={{ margin: 0, fontSize: 14 }}>{EMPTY[filter].msg}</p>
+          </div>
+        ) : (
+          <div>
+            {filteredItems.map((item, i) => {
+              const locked = unlockedLeadIds !== null && !unlockedLeadIds.has(item.leadId);
+              return (
+                <ActivityRow
+                  key={item.id}
+                  item={item}
+                  focused={focusedIndex === i}
+                  checked={selectedIds.has(item.id)}
+                  expanded={expandedId === item.id}
+                  locked={locked}
+                  onLeadClick={setSelectedLeadId}
+                  onExpand={setExpandedId}
+                  onCheck={handleCheck}
+                />
+              );
+            })}
+          </div>
         )}
       </div>
-
-      {/* Activity list */}
-      {isLoading ? (
-        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>Loading…</div>
-      ) : filteredItems.length === 0 ? (
-        <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-          <div style={{ marginBottom: 12, opacity: 0.4 }}>{EMPTY[filter].icon}</div>
-          <p style={{ margin: 0, fontSize: 14 }}>{EMPTY[filter].msg}</p>
-        </div>
-      ) : (
-        <div>
-          {filteredItems.map((item, i) => {
-            const locked = unlockedLeadIds !== null && !unlockedLeadIds.has(item.leadId);
-            return (
-              <ActivityRow
-                key={item.id}
-                item={item}
-                focused={focusedIndex === i}
-                checked={selectedIds.has(item.id)}
-                expanded={expandedId === item.id}
-                locked={locked}
-                onLeadClick={setSelectedLeadId}
-                onExpand={setExpandedId}
-                onCheck={handleCheck}
-              />
-            );
-          })}
-        </div>
-      )}
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
