@@ -22,6 +22,9 @@ import { toast } from 'sonner';
 // CONSTANTS
 // ============================================================================
 
+// Stages that support a followUpDate — twin of backend FOLLOW_UP_REQUIRED_STAGES
+const FOLLOW_UP_STAGES = new Set(['INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
+
 const PRIORITY_OPTIONS: { value: LeadPriority; label: string; color: string; bg: string }[] = [
   { value: 'CRITICAL', label: 'Critical', color: '#dc2626', bg: 'rgba(220,38,38,0.08)' },
   { value: 'HIGH',     label: 'High',     color: '#ea580c', bg: 'rgba(234,88,12,0.08)'  },
@@ -62,7 +65,10 @@ const leadSchema = z.object({
   area: z.string().optional(),
   postalCode: z.string().optional(),
   freeformAddress: z.string().optional(),
-});
+}).refine(
+  (data) => !data.stage || FOLLOW_UP_STAGES.has(data.stage) || !data.followUpDate,
+  { message: 'Follow-up date must be empty for this stage', path: ['followUpDate'] },
+);
 
 type LeadFormData = z.infer<typeof leadSchema>;
 
@@ -343,7 +349,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   };
 
   const {
-    register, handleSubmit, watch,
+    register, handleSubmit, watch, setValue,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
@@ -385,7 +391,13 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   }, [onClose, notesOpen, showFieldBuilder]);
 
   const watchedStage = watch('stage');
-  const FOLLOW_UP_STAGES = new Set(['INTERESTED', 'FOLLOW_UP', 'CALL_BACK_REQUESTED', 'CALL_NOT_RECEIVED']);
+
+  // Clear followUpDate when stage changes to one that doesn't support it
+  useEffect(() => {
+    if (watchedStage && !FOLLOW_UP_STAGES.has(watchedStage)) {
+      setValue('followUpDate', '');
+    }
+  }, [watchedStage, setValue]);
 
   // Duplicate detection
   const watchedEmail   = watch('email');
