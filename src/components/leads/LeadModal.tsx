@@ -129,14 +129,15 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 // CONTACT FORM (inline add/edit)
 // ============================================================================
 
-interface ContactFormProps {
+export interface ContactFormProps {
   initial?: Partial<UpsertContactPayload>;
   onSave: (data: UpsertContactPayload) => void;
   onCancel: () => void;
   isFirst: boolean;
+  isPending?: boolean;
 }
 
-function ContactForm({ initial, onSave, onCancel, isFirst }: ContactFormProps) {
+export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: ContactFormProps) {
   const [firstName, setFirstName] = useState(initial?.firstName ?? '');
   const [lastName, setLastName]   = useState(initial?.lastName ?? '');
   const [email, setEmail]         = useState(initial?.email ?? '');
@@ -144,6 +145,8 @@ function ContactForm({ initial, onSave, onCancel, isFirst }: ContactFormProps) {
   const [title, setTitle]         = useState(initial?.title ?? '');
   const [role, setRole]           = useState(initial?.role ?? CONTACT_ROLES[0]);
   const [isMain, setIsMain]       = useState(initial?.isMain ?? isFirst);
+  const [touched, setTouched]     = useState(false);
+  const nameError = touched && (!firstName.trim() || !lastName.trim());
 
   const inp = {
     background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem',
@@ -167,18 +170,20 @@ function ContactForm({ initial, onSave, onCancel, isFirst }: ContactFormProps) {
           {CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
+      {nameError && <div style={{ fontSize: 11, color: '#dc2626', marginBottom: 4 }}>First and last name are required.</div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
           <input type="checkbox" checked={isMain} onChange={e => setIsMain(e.target.checked)} style={{ accentColor: '#0f172a' }} />
           Set as Main Contact
         </label>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button type="button" onClick={onCancel} style={{ padding: '4px 10px', borderRadius: '0.375rem', border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, color: '#475569', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={() => {
+          <button type="button" onClick={onCancel} disabled={isPending} style={{ padding: '4px 10px', borderRadius: '0.375rem', border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, color: '#475569', cursor: isPending ? 'not-allowed' : 'pointer' }}>Cancel</button>
+          <button type="button" disabled={isPending} onClick={() => {
+            setTouched(true);
             if (!firstName.trim() || !lastName.trim()) return;
             onSave({ firstName: firstName.trim(), lastName: lastName.trim(), email: email || undefined, phone: phone || undefined, title: title || undefined, role: role || undefined, isMain });
-          }} style={{ padding: '4px 10px', borderRadius: '0.375rem', border: 'none', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            Save
+          }} style={{ padding: '4px 10px', borderRadius: '0.375rem', border: 'none', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 600, cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.7 : 1 }}>
+            {isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
@@ -190,11 +195,20 @@ function ContactForm({ initial, onSave, onCancel, isFirst }: ContactFormProps) {
 // CONTACTS MANAGER (Edit mode only)
 // ============================================================================
 
-interface ContactsManagerProps {
-  leadId: string;
+type PersonFields = { firstName: string; lastName: string; email: string | null; phone: string | null; company: string | null };
+
+export function derivePersonFieldsFromMain(contacts: LeadContact[]): PersonFields | null {
+  const main = contacts.find(c => c.isMain);
+  if (!main) return null;
+  return { firstName: main.firstName, lastName: main.lastName, email: main.email ?? null, phone: main.phone ?? null, company: main.company ?? null };
 }
 
-function ContactsManager({ leadId }: ContactsManagerProps) {
+interface ContactsManagerProps {
+  leadId: string;
+  onMainChange?: (fields: PersonFields) => void;
+}
+
+function ContactsManager({ leadId, onMainChange }: ContactsManagerProps) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -210,26 +224,36 @@ function ContactsManager({ leadId }: ContactsManagerProps) {
 
   const addMutation = useMutation({
     mutationFn: (payload: UpsertContactPayload) => leadContactsService.add(leadId, payload),
-    onSuccess: (contacts) => { setContacts(contacts); setAdding(false); },
+    onSuccess: (contacts) => { setContacts(contacts); setAdding(false); queryClient.invalidateQueries({ queryKey: ['leads'] }); },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to add contact.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<UpsertContactPayload> }) =>
       leadContactsService.update(leadId, id, payload),
-    onSuccess: (contacts) => { setContacts(contacts); setEditingId(null); },
+    onSuccess: (contacts) => { setContacts(contacts); setEditingId(null); queryClient.invalidateQueries({ queryKey: ['leads'] }); },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update contact.'),
   });
 
   const removeMutation = useMutation({
     mutationFn: (id: string) => leadContactsService.remove(leadId, id),
-    onSuccess: setContacts,
+    onSuccess: (contacts) => {
+      setContacts(contacts);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      const fields = derivePersonFieldsFromMain(contacts);
+      if (fields && onMainChange) onMainChange(fields);
+    },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to remove contact.'),
   });
 
   const setMainMutation = useMutation({
     mutationFn: (id: string) => leadContactsService.update(leadId, id, { isMain: true }),
-    onSuccess: setContacts,
+    onSuccess: (contacts) => {
+      setContacts(contacts);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      const fields = derivePersonFieldsFromMain(contacts);
+      if (fields && onMainChange) onMainChange(fields);
+    },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to set main contact.'),
   });
 
@@ -249,6 +273,7 @@ function ContactsManager({ leadId }: ContactsManagerProps) {
               onSave={(payload) => updateMutation.mutate({ id: c.id, payload })}
               onCancel={() => setEditingId(null)}
               isFirst={false}
+              isPending={updateMutation.isPending}
             />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0', marginBottom: 6 }}>
@@ -289,6 +314,7 @@ function ContactsManager({ leadId }: ContactsManagerProps) {
           onSave={(payload) => addMutation.mutate(payload)}
           onCancel={() => setAdding(false)}
           isFirst={contacts.length === 0}
+          isPending={addMutation.isPending}
         />
       ) : (
         <button type="button" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6366f1', fontWeight: 500, background: 'none', border: '1px dashed #c7d2fe', borderRadius: '0.375rem', padding: '5px 10px', cursor: 'pointer', width: '100%', justifyContent: 'center', marginTop: contacts.length > 0 ? 4 : 0 }}>
@@ -625,7 +651,13 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   Individual people at this company — each with their own direct line and role.
                 </p>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <ContactsManager leadId={lead.id} />
+                  <ContactsManager leadId={lead.id} onMainChange={(fields) => {
+                    setValue('firstName', fields.firstName);
+                    setValue('lastName', fields.lastName);
+                    setValue('email', fields.email ?? '');
+                    setValue('phone', fields.phone ?? '');
+                    setValue('company', fields.company ?? '');
+                  }} />
                 </div>
               </>
             )}
