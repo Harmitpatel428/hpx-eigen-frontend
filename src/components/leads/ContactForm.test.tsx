@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ContactForm, derivePersonFieldsFromMain } from './LeadModal';
+import { ContactForm } from './LeadModal';
 
 const noop = () => {};
 
@@ -92,31 +92,5 @@ describe('ContactForm UX contract', () => {
     await user.click(checkbox);
     fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ isMain: true }));
-  });
-});
-
-describe('derivePersonFieldsFromMain', () => {
-  it('returns main contact fields when present', () => {
-    const contacts = [
-      { id: '1', leadId: 'l1', firstName: 'Neel', lastName: 'K', email: 'neel@test.com', phone: '111', company: 'NeelCo', isMain: false, role: null, createdAt: '', updatedAt: '' },
-      { id: '2', leadId: 'l1', firstName: 'Harmit', lastName: 'P', email: 'h@test.com', phone: '222', company: 'HCo', isMain: true, role: null, createdAt: '', updatedAt: '' },
-    ] as any;
-    const result = derivePersonFieldsFromMain(contacts);
-    expect(result).toEqual({ firstName: 'Harmit', lastName: 'P', email: 'h@test.com', phone: '222', company: 'HCo' });
-  });
-
-  it('returns null when no main contact', () => {
-    const contacts = [
-      { id: '1', leadId: 'l1', firstName: 'A', lastName: 'B', email: null, phone: null, company: null, isMain: false, role: null, createdAt: '', updatedAt: '' },
-    ] as any;
-    expect(derivePersonFieldsFromMain(contacts)).toBeNull();
-  });
-
-  it('preserves null email/company', () => {
-    const contacts = [
-      { id: '1', leadId: 'l1', firstName: 'X', lastName: 'Y', email: null, phone: null, company: null, isMain: true, role: null, createdAt: '', updatedAt: '' },
-    ] as any;
-    const result = derivePersonFieldsFromMain(contacts);
-    expect(result).toEqual({ firstName: 'X', lastName: 'Y', email: null, phone: null, company: null });
   });
 });

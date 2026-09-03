@@ -195,20 +195,15 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
 // CONTACTS MANAGER (Edit mode only)
 // ============================================================================
 
-type PersonFields = { firstName: string; lastName: string; email: string | null; phone: string | null; company: string | null };
-
-export function derivePersonFieldsFromMain(contacts: LeadContact[]): PersonFields | null {
-  const main = contacts.find(c => c.isMain);
-  if (!main) return null;
-  return { firstName: main.firstName, lastName: main.lastName, email: main.email ?? null, phone: main.phone ?? null, company: main.company ?? null };
-}
-
 interface ContactsManagerProps {
   leadId: string;
-  onMainChange?: (fields: PersonFields) => void;
+  // Fired after a mutation that may change the main contact (setMain / remove).
+  // The parent re-reads the authoritative lead and refreshes the form so a later
+  // save cannot push stale person fields onto the new main contact.
+  onMainChanged?: () => void;
 }
 
-function ContactsManager({ leadId, onMainChange }: ContactsManagerProps) {
+function ContactsManager({ leadId, onMainChanged }: ContactsManagerProps) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -240,8 +235,7 @@ function ContactsManager({ leadId, onMainChange }: ContactsManagerProps) {
     onSuccess: (contacts) => {
       setContacts(contacts);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      const fields = derivePersonFieldsFromMain(contacts);
-      if (fields && onMainChange) onMainChange(fields);
+      onMainChanged?.();
     },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to remove contact.'),
   });
@@ -251,8 +245,7 @@ function ContactsManager({ leadId, onMainChange }: ContactsManagerProps) {
     onSuccess: (contacts) => {
       setContacts(contacts);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      const fields = derivePersonFieldsFromMain(contacts);
-      if (fields && onMainChange) onMainChange(fields);
+      onMainChanged?.();
     },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to set main contact.'),
   });
@@ -651,12 +644,18 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   Individual people at this company — each with their own direct line and role.
                 </p>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <ContactsManager leadId={lead.id} onMainChange={(fields) => {
-                    setValue('firstName', fields.firstName);
-                    setValue('lastName', fields.lastName);
-                    setValue('email', fields.email ?? '');
-                    setValue('phone', fields.phone ?? '');
-                    setValue('company', fields.company ?? '');
+                  <ContactsManager leadId={lead.id} onMainChanged={async () => {
+                    // Re-read the authoritative lead (backend guards email against the
+                    // Lead(tenantId,email) unique constraint) and refresh the form so a
+                    // later save can't overwrite the new main with stale person fields.
+                    try {
+                      const fresh = await leadService.findById(lead.id);
+                      setValue('firstName', fresh.firstName);
+                      setValue('lastName', fresh.lastName);
+                      setValue('email', fresh.email ?? '');
+                      setValue('phone', fresh.phone ?? '');
+                      setValue('company', fresh.company ?? '');
+                    } catch { /* form keeps current values; list already invalidated */ }
                   }} />
                 </div>
               </>
