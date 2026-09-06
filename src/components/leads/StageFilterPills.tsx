@@ -63,7 +63,7 @@ export const StageFilterPills = memo(function StageFilterPills({
   const allTotal = Object.values(stageCounts).reduce((s, n) => s + n, 0);
 
   return (
-    <div style={{ display: 'flex', gap: 6, padding: '6px 12px', overflowX: 'auto', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', gap: 6, padding: '6px 12px', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
       <button
         type="button"
         onClick={() => handleClick('')}
