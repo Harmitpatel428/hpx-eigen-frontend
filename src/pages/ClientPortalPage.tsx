@@ -204,7 +204,7 @@ function VerifyScreen({ caseId, onBack, onVerified }: {
     try {
       const idempotencyKey = `portal-auth-${caseId}-${digits.join('')}-${Date.now()}`;
       const result = await portalService.authenticate(caseId, digits.join(''), idempotencyKey);
-      if (result.success && result.sessionToken) {
+      if (result.success) {
         onVerified(result.sessionToken);
       } else if (result.lockedUntil) {
         setLockedUntil(new Date(result.lockedUntil));
@@ -398,7 +398,7 @@ function CaseViewScreen({ sessionToken, caseId, previewData }: { sessionToken: s
           fontSize: 13, fontWeight: 700, color: '#7C3AED',
           letterSpacing: '0.06em', marginBottom: 6,
         }}>
-          {data.caseNumber}
+          {data.caseId}
         </div>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, letterSpacing: '-0.02em' }}>
           {CASE_STATUS_LABELS[data.status] ?? data.status}

@@ -452,13 +452,12 @@ export const HANDOFF_RETURN_REASON_LABELS: Record<HandoffReturnReason, string> =
 // PORTAL DOMAIN
 // ============================================================================
 
-export interface PortalAuthResult {
-  sessionToken: string;
-  expiresAt: string;
-}
+export type PortalAuthResult =
+  | { success: true; sessionToken: string; expiresAt: string }
+  | { success: false; remainingAttempts?: number; lockedUntil?: string };
 
 export interface PortalCaseView {
-  caseNumber: string;
+  caseId: string;
   clientName: string;
   status: DocCaseStatus;
   portalActivatedAt: string;
