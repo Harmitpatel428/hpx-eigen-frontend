@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Target, Trophy, Filter, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { Target, Trophy, Filter, Activity } from 'lucide-react';
 import type { Opportunity } from '../types';
 import { opportunityService } from '../services/opportunity.service';
 
@@ -27,6 +27,10 @@ export function PipelineAnalyticsPage() {
   const { data: opportunities = [], isLoading } = useQuery<Opportunity[]>({
     queryKey: ['opportunities'],
     queryFn: () => opportunityService.findAll(),
+    // Cache so re-navigating back to Pipeline doesn't re-trigger the loading gate
+    // for data that hasn't changed (audit P-03). Root-cause backend latency is
+    // tracked separately (P-02).
+    staleTime: 60_000,
   });
 
   const wonDeals    = opportunities.filter(o => o.stage === 'CLOSED_WON');
@@ -44,7 +48,7 @@ export function PipelineAnalyticsPage() {
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex flex-col gap-1">
-          <h1 className="type-title">Analytics</h1>
+          <h1 className="type-title">Pipeline</h1>
           <p className="type-body">Performance and Forecasting</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
@@ -66,29 +70,21 @@ export function PipelineAnalyticsPage() {
                 <Target size={14} /> Open Pipeline
               </div>
               <div className="type-hero">{formatCurrency(totalPipeline)}</div>
-              <div className="type-micro" style={{ color: 'var(--color-success)', marginTop: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                <ArrowUpRight size={12} /> +12.4% vs last month
-              </div>
+              {/* Fabricated "+12.4% vs last month" removed — no comparison data (audit P-01) */}
             </div>
-            
+
             <div>
               <div className="type-ui" style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <Trophy size={14} /> Revenue Won
               </div>
               <div className="type-hero">{formatCurrency(wonValue)}</div>
-              <div className="type-micro" style={{ color: 'var(--color-danger)', marginTop: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                <ArrowDownRight size={12} /> -2.1% vs last month
-              </div>
             </div>
-            
+
             <div>
               <div className="type-ui" style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <Activity size={14} /> Win Rate
               </div>
               <div className="type-hero">{winRate}%</div>
-              <div className="type-micro" style={{ color: 'var(--color-success)', marginTop: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                <ArrowUpRight size={12} /> +5.0% vs last month
-              </div>
             </div>
           </div>
 

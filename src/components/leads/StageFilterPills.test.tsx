@@ -21,7 +21,7 @@ describe('StageFilterPills', () => {
   it('[T1] renders all 9 pills with labels and counts', () => {
     render(<StageFilterPills selectedStage="" stageCounts={COUNTS} colourfulFilters={false} onSelect={() => {}} />);
     expect(screen.getAllByRole('button')).toHaveLength(9);
-    for (const label of ['All Leads', 'New', 'Qualified', 'Interested', 'Follow-Up', 'Call Back', 'Not Received', 'Disqualified', 'Others']) {
+    for (const label of ['All Leads', 'New', 'Qualified', 'Interested', 'Follow-Up', 'Call Back Requested', 'Call Not Received', 'Disqualified', 'Other']) {
       expect(findPill(label)).toBeTruthy();
     }
   });

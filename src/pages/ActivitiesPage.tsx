@@ -948,12 +948,12 @@ export function ActivitiesPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
       {/* Header + tabs — always rendered first; sticky when pref is ON */}
       <div style={{
-        padding: '24px 32px 0',
+        padding: '24px 32px 16px',
         background: 'var(--bg-app)',
-        ...(stickyHeader ? { position: 'sticky', top: 0, zIndex: 10 } : {}),
+        ...(stickyHeader ? { position: 'sticky', top: -32, zIndex: 10 } : {}),
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Activities</h1>
             <span data-testid="activities-count" style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2, display: 'block' }}>{total} activities</span>
@@ -1024,7 +1024,7 @@ export function ActivitiesPage() {
         </div>
 
         {/* Filter pills + sticky toggle */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 0, alignItems: 'center' }}>
           {FILTERS.map(f => (
             <button key={f.key} type="button" onClick={() => { setFilter(f.key); setFocusedIndex(-1); }}
               className={`btn ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`}

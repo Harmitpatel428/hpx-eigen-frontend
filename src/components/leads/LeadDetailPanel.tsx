@@ -7,30 +7,28 @@ import {
   MessageCircle, Copy, Check, Clock, User, ChevronDown,
   Hash, Share2, Eye, QrCode, Smartphone,
 } from 'lucide-react';
-import type { Lead, LeadStage, LeadPriority, CustomFieldDef, LeadActivity } from '../../types';
+import type { Lead, LeadStage, LeadPriority, CustomFieldDef, LeadActivity, HandoffReturnReason } from '../../types';
+import { HANDOFF_RETURN_REASON_LABELS } from '../../types';
 import { leadContactsService, LeadContact } from '../../services/lead-contacts.service';
 import { leadNotesService, type NotesSummary } from '../../services/lead-notes.service';
 import { listLeadActivities } from '../../services/lead-activities.service';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { customFieldService } from '../../services/custom-field.service';
 import { crmSettingsService } from '../../services/crm-settings.service';
-import { resolveDisplayContact, initialsOf } from '../../utils/crm';
+import { resolveDisplayContact, resolveLeadIdentity, initialsOf } from '../../utils/crm';
+import { LEAD_STAGE_LABELS as STAGE_LABELS } from '../../domain/leadStage';
 import { leadService } from '../../services/lead.service';
 import { waChannelsService, buildWaUrl, type WaChannel } from '../../services/wa-channels.service';
 import { LeadWaChannelsModal } from './LeadWaChannelsModal';
 import { LeadNotesModal } from './LeadNotesModal';
 import { caseIdService } from '../../services/caseId.service';
+import { handoffService } from '../../services/handoff.service';
 import { phoneLast4 } from '../../domain/caseId';
+import { isReturnedState, canShowFixAndResend, HANDOFF_STATE_COLORS, HANDOFF_STATE_LABELS, RETURN_REASON_LABELS, daysUntilAutoDrop } from '../../domain/handoff';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
-const STAGE_LABELS: Record<LeadStage, string> = {
-  NEW: 'New', QUALIFIED: 'Qualified', INTERESTED: 'Interested', FOLLOW_UP: 'Follow-Up',
-  CALL_BACK_REQUESTED: 'Call Back Requested', CALL_NOT_RECEIVED: 'Call Not Received',
-  OTHER: 'Other', DISQUALIFIED: 'Disqualified',
-  // legacy read-only
-  CONTACTED: 'Contacted', CONVERTED: 'Converted',
-};
+// STAGE_LABELS now imported from domain/leadStage (single source — audit S-07).
 
 const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }> = {
   NEW:                  { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
@@ -707,8 +705,17 @@ function TimelineSection({ leadId }: { leadId: string }) {
 
   const activities: LeadActivity[] = data?.data ?? [];
   const now = Date.now();
-  const upcoming = activities.filter(a => a.state === 'PENDING' && a.scheduledAt && new Date(a.scheduledAt).getTime() > now);
-  const historical = activities.filter(a => !upcoming.includes(a));
+  // Display timestamp for an event — the same value each row renders. Sorting by
+  // it keeps both groups monotonic; the API's own order (createdAt) let a
+  // future-scheduled callback render its scheduledAt out of sequence (audit S-08).
+  const displayTs = (a: LeadActivity) =>
+    new Date(a.completedAt ?? a.scheduledAt ?? a.createdAt).getTime();
+  const upcoming = activities
+    .filter(a => a.state === 'PENDING' && a.scheduledAt && new Date(a.scheduledAt).getTime() > now)
+    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime()); // soonest first
+  const historical = activities
+    .filter(a => !upcoming.includes(a))
+    .sort((a, b) => displayTs(b) - displayTs(a)); // most recent first
 
   if (isLoading) return (
     <div style={{ padding: '1rem 0', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
@@ -858,6 +865,13 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
 
+  // ── Handoff dialog state ─────────────────────────────────────────────────
+  const [showHandoffConfirm, setShowHandoffConfirm] = useState(false);
+  const [handoffSubmitting, setHandoffSubmitting] = useState(false);
+  const [handoffAgreed, setHandoffAgreed] = useState(false);
+  const [showFixResend, setShowFixResend] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState('');
+
   const qc = useQueryClient();
   const [localStage, setLocalStage] = useState<LeadStage>(lead.stage ?? 'NEW');
   useEffect(() => { setLocalStage(lead.stage ?? 'NEW'); }, [lead.stage]);
@@ -871,8 +885,13 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const localLead = { ...lead, caseId: localCaseId };
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
+    // Intercept QUALIFIED → open handoff confirmation dialog
+    if (stage === 'QUALIFIED' && localStage !== 'QUALIFIED') {
+      setHandoffAgreed(false);
+      setShowHandoffConfirm(true);
+      return;
+    }
     const sameStage = stage === localStage;
-    // Allow re-selecting the same stage when a new follow-up date is provided (reschedule)
     if (sameStage && !followUpDate) return;
     const prev = localStage;
     const prevFollowUpDate = localFollowUpDate;
@@ -898,6 +917,39 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     }
   };
 
+  const handleConfirmHandoff = async () => {
+    setHandoffSubmitting(true);
+    try {
+      await handoffService.confirmHandoff(lead.id);
+      setLocalStage('QUALIFIED');
+      toast.success('Lead handed off to Documentation');
+      setShowHandoffConfirm(false);
+      onUpdated?.({ ...lead, stage: 'QUALIFIED', handoffState: 'HANDED_OFF' } as Lead);
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Handoff failed');
+    } finally {
+      setHandoffSubmitting(false);
+    }
+  };
+
+  const handleFixAndResend = async () => {
+    if (!lead.caseId || resolutionNote.trim().length < 10) return;
+    setHandoffSubmitting(true);
+    try {
+      await handoffService.resend(lead.caseId, resolutionNote.trim());
+      toast.success('Case resent to Documentation');
+      setShowFixResend(false);
+      setResolutionNote('');
+      qc.invalidateQueries({ queryKey: ['leads'] });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Resend failed');
+    } finally {
+      setHandoffSubmitting(false);
+    }
+  };
+
   const handlePriorityChange = async (priority: LeadPriority) => {
     if (priority === localPriority) return;
     const prev = localPriority;
@@ -918,7 +970,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const resolved     = resolveDisplayContact(lead, contacts);
   const contactPhone = resolved.phone;
   const contactEmail = resolved.email;
-  const fullName     = resolved.name;
+  // Identity name = the lead record's own name (matches the list row). The
+  // primary contact still powers contactPhone/contactEmail above, but it must
+  // NOT rename the lead — that divergence was audit S-05.
+  const fullName     = resolveLeadIdentity(lead);
   const structuredLocation = [lead.area, lead.city, lead.state, lead.country].filter(Boolean).join(', ');
   const locationStr = structuredLocation || lead.freeformAddress || '';
 
@@ -1071,21 +1126,77 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
               <LeadStageSelector currentStage={localStage} onSelect={handleStageChange} onOpenNotes={() => setActivePanel('notes')} />
               <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stage</div>
             </div>
-            {localFollowUpDate && (
-              <div>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '3px 9px', borderRadius: 5,
-                  background: 'rgba(245,158,11,0.1)', color: '#d97706',
-                  fontSize: 10, fontWeight: 600,
-                }}>
-                  <Calendar size={9} />
-                  {fmtDate(localFollowUpDate)}
-                </span>
-                <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Follow-up</div>
-              </div>
-            )}
+            {localFollowUpDate && (() => {
+              // Overdue = follow-up date is before today (date-only compare).
+              // Amber for on-track, red for past-due so reps can't miss it (audit S-13).
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const overdue = new Date(localFollowUpDate) < today;
+              return (
+                <div>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 9px', borderRadius: 5,
+                    background: overdue ? 'rgba(220,38,38,0.1)' : 'rgba(245,158,11,0.1)',
+                    color: overdue ? '#dc2626' : '#d97706',
+                    fontSize: 10, fontWeight: 600,
+                  }}>
+                    <Calendar size={9} />
+                    {fmtDate(localFollowUpDate)}
+                    {overdue && ' · Overdue'}
+                  </span>
+                  <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Follow-up</div>
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Handoff status badge */}
+          {lead.handoffState && lead.handoffState !== 'NONE' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingTop: 4, paddingBottom: 2 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '3px 9px', borderRadius: 5,
+                background: `${HANDOFF_STATE_COLORS[lead.handoffState]}15`,
+                color: HANDOFF_STATE_COLORS[lead.handoffState],
+                fontSize: 10, fontWeight: 600,
+              }}>
+                {HANDOFF_STATE_LABELS[lead.handoffState]}
+              </span>
+              {lead.handoffReturnReason && isReturnedState(lead.handoffState) && (
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                  {RETURN_REASON_LABELS[lead.handoffReturnReason] ?? lead.handoffReturnReason}
+                  {lead.handoffReturnedAt && ` · ${timeAgo(lead.handoffReturnedAt)}`}
+                </span>
+              )}
+              {lead.autoDropAt && isReturnedState(lead.handoffState) && (() => {
+                const days = daysUntilAutoDrop(lead.autoDropAt);
+                if (days === null) return null;
+                const urgent = days <= 2;
+                return (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: urgent ? '#dc2626' : '#d97706' }}>
+                    {days === 0 ? 'Auto-drops today' : `Auto-drops in ${days}d`}
+                  </span>
+                );
+              })()}
+              {canShowFixAndResend(lead.handoffState, lead.managerReviewRequired) && (
+                <button
+                  onClick={() => setShowFixResend(true)}
+                  style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 5,
+                    border: '1px solid #7c3aed', background: 'rgba(124,58,237,0.08)',
+                    color: '#7c3aed', cursor: 'pointer',
+                  }}
+                >
+                  Fix & resend
+                </button>
+              )}
+              {lead.managerReviewRequired && (
+                <span style={{ fontSize: 10, fontWeight: 600, color: '#ea580c' }}>
+                  Manager review required
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Row 2: Priority + Source */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', paddingTop: 2 }}>
@@ -1245,7 +1356,10 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                           fontSize: 11, color: 'var(--text-tertiary)',
                           display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap',
                         }}>
-                          {c.role && <span>{c.role}</span>}
+                          {/* Suppress a role that just restates "primary" — the PRIMARY
+                              badge already conveys that, and showing it on several
+                              contacts was the confusing duplicate (audit S-09). */}
+                          {c.role && !/^primary(\s+contact)?$/i.test(c.role.trim()) && <span>{c.role}</span>}
                           {c.email && <span style={{ opacity: 0.8 }}>{c.email}</span>}
                           {c.phone && <span style={{ opacity: 0.8 }}>{c.phone}</span>}
                         </div>
@@ -1496,6 +1610,94 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
           onClose={() => setActivePanel(null)}
           anchorRight={480}
         />
+      )}
+
+      {/* ── Handoff confirmation dialog ──────────────────────────────────── */}
+      {showHandoffConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="surface-elevated" style={{ width: 440, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 16 }}>Hand off to Documentation</h3>
+              <button onClick={() => setShowHandoffConfirm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={18} /></button>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+              <strong>{lead.firstName} {lead.lastName}</strong>
+              {lead.company && <> — {lead.company}</>}
+              {lead.owner && <div style={{ fontSize: 12, marginTop: 4, color: 'var(--text-tertiary)' }}>Rep: {lead.owner.firstName} {lead.owner.lastName}</div>}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 16 }}>
+              <input type="checkbox" checked={handoffAgreed} onChange={e => setHandoffAgreed(e.target.checked)} />
+              Client has agreed to proceed
+            </label>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setShowHandoffConfirm(false)}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                disabled={!handoffAgreed || handoffSubmitting}
+                onClick={handleConfirmHandoff}
+              >
+                {handoffSubmitting ? 'Handing off…' : 'Confirm handoff'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Fix & Resend dialog ──────────────────────────────────────────── */}
+      {showFixResend && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="surface-elevated" style={{ width: 440, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 16 }}>Fix & Resend</h3>
+              <button onClick={() => { setShowFixResend(false); setResolutionNote(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={18} /></button>
+            </div>
+            {lead.handoffReturnReason && (
+              <div style={{ fontSize: 12, marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', color: '#dc2626' }}>
+                Returned for: <strong>{RETURN_REASON_LABELS[lead.handoffReturnReason] ?? lead.handoffReturnReason}</strong>
+              </div>
+            )}
+            {lead.managerReviewRequired && (
+              <div style={{ fontSize: 12, marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(234,88,12,0.08)', color: '#ea580c', fontWeight: 600 }}>
+                Manager review required before resend.
+              </div>
+            )}
+            {lead.handoffReturnReason === 'WRONG_OR_MISSING_CONTACT' && (
+              <div style={{
+                fontSize: 11, marginBottom: 8, padding: '6px 10px', borderRadius: 6,
+                background: lead.phone !== lead.portalPhone ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.06)',
+                color: lead.phone !== lead.portalPhone ? '#059669' : '#dc2626',
+              }}>
+                {lead.phone !== lead.portalPhone
+                  ? 'Phone number has been updated since return.'
+                  : 'Phone number must be updated before resending. Edit the lead first.'}
+              </div>
+            )}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Resolution note <span style={{ color: '#dc2626' }}>*</span></label>
+              <textarea
+                className="input"
+                rows={3}
+                style={{ width: '100%', resize: 'vertical' }}
+                placeholder="Describe what was fixed…"
+                value={resolutionNote}
+                onChange={e => setResolutionNote(e.target.value)}
+              />
+              {resolutionNote.trim().length > 0 && resolutionNote.trim().length < 10 && (
+                <p style={{ fontSize: 11, color: '#dc2626', marginTop: 3 }}>At least 10 characters required.</p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => { setShowFixResend(false); setResolutionNote(''); }}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                disabled={lead.managerReviewRequired || resolutionNote.trim().length < 10 || handoffSubmitting || (lead.handoffReturnReason === 'WRONG_OR_MISSING_CONTACT' && lead.phone === lead.portalPhone)}
+                onClick={handleFixAndResend}
+              >
+                {handoffSubmitting ? 'Resending…' : 'Fix & Resend'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -15,7 +15,7 @@ export const AppLayout: React.FC<{ isLoading?: boolean }> = ({ isLoading }) => {
         <TopBar />
 
         <main
-          style={{ flex: 1, overflowY: 'auto', padding: 32, backgroundColor: 'var(--bg-app)' }}
+          style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 32, backgroundColor: 'var(--bg-app)' }}
         >
           {isLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

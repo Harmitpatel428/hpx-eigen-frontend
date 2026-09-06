@@ -7,7 +7,9 @@ import {
   Building2, Calendar, MapPin,
   Copy, Check, UserCheck,
 } from 'lucide-react';
-import type { Lead, LeadStage, CustomFieldDef } from '../types';
+import type { Lead, LeadStage, LeadSource, LeadPriority, CustomFieldDef } from '../types';
+import { LEAD_STAGE_LABELS as STAGE_LABELS } from '../domain/leadStage';
+import { effectiveStageForSearch } from '../domain/leadsQuery';
 import { leadService } from '../services/lead.service';
 import { leadContactsService, LeadContact } from '../services/lead-contacts.service';
 import { customFieldService } from '../services/custom-field.service';
@@ -34,12 +36,25 @@ import { normaliseCaseIdInput, isValidCaseId } from '../domain/caseId';
 // HELPERS
 // ============================================================================
 
-const STAGE_LABELS: Record<LeadStage, string> = {
-  NEW: 'New', QUALIFIED: 'Qualified', INTERESTED: 'Interested', FOLLOW_UP: 'Follow-Up',
-  CALL_BACK_REQUESTED: 'Call Back Requested', CALL_NOT_RECEIVED: 'Call Not Received',
-  OTHER: 'Other', DISQUALIFIED: 'Disqualified',
-  CONTACTED: 'Contacted', CONVERTED: 'Converted',
-};
+// STAGE_LABELS now single-sourced from domain/leadStage (audit S-07).
+
+// Advanced-filter options for the Filters panel (audit S-03). Values match the
+// backend LeadSource / LeadPriority enums; the list query sends them through.
+const SOURCE_FILTER_OPTIONS: { value: LeadSource; label: string }[] = [
+  { value: 'WEBSITE', label: 'Website' },
+  { value: 'REFERRAL', label: 'Referral' },
+  { value: 'COLD_CALL', label: 'Cold Call' },
+  { value: 'EMAIL_CAMPAIGN', label: 'Email Campaign' },
+  { value: 'SOCIAL_MEDIA', label: 'Social Media' },
+  { value: 'TRADE_SHOW', label: 'Trade Show' },
+  { value: 'OTHER', label: 'Other' },
+];
+const PRIORITY_FILTER_OPTIONS: { value: LeadPriority; label: string }[] = [
+  { value: 'CRITICAL', label: 'Critical' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'LOW', label: 'Low' },
+];
 
 
 // ============================================================================
@@ -73,9 +88,19 @@ export function LeadsPage() {
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   // Role/assignee dropdown: '' = All · 'UNASSIGNED' · `user:<id>` · `role:<id>`
   const [assigneeFilter, setAssigneeFilter] = useState('');
+  // Advanced filters (Filters panel — audit S-03). '' = no constraint.
+  const [showFilters, setShowFilters] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const activeFilterCount = (sourceFilter ? 1 : 0) + (priorityFilter ? 1 : 0);
   const [page, setPage] = useState(1);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
-  const filterKey = `${debouncedSearch}||${selectedStage}||${assigneeFilter}`;
+  // A running search spans ALL stages (see effectiveStageForSearch). This does not
+  // mutate the persisted selectedStage, so the intentional "New" default (S-01) and
+  // its persistence are untouched — the stage constraint is only dropped from the
+  // query while searching.
+  const effectiveStage = effectiveStageForSearch(selectedStage, debouncedSearch);
+  const filterKey = `${debouncedSearch}||${effectiveStage}||${assigneeFilter}||${sourceFilter}||${priorityFilter}`;
   const prevFilterKey = useRef(filterKey);
 
   const assigneeParams = useMemo(() => {
@@ -86,8 +111,8 @@ export function LeadsPage() {
   }, [assigneeFilter]);
 
   const { data: leadsResponse, isLoading, isFetching } = useQuery({
-    queryKey: ['leads', { search: debouncedSearch, stage: selectedStage, page, assignee: assigneeFilter }],
-    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: selectedStage || undefined, pageSize: 100, page, ...assigneeParams }),
+    queryKey: ['leads', { search: debouncedSearch, stage: effectiveStage, page, assignee: assigneeFilter, source: sourceFilter, priority: priorityFilter }],
+    queryFn: () => leadService.findAll({ search: debouncedSearch || undefined, stage: effectiveStage || undefined, source: sourceFilter || undefined, priority: priorityFilter || undefined, pageSize: 100, page, ...assigneeParams }),
     staleTime: 30_000,
   });
 
@@ -163,6 +188,13 @@ export function LeadsPage() {
   }, [allLeads, assignmentFilter]);
   const totalCount = leadsResponse?.total ?? allLeads.length;
   const hasMore    = allLeads.length > 0 && allLeads.length < totalCount;
+  // Header summary reads the dataset, not the active filter (audit S-04):
+  // "total" = every lead the user can see (sum of stage counts), "new" = leads
+  // in the NEW *stage* (not the NEW lifecycle status, which is almost always all).
+  // stageCounts is scope-filtered but tab/search-independent, so both stay stable.
+  const stageCountTotal = Object.values(stageCounts).reduce((s, n) => s + n, 0);
+  const datasetTotal = stageCountTotal || totalCount;
+  const newStageCount = stageCounts['NEW'] ?? 0;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => leadService.softDelete(id),
@@ -222,7 +254,8 @@ export function LeadsPage() {
       const source = await leadService.exportLeads(
         ids
           ? { ids }
-          : { search: debouncedSearch || undefined, stage: selectedStage || undefined, ...assigneeParams }
+          // Match the list: a search spans all stages, so export what the user sees.
+          : { search: debouncedSearch || undefined, stage: (debouncedSearch ? undefined : selectedStage) || undefined, ...assigneeParams }
       );
       if (source.length === 0) {
         toast.info('No leads match the current selection.');
@@ -334,7 +367,7 @@ export function LeadsPage() {
         <div>
           <h1 className="type-title">Leads</h1>
           <p className="type-body">
-            {isLoading && allLeads.length === 0 ? 'Loading…' : `${totalCount} total · ${allLeads.filter(l => l.status === 'NEW').length} new`}
+            {isLoading && allLeads.length === 0 ? 'Loading…' : `${datasetTotal} total · ${newStageCount} new`}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -392,7 +425,41 @@ export function LeadsPage() {
               })}
             </select>
           )}
-          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }}><ListFilter size={14} style={{ marginRight: 4 }} /> Filters</button>
+          {/* FILTERS — real popover wired to the list query (Source + Priority,
+              both server-supported). Previously an inert button (audit S-03). */}
+          <div style={{ position: 'relative' }}>
+            <button
+              className="btn-ghost"
+              aria-expanded={showFilters}
+              aria-haspopup="true"
+              onClick={() => setShowFilters(v => !v)}
+              style={{ height: 28, padding: '0 8px', fontSize: 13, color: activeFilterCount > 0 ? 'var(--color-primary,#6366f1)' : 'var(--text-secondary)' }}
+            >
+              <ListFilter size={14} style={{ marginRight: 4 }} /> Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+            </button>
+            {showFilters && (
+              <>
+                <div onClick={() => setShowFilters(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div role="dialog" aria-label="Lead filters" style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, width: 240, background: 'var(--bg-app)', border: '1px solid var(--border-medium)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Filters</div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Source</label>
+                  <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} aria-label="Filter by source" style={{ width: '100%', height: 30, fontSize: 13, marginBottom: 10, background: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 6, color: 'var(--text-primary)' }}>
+                    <option value="">All sources</option>
+                    {SOURCE_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Priority</label>
+                  <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} aria-label="Filter by priority" style={{ width: '100%', height: 30, fontSize: 13, marginBottom: 12, background: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 6, color: 'var(--text-primary)' }}>
+                    <option value="">All priorities</option>
+                    {PRIORITY_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button onClick={() => { setSourceFilter(''); setPriorityFilter(''); }} disabled={activeFilterCount === 0} style={{ fontSize: 12, color: activeFilterCount ? 'var(--text-secondary)' : 'var(--text-tertiary)', background: 'none', border: 'none', cursor: activeFilterCount ? 'pointer' : 'default', padding: 0 }}>Clear</button>
+                    <button onClick={() => setShowFilters(false)} style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#0f172a', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Done</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} onClick={() => setShowImportWizard(true)}><ArrowDownToLine size={14} style={{ marginRight: 4 }} /> Import</button>
           <button className="btn-ghost" style={{ height: 28, padding: '0 8px', fontSize: 13, color: 'var(--text-secondary)' }} disabled={exporting} onClick={handleExport}><ArrowUpFromLine size={14} style={{ marginRight: 4 }} /> {exporting ? 'Exporting…' : 'Export'}</button>
           <div style={{ width: 1, height: 16, backgroundColor: 'var(--border-medium)', margin: '0 4px' }} />
@@ -403,10 +470,10 @@ export function LeadsPage() {
       </div>
 
       <StageFilterPills
-        selectedStage={selectedStage}
+        selectedStage={effectiveStage}
         stageCounts={stageCounts}
         colourfulFilters={colourfulFilters}
-        onSelect={setSelectedStage}
+        onSelect={(s) => { if (searchQuery) setSearchQuery(''); setSelectedStage(s); }}
       />
 
 
@@ -464,7 +531,18 @@ export function LeadsPage() {
             ) : leads.length === 0 ? (
               <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                 <p style={{ marginBottom: '0.5rem', fontWeight: 500 }}>No leads found</p>
-                <p style={{ fontSize: 13 }}>{searchQuery ? `No results for "${searchQuery}"` : 'Create your first lead to get started'}</p>
+                {/* Non-stage refinements (assignment toggle, assignee dropdown, Filters
+                    panel, search) get an accurate "nothing matched" message so an
+                    empty subset no longer reads as "you have no leads" (audit S-02).
+                    The stage-tab path is deliberately untouched to preserve the
+                    intentional S-01 default-view behaviour. */}
+                <p style={{ fontSize: 13 }}>{
+                  searchQuery
+                    ? `No results for "${searchQuery}"`
+                    : (assignmentFilter !== 'all' || assigneeFilter || activeFilterCount > 0)
+                    ? 'No leads match the current filters.'
+                    : 'Create your first lead to get started'
+                }</p>
               </div>
             ) : (
             <>
@@ -545,11 +623,24 @@ export function LeadsPage() {
                       {lead.phone && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{lead.phone}</div>}
                     </div>
 
-                    {/* Stage */}
-                    <div>
+                    {/* Stage + handoff returned badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 6px', background: ss.bg, color: ss.text, borderRadius: 3, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                         {STAGE_LABELS[lead.stage ?? 'NEW']}
                       </span>
+                      {(lead.handoffState === 'RETURNED' || lead.handoffState === 'MANAGER_REVIEW_REQUIRED') && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 6px',
+                          background: 'rgba(220,38,38,0.08)', color: '#dc2626', borderRadius: 3,
+                          fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap',
+                        }}>
+                          {'⚑'} Returned by Docs
+                          {lead.handoffReturnedAt && (() => {
+                            const d = Math.floor((Date.now() - new Date(lead.handoffReturnedAt).getTime()) / 86_400_000);
+                            return d > 0 ? ` · ${d}d` : '';
+                          })()}
+                        </span>
+                      )}
                     </div>
 
                   </div>

@@ -398,7 +398,7 @@ function CaseViewScreen({ sessionToken, caseId, previewData }: { sessionToken: s
           fontSize: 13, fontWeight: 700, color: '#7C3AED',
           letterSpacing: '0.06em', marginBottom: 6,
         }}>
-          {data.caseId}
+          {data.caseNumber}
         </div>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, letterSpacing: '-0.02em' }}>
           {CASE_STATUS_LABELS[data.status] ?? data.status}

@@ -50,10 +50,10 @@ export const PORTAL_AUTH = {
 // Never reveal whether the Case ID exists, the phone is wrong, etc.
 
 export const PORTAL_ERROR_MESSAGES = {
-  INVALID_CREDENTIALS: 'The Case ID or phone number is incorrect. Please check and try again.',
-  ACCOUNT_LOCKED: 'Too many attempts. Please try again later.',
+  INVALID_CREDENTIALS: "We couldn't verify those details.",
+  ACCOUNT_LOCKED: "We couldn't verify those details.",
   SESSION_EXPIRED: 'Your session has expired. Please log in again.',
-  CASE_UNAVAILABLE: 'This case is not available through the portal.',
+  CASE_UNAVAILABLE: "We couldn't verify those details.",
 } as const;
 
 // ── Portal contact change policy ─────────────────────────────────────────────

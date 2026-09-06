@@ -96,6 +96,7 @@ export const leadService = {
     status?: string;
     source?: string;
     stage?: string;
+    priority?: string;
     search?: string;
     ownerId?: string;
     roleId?: string;
@@ -106,6 +107,7 @@ export const leadService = {
     if (filters?.status && filters.status !== 'ALL') params.set('status', filters.status);
     if (filters?.source && filters.source !== 'ALL') params.set('source', filters.source);
     if (filters?.stage) params.set('stage', filters.stage);
+    if (filters?.priority) params.set('priority', filters.priority);
     if (filters?.search) params.set('search', filters.search);
     if (filters?.ownerId) params.set('ownerId', filters.ownerId);
     if (filters?.roleId) params.set('roleId', filters.roleId);

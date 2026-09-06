@@ -1,5 +1,6 @@
 import { useState, useRef, memo } from 'react';
 import type { LeadStage } from '../../types';
+import { LEAD_STAGE_LABELS, SELECTABLE_STAGES } from '../../domain/leadStage';
 
 export const PILL_CLASS = 'stage-pill';
 export const PILL_ACTIVE_CLASS = 'stage-pill--active';
@@ -17,16 +18,10 @@ export const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: st
   CONVERTED:           { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
 };
 
-const DEFAULT_STAGES: { key: LeadStage; label: string }[] = [
-  { key: 'NEW',                 label: 'New'          },
-  { key: 'QUALIFIED',           label: 'Qualified'    },
-  { key: 'INTERESTED',          label: 'Interested'   },
-  { key: 'FOLLOW_UP',           label: 'Follow-Up'    },
-  { key: 'CALL_BACK_REQUESTED', label: 'Call Back'    },
-  { key: 'CALL_NOT_RECEIVED',   label: 'Not Received' },
-  { key: 'DISQUALIFIED',        label: 'Disqualified' },
-  { key: 'OTHER',               label: 'Others'       },
-];
+// Labels + order are single-sourced in domain/leadStage so the filter pills can
+// never drift from the modal/detail stage dropdowns again (audit S-07).
+const DEFAULT_STAGES: { key: LeadStage; label: string }[] =
+  SELECTABLE_STAGES.map(key => ({ key, label: LEAD_STAGE_LABELS[key] }));
 
 const STAGE_ORDER_KEY = 'sales_dashboard_stage_order';
 

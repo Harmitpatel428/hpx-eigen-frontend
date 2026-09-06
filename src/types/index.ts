@@ -182,13 +182,15 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null; // set while the lead sits in the Recycle Bin
-  // Case ID & portal fields
+  // Case ID & handoff fields
   caseId: string | null;
-  handoffFlag: HandoffFlag | null;
+  handoffState: HandoffState;
   handoffReturnCount: number;
   handoffReturnedAt: string | null;
   handoffReturnReason: HandoffReturnReason | null;
-  portalPhone: string | null; // snapshotted at portal activation; does not follow lead.phone edits
+  managerReviewRequired: boolean;
+  autoDropAt: string | null;
+  portalPhone: string | null;
   portalPhoneActivatedAt: string | null;
 }
 
@@ -405,7 +407,7 @@ export type DocDocumentStatus =
   | 'REQUESTED' | 'PENDING_COLLECTION' | 'RECEIVED' | 'UNDER_VERIFICATION'
   | 'APPROVED' | 'REJECTED' | 'RE_REQUESTED' | 'EXPIRED'
   | 'NOT_APPLICABLE' | 'WAIVED' | 'MANAGER_APPROVED';
-export type DocCaseStatus = 'ACTIVE' | 'DOCUMENTATION_READY' | 'TRANSFERRED_TO_PROCESS' | 'CLOSED' | 'CANCELLED';
+export type DocCaseStatus = 'INCOMING' | 'ACTIVE' | 'RETURNED' | 'DOCUMENTATION_READY' | 'TRANSFERRED_TO_PROCESS' | 'CLOSED' | 'CANCELLED';
 export type DocNoteType   = 'INTERNAL' | 'CUSTOMER' | 'CLIENT_VISIBLE';
 export type DocStorageType =
   | 'GOOGLE_DRIVE' | 'ONEDRIVE' | 'DROPBOX' | 'SHAREPOINT' | 'NAS_PATH'
@@ -425,19 +427,23 @@ export type DocEventType =
 // HANDOFF DOMAIN
 // ============================================================================
 
-export type HandoffFlag = 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'RETURNED' | 'TRANSFERRED';
+export type HandoffState = 'NONE' | 'HANDED_OFF' | 'ACCEPTED' | 'RETURNED' | 'RESENT' | 'MANAGER_REVIEW_REQUIRED' | 'AUTO_DROPPED';
+/** @deprecated Use HandoffState instead — kept for backward compat during migration */
+export type HandoffFlag = HandoffState;
 
 export type HandoffReturnReason =
-  | 'MISSING_DOCUMENTS'
-  | 'INCORRECT_INFORMATION'
-  | 'PENDING_VERIFICATION'
+  | 'WRONG_OR_MISSING_CONTACT'
+  | 'WRONG_PRESET'
+  | 'INCOMPLETE_INFORMATION'
+  | 'DUPLICATE_CASE'
   | 'COMPLIANCE_ISSUE'
   | 'OTHER';
 
 export const HANDOFF_RETURN_REASON_LABELS: Record<HandoffReturnReason, string> = {
-  MISSING_DOCUMENTS: 'Missing documents',
-  INCORRECT_INFORMATION: 'Incorrect information',
-  PENDING_VERIFICATION: 'Pending verification',
+  WRONG_OR_MISSING_CONTACT: 'Wrong or missing contact',
+  WRONG_PRESET: 'Wrong preset',
+  INCOMPLETE_INFORMATION: 'Incomplete information',
+  DUPLICATE_CASE: 'Duplicate case',
   COMPLIANCE_ISSUE: 'Compliance issue',
   OTHER: 'Other',
 };
@@ -447,15 +453,12 @@ export const HANDOFF_RETURN_REASON_LABELS: Record<HandoffReturnReason, string> =
 // ============================================================================
 
 export interface PortalAuthResult {
-  success: boolean;
-  sessionToken?: string;
-  expiresAt?: string;
-  remainingAttempts?: number;
-  lockedUntil?: string;
+  sessionToken: string;
+  expiresAt: string;
 }
 
 export interface PortalCaseView {
-  caseId: string;
+  caseNumber: string;
   clientName: string;
   status: DocCaseStatus;
   portalActivatedAt: string;
@@ -634,8 +637,21 @@ export interface DocCase {
   transferredBy: string | null;
   closedAt: string | null;
   notes: string | null;
+  handoffState: HandoffState;
+  handoffAt: string | null;
+  handoffBy: string | null;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+  returnedAt: string | null;
+  returnCount: number;
+  returnReasonCode: HandoffReturnReason | null;
+  returnReasonNote: string | null;
+  managerReviewRequired: boolean;
+  autoDropAt: string | null;
   portalEnabled: boolean;
+  portalEnabledAt: string | null;
   portalActivatedAt: string | null;
+  portalPhoneLast4: string | null;
   clientVisibleNotesCount: number;
   clientVisibleDocsCount: number;
   createdBy: string;

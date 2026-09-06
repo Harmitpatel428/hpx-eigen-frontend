@@ -14,6 +14,7 @@ import type { CustomFieldDef, CustomFieldValue } from '../../types';
 import { customFieldService } from '../../services/custom-field.service';
 import { CustomFieldRenderer, getFieldValue, setFieldValue } from './CustomFieldRenderer';
 import { CustomFieldBuilder } from './CustomFieldBuilder';
+import { LEAD_STAGE_LABELS, SELECTABLE_STAGES } from '../../domain/leadStage';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { LeadNotesModal } from './LeadNotesModal';
 import { toast } from 'sonner';
@@ -32,8 +33,11 @@ const PRIORITY_OPTIONS: { value: LeadPriority; label: string; color: string; bg:
   { value: 'LOW',      label: 'Low',      color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
 ];
 
+// "Primary Contact" removed as a role option: primary status is the isMain flag
+// (the "Set as Main Contact" checkbox / PRIMARY badge), not a job role. Defaulting
+// every new contact to a "Primary Contact" role is what produced several contacts
+// all labelled "Primary Contact" (audit S-09). Role is now optional.
 const CONTACT_ROLES = [
-  'Primary Contact',
   'Accounts Contact',
   'Purchase Manager',
   'Technical Contact',
@@ -143,7 +147,7 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
   const [email, setEmail]         = useState(initial?.email ?? '');
   const [phone, setPhone]         = useState(initial?.phone ?? '');
   const [title, setTitle]         = useState(initial?.title ?? '');
-  const [role, setRole]           = useState(initial?.role ?? CONTACT_ROLES[0]);
+  const [role, setRole]           = useState(initial?.role ?? '');
   const [isMain, setIsMain]       = useState(initial?.isMain ?? isFirst);
   const [touched, setTouched]     = useState(false);
   const nameError = touched && (!firstName.trim() || !lastName.trim());
@@ -167,6 +171,7 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
         <input style={inp} placeholder="Job title" value={title} onChange={e => setTitle(e.target.value)} />
         <select style={{ ...inp, cursor: 'pointer' }} value={role} onChange={e => setRole(e.target.value)}>
+          <option value="">Role (optional)</option>
           {CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
@@ -368,7 +373,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   };
 
   const {
-    register, handleSubmit, watch, setValue,
+    register, handleSubmit, watch, setValue, setError,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
@@ -446,6 +451,15 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
   }, [watchedEmail, watchedPhone, watchedCompany, watchedFirst, watchedLast, duplicatesDismissed, mode, lead?.id]);
 
   const onSubmit = async (values: LeadFormData) => {
+    // A new lead must be reachable — require at least an email OR a phone.
+    // Scoped to create so editing legacy leads that have neither isn't blocked
+    // (audit S-10). Backend POST enforces the same rule.
+    if (mode === 'create' && !values.email?.trim() && !values.phone?.trim()) {
+      const msg = 'Add an email or a phone number so this lead can be contacted.';
+      setError('email', { message: msg });
+      setError('phone', { message: msg });
+      return;
+    }
     const locationFields = locMode === 'structured'
       ? { country: values.country || undefined, state: values.state || undefined, city: values.city || undefined, area: values.area || undefined, postalCode: values.postalCode || undefined, freeformAddress: undefined }
       : { freeformAddress: values.freeformAddress || undefined, country: undefined, state: undefined, city: undefined, area: undefined, postalCode: undefined };
@@ -522,7 +536,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
               <Field label="Email" error={errors.email?.message}>
                 <input {...register('email')} type="email" className={inp} />
               </Field>
-              <Field label="Phone">
+              <Field label="Phone" error={errors.phone?.message}>
                 <input {...register('phone')} className={inp} />
                 <span style={{ fontSize: 10, color: '#94a3b8', marginTop: 3, display: 'block' }}>Primary / company number</span>
               </Field>
@@ -538,14 +552,10 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <Field label="Stage">
                 <select {...register('stage')} className={inp} style={{ cursor: 'pointer' }}>
-                  <option value="NEW">New</option>
-                  <option value="QUALIFIED">Qualified</option>
-                  <option value="INTERESTED">Interested</option>
-                  <option value="FOLLOW_UP">Follow-Up</option>
-                  <option value="CALL_BACK_REQUESTED">Call Back Requested</option>
-                  <option value="CALL_NOT_RECEIVED">Call Not Received</option>
-                  <option value="DISQUALIFIED">Disqualified</option>
-                  <option value="OTHER">Other</option>
+                  {/* Labels single-sourced from domain/leadStage (audit S-07) */}
+                  {SELECTABLE_STAGES.map(s => (
+                    <option key={s} value={s}>{LEAD_STAGE_LABELS[s]}</option>
+                  ))}
                   {mode === 'edit' && lead && (lead.stage === 'CONTACTED' || lead.stage === 'CONVERTED') && (
                     <option value={lead.stage}>{lead.stage === 'CONTACTED' ? 'Contacted (legacy)' : 'Converted (legacy)'}</option>
                   )}

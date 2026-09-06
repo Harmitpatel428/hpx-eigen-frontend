@@ -35,6 +35,18 @@ export function resolveDisplayContact(
   };
 }
 
+// Canonical lead identity — the name a lead is known by everywhere (list rows,
+// detail header, search, export). Always derived from the LEAD RECORD, never
+// from a contact, so the list and the detail panel can never disagree about who
+// a lead is (audit S-05). Contact phone/email still resolve via
+// resolveDisplayContact; only the identity name is single-sourced here.
+export function resolveLeadIdentity(
+  lead: Pick<Lead, 'firstName' | 'lastName'> & { company?: string | null },
+): string {
+  const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ').trim();
+  return name || lead.company?.trim() || 'Unknown';
+}
+
 export function initialsOf(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return '?';

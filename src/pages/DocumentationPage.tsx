@@ -11,11 +11,14 @@ import {
   FolderOpen, Calendar, AlertCircle, Inbox, History, Eye,
 } from 'lucide-react';
 import { documentationService } from '../services/documentation.service';
+import { handoffService } from '../services/handoff.service';
 import { ContextPanel } from '../components/layout/ContextPanel';
+import { getHandoffAge, HANDOFF_AGE_COLORS, HANDOFF_STATE_LABELS, HANDOFF_STATE_COLORS, RETURN_REASON_LABELS } from '../domain/handoff';
 import type {
   DocCase, DocCaseDocument, DocDocumentStatus, DocNoteType,
-  DocStorageType, DocPreset,
+  DocStorageType, DocPreset, HandoffReturnReason,
 } from '../types';
+import { HANDOFF_RETURN_REASON_LABELS } from '../types';
 
 // ============================================================================
 // HELPERS & CONSTANTS
@@ -36,7 +39,9 @@ const DOC_STATUS_META: Record<DocDocumentStatus, { label: string; color: string;
 };
 
 const CASE_STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  INCOMING:                { label: 'Incoming',             color: '#d97706', bg: 'rgba(245,158,11,0.1)' },
   ACTIVE:                  { label: 'Active',               color: '#2563eb', bg: 'rgba(37,99,235,0.1)'  },
+  RETURNED:                { label: 'Returned',             color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
   DOCUMENTATION_READY:     { label: 'Ready',                color: '#059669', bg: 'rgba(5,150,105,0.1)'  },
   TRANSFERRED_TO_PROCESS:  { label: 'Transferred',          color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
   CLOSED:                  { label: 'Closed',               color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
@@ -486,6 +491,233 @@ function CreateCaseModal({
   );
 }
 
+// ─── SLA waiting clock for incoming cases ───────────────────────────────────
+function SlaClock({ handoffAt }: { handoffAt: string | null }) {
+  if (!handoffAt) return null;
+  const age = getHandoffAge(handoffAt);
+  const color = HANDOFF_AGE_COLORS[age];
+  const hours = Math.floor((Date.now() - new Date(handoffAt).getTime()) / 3_600_000);
+  const label = hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d ${hours % 24}h`;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600,
+      color, padding: '2px 7px', borderRadius: 'var(--radius-full)',
+      background: `${color}15`,
+    }}>
+      <Clock size={11} />
+      {label} — {age}
+    </span>
+  );
+}
+
+// ─── Incoming case row ──────────────────────────────────────────────────────
+function IncomingCaseRow({
+  docCase,
+  onAccept,
+  onReject,
+  accepting,
+}: {
+  docCase: DocCase;
+  onAccept: () => void;
+  onReject: () => void;
+  accepting: boolean;
+}) {
+  return (
+    <div className="list-row" style={{
+      display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 140px 160px',
+      alignItems: 'center', gap: 16, padding: '10px 16px',
+    }}>
+      {/* Lead */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0,
+        }}>
+          {initials(docCase.lead.firstName, docCase.lead.lastName)}
+        </div>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
+            {docCase.lead.firstName} {docCase.lead.lastName}
+          </div>
+          {docCase.lead.company && (
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{docCase.lead.company}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Preset */}
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+        {docCase.preset ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Layers size={12} />
+            {docCase.preset.name}
+          </span>
+        ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+      </div>
+
+      {/* Case ID */}
+      <div style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace', color: 'var(--text-secondary)' }}>
+        {docCase.caseId ?? '—'}
+      </div>
+
+      {/* SLA Clock */}
+      <SlaClock handoffAt={docCase.handoffAt} />
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <button className="btn btn-primary" style={{ fontSize: 11, padding: '5px 12px' }}
+          onClick={onAccept} disabled={accepting}>
+          <CheckCircle2 size={12} style={{ marginRight: 4 }} />
+          Accept
+        </button>
+        <button className="btn" style={{
+          fontSize: 11, padding: '5px 12px', border: '1px solid var(--border-medium)',
+          background: 'none', color: '#dc2626', cursor: 'pointer',
+        }} onClick={onReject}>
+          Reject
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Reject handoff dialog ──────────────────────────────────────────────────
+function RejectHandoffDialog({
+  docCase,
+  onClose,
+  onConfirm,
+  submitting,
+}: {
+  docCase: DocCase;
+  onClose: () => void;
+  onConfirm: (reasonCode: HandoffReturnReason, note: string) => void;
+  submitting: boolean;
+}) {
+  const [reason, setReason] = useState<HandoffReturnReason>('INCOMPLETE_INFORMATION');
+  const [note, setNote] = useState('');
+  const noteRequired = reason === 'OTHER';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="surface-elevated" style={{ width: 460, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Reject Handoff</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', fontSize: 12, color: '#991b1b' }}>
+          Rejecting returns the case to the Sales rep who submitted it. The lead will stay in Qualified stage with a "Returned by Docs" flag.
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-4)', fontSize: 12, color: 'var(--text-secondary)' }}>
+          <strong>Lead:</strong> {docCase.lead.firstName} {docCase.lead.lastName}
+          {docCase.lead.company && ` — ${docCase.lead.company}`}
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
+          <select className="input" style={{ width: '100%' }}
+            value={reason} onChange={e => setReason(e.target.value as HandoffReturnReason)}>
+            {Object.entries(HANDOFF_RETURN_REASON_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+            Note {noteRequired && <span style={{ color: '#dc2626' }}>*</span>}
+          </label>
+          <textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }}
+            value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Explain what needs to be fixed…" />
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn" style={{
+            background: '#dc2626', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            opacity: (noteRequired && !note.trim()) || submitting ? 0.5 : 1,
+          }}
+            disabled={(noteRequired && !note.trim()) || submitting}
+            onClick={() => onConfirm(reason, note.trim())}>
+            {submitting ? 'Rejecting…' : 'Reject Handoff'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Return case dialog (post-acceptance) ───────────────────────────────────
+function ReturnCaseDialog({
+  docCase,
+  onClose,
+  onConfirm,
+  submitting,
+}: {
+  docCase: DocCase;
+  onClose: () => void;
+  onConfirm: (reasonCode: HandoffReturnReason, note: string) => void;
+  submitting: boolean;
+}) {
+  const [reason, setReason] = useState<HandoffReturnReason>('INCOMPLETE_INFORMATION');
+  const [note, setNote] = useState('');
+  const noteRequired = reason === 'OTHER';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="surface-elevated" style={{ width: 460, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Return to Sales</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12, color: '#92400e' }}>
+          This case has already been accepted. Returning it sends it back to the Sales rep for correction.
+          {docCase.returnCount >= 1 && (
+            <strong style={{ display: 'block', marginTop: 4 }}>
+              This case has been returned {docCase.returnCount} time(s) before. A second return will trigger manager review.
+            </strong>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
+          <select className="input" style={{ width: '100%' }}
+            value={reason} onChange={e => setReason(e.target.value as HandoffReturnReason)}>
+            {Object.entries(HANDOFF_RETURN_REASON_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+            Note {noteRequired && <span style={{ color: '#dc2626' }}>*</span>}
+          </label>
+          <textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }}
+            value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Describe the issue…" />
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn" style={{
+            background: '#d97706', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            opacity: (noteRequired && !note.trim()) || submitting ? 0.5 : 1,
+          }}
+            disabled={(noteRequired && !note.trim()) || submitting}
+            onClick={() => onConfirm(reason, note.trim())}>
+            {submitting ? 'Returning…' : 'Return to Sales'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Case detail panel (ContextPanel) ────────────────────────────────────────
 function CaseDetailPanel({
   caseId,
@@ -499,6 +731,7 @@ function CaseDetailPanel({
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
+  const [showReturn, setShowReturn] = useState(false);
 
   const { data: docCase, isLoading } = useQuery({
     queryKey:  ['doc-case', caseId],
@@ -509,7 +742,14 @@ function CaseDetailPanel({
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['doc-case', caseId] });
     qc.invalidateQueries({ queryKey: ['doc-cases'] });
+    qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
   }, [qc, caseId]);
+
+  const returnMutation = useMutation({
+    mutationFn: ({ reasonCode, note }: { reasonCode: HandoffReturnReason; note: string }) =>
+      handoffService.returnCase(caseId, reasonCode, note),
+    onSuccess: () => { setShowReturn(false); invalidate(); },
+  });
 
   const statusMutation = useMutation({
     mutationFn: ({ docId, status, remarks, rejectionReason }: {
@@ -629,7 +869,43 @@ function CaseDetailPanel({
               Manager Override
             </button>
           )}
+          {['ACTIVE', 'DOCUMENTATION_READY'].includes(docCase.status)
+            && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
+            && docCase.handoffState === 'ACCEPTED' && (
+            <button className="btn" style={{
+              fontSize: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.04)',
+              color: '#dc2626', gap: 6, display: 'flex', alignItems: 'center', cursor: 'pointer',
+            }}
+              onClick={() => setShowReturn(true)}
+            >
+              <RefreshCw size={14} />
+              Return to Sales
+            </button>
+          )}
         </div>
+
+        {/* Handoff state badge */}
+        {docCase.handoffState && docCase.handoffState !== 'NONE' && (
+          <div style={{
+            marginBottom: 12, padding: '8px 12px', borderRadius: 8,
+            background: `${HANDOFF_STATE_COLORS[docCase.handoffState]}10`,
+            border: `1px solid ${HANDOFF_STATE_COLORS[docCase.handoffState]}30`,
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+            color: HANDOFF_STATE_COLORS[docCase.handoffState],
+          }}>
+            <span style={{ fontWeight: 600 }}>{HANDOFF_STATE_LABELS[docCase.handoffState]}</span>
+            {docCase.returnReasonCode && (
+              <span style={{ color: 'var(--text-secondary)' }}>
+                — {RETURN_REASON_LABELS[docCase.returnReasonCode]}
+              </span>
+            )}
+            {docCase.returnCount > 0 && (
+              <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
+                returned {docCase.returnCount}×
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Stale case amber strip */}
         {docCase.status === 'ACTIVE' && docCase.dueDate && new Date(docCase.dueDate) < new Date() && (
@@ -854,6 +1130,16 @@ function CaseDetailPanel({
           onSuccess={invalidate}
         />
       )}
+
+      {/* Return to Sales dialog */}
+      {showReturn && docCase && (
+        <ReturnCaseDialog
+          docCase={docCase}
+          onClose={() => setShowReturn(false)}
+          onConfirm={(reasonCode, note) => returnMutation.mutate({ reasonCode, note })}
+          submitting={returnMutation.isPending}
+        />
+      )}
     </div>
   );
 }
@@ -869,6 +1155,9 @@ export function DocumentationPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreate, setShowCreate]     = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(searchParams.get('caseId'));
+  const [viewMode, setViewMode]         = useState<'cases' | 'incoming'>(searchParams.get('view') === 'incoming' ? 'incoming' : 'cases');
+  const [rejectTarget, setRejectTarget] = useState<DocCase | null>(null);
+  const [acceptingId, setAcceptingId]   = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedCaseId && searchParams.has('caseId')) {
@@ -881,8 +1170,41 @@ export function DocumentationPage() {
     queryKey:  ['doc-cases', { search, status: statusFilter }],
     queryFn:   () => documentationService.listCases({ search: search || undefined, status: statusFilter || undefined, pageSize: 50 }),
     staleTime: 30_000,
+    enabled:   viewMode === 'cases',
   });
   const cases: DocCase[] = casesResponse?.data ?? [];
+
+  // Incoming handoffs
+  const { data: incomingCases = [], isLoading: incomingLoading } = useQuery({
+    queryKey:  ['incoming-handoffs'],
+    queryFn:   () => handoffService.getIncoming(),
+    staleTime: 15_000,
+    enabled:   viewMode === 'incoming',
+  });
+
+  // Accept mutation
+  const acceptMutation = useMutation({
+    mutationFn: (caseId: string) => handoffService.accept(caseId),
+    onMutate: (caseId) => setAcceptingId(caseId),
+    onSettled: () => setAcceptingId(null),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
+      qc.invalidateQueries({ queryKey: ['doc-cases'] });
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+  });
+
+  // Reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: ({ caseId, reasonCode, note }: { caseId: string; reasonCode: HandoffReturnReason; note: string }) =>
+      handoffService.reject(caseId, reasonCode, note),
+    onSuccess: () => {
+      setRejectTarget(null);
+      qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
+      qc.invalidateQueries({ queryKey: ['doc-cases'] });
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+  });
 
   // KPIs
   const { data: kpis } = useQuery({
@@ -938,49 +1260,119 @@ export function DocumentationPage() {
       {/* KPIs */}
       {kpis && <KpiStrip kpis={kpiItems} />}
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-          <input
-            className="input"
-            style={{ paddingLeft: 34, width: '100%' }}
-            placeholder="Search leads…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <select className="input" style={{ width: 180 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">All Statuses</option>
-          {Object.entries(CASE_STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-      </div>
-
-      {/* Table header */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 180px 80px',
-        padding: '8px 16px', gap: 16, marginBottom: 4,
-      }}>
-        {['Lead', 'Preset', 'Status', 'Progress', ''].map(h => (
-          <div key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>{h}</div>
+      {/* View toggle: Cases / Incoming */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-medium)' }}>
+        {([
+          { key: 'cases' as const, label: 'All Cases', icon: FileText },
+          { key: 'incoming' as const, label: 'Incoming', icon: Inbox, count: incomingCases.length },
+        ]).map(tab => (
+          <button key={tab.key} onClick={() => setViewMode(tab.key)} style={{
+            padding: '10px 18px', fontSize: 13, fontWeight: viewMode === tab.key ? 600 : 400,
+            color: viewMode === tab.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            background: 'none', border: 'none', cursor: 'pointer',
+            borderBottom: viewMode === tab.key ? '2px solid var(--text-primary)' : '2px solid transparent',
+            marginBottom: -1, display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <tab.icon size={14} />
+            {tab.label}
+            {tab.key === 'incoming' && viewMode !== 'incoming' && incomingCases.length > 0 && (
+              <span style={{
+                background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 700,
+                padding: '1px 6px', borderRadius: 99, minWidth: 18, textAlign: 'center',
+              }}>
+                {incomingCases.length}
+              </span>
+            )}
+          </button>
         ))}
       </div>
 
-      {/* Cases */}
-      {casesLoading ? (
-        <div style={{ padding: '40px 0', textAlign: 'center' }}>
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900 mx-auto" />
-        </div>
-      ) : cases.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)' }}>
-          <FileText size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No documentation cases</div>
-          <div style={{ fontSize: 13 }}>Create a case from a qualified lead to start tracking documents</div>
-        </div>
-      ) : (
-        cases.map(c => (
-          <CaseRow key={c.id} docCase={c} onClick={() => setSelectedCaseId(c.id)} />
-        ))
+      {viewMode === 'cases' && (
+        <>
+          {/* Filters */}
+          <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+              <input
+                className="input"
+                style={{ paddingLeft: 34, width: '100%' }}
+                placeholder="Search leads…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <select className="input" style={{ width: 180 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="">All Statuses</option>
+              {Object.entries(CASE_STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+
+          {/* Table header */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 180px 80px',
+            padding: '8px 16px', gap: 16, marginBottom: 4,
+          }}>
+            {['Lead', 'Preset', 'Status', 'Progress', ''].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>{h}</div>
+            ))}
+          </div>
+
+          {/* Cases */}
+          {casesLoading ? (
+            <div style={{ padding: '40px 0', textAlign: 'center' }}>
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900 mx-auto" />
+            </div>
+          ) : cases.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)' }}>
+              <FileText size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No documentation cases</div>
+              <div style={{ fontSize: 13 }}>Create a case from a qualified lead to start tracking documents</div>
+            </div>
+          ) : (
+            cases.map(c => (
+              <CaseRow key={c.id} docCase={c} onClick={() => setSelectedCaseId(c.id)} />
+            ))
+          )}
+        </>
+      )}
+
+      {viewMode === 'incoming' && (
+        <>
+          {/* Incoming table header */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 140px 160px',
+            padding: '8px 16px', gap: 16, marginBottom: 4,
+          }}>
+            {['Lead', 'Preset', 'Case ID', 'Waiting', 'Actions'].map(h => (
+              <div key={h} style={{
+                fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: 'var(--text-tertiary)', textAlign: h === 'Actions' ? 'right' : 'left',
+              }}>{h}</div>
+            ))}
+          </div>
+
+          {incomingLoading ? (
+            <div style={{ padding: '40px 0', textAlign: 'center' }}>
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900 mx-auto" />
+            </div>
+          ) : incomingCases.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)' }}>
+              <Inbox size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No incoming handoffs</div>
+              <div style={{ fontSize: 13 }}>Cases handed off by Sales will appear here for review</div>
+            </div>
+          ) : (
+            incomingCases.map(c => (
+              <IncomingCaseRow
+                key={c.id}
+                docCase={c}
+                onAccept={() => acceptMutation.mutate(c.id)}
+                onReject={() => setRejectTarget(c)}
+                accepting={acceptingId === c.id}
+              />
+            ))
+          )}
+        </>
       )}
 
       {/* Case detail panel */}
@@ -1001,6 +1393,16 @@ export function DocumentationPage() {
             qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
             setSelectedCaseId(newCase.id);
           }}
+        />
+      )}
+
+      {/* Reject handoff dialog */}
+      {rejectTarget && (
+        <RejectHandoffDialog
+          docCase={rejectTarget}
+          onClose={() => setRejectTarget(null)}
+          onConfirm={(reasonCode, note) => rejectMutation.mutate({ caseId: rejectTarget.id, reasonCode, note })}
+          submitting={rejectMutation.isPending}
         />
       )}
     </div>
