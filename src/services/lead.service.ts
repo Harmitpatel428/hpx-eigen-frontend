@@ -122,8 +122,15 @@ export const leadService = {
     return { data: arr, total: arr.length, page: 1, pageSize: arr.length };
   },
 
-  async stageCounts(): Promise<Record<string, number>> {
-    const { data } = await api.get<any>('/api/v1/leads/stage-counts');
+  async stageCounts(filters?: { ownerId?: string; roleId?: string; source?: string; priority?: string; search?: string }): Promise<Record<string, number>> {
+    const params = new URLSearchParams();
+    if (filters?.ownerId) params.set('ownerId', filters.ownerId);
+    if (filters?.roleId) params.set('roleId', filters.roleId);
+    if (filters?.source) params.set('source', filters.source);
+    if (filters?.priority) params.set('priority', filters.priority);
+    if (filters?.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const { data } = await api.get<any>(`/api/v1/leads/stage-counts${qs ? `?${qs}` : ''}`);
     return data?.data ?? {};
   },
 

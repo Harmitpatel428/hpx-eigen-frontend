@@ -61,11 +61,10 @@ export function buildWaUrl(channel: WaChannel): string {
     return `https://chat.whatsapp.com/${identifier.replace(/^\//, '')}`;
   }
   if (channelType === 'USERNAME') {
-    // WA usernames must not have digits stripped — pass as-is
-    return `https://wa.me/${identifier.trim()}`;
+    return `https://web.whatsapp.com/send?phone=${encodeURIComponent(identifier.trim())}`;
   }
   // INDIVIDUAL_NUMBER + BUSINESS_ACCOUNT: digits only
-  return `https://wa.me/${identifier.replace(/\D/g, '')}`;
+  return `https://web.whatsapp.com/send?phone=${encodeURIComponent(identifier.replace(/\D/g, ''))}`;
 }
 
 export const CHANNEL_TYPE_LABELS: Record<WaChannelType, string> = {

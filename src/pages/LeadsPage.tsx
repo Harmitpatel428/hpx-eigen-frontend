@@ -5,7 +5,7 @@ import {
   Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine,
   X, Trash2,
   Building2, Calendar, MapPin,
-  Copy, Check, UserCheck,
+  Copy, Check, UserCheck, ChevronDown, Users,
 } from 'lucide-react';
 import type { Lead, LeadStage, LeadSource, LeadPriority, CustomFieldDef } from '../types';
 import { LEAD_STAGE_LABELS as STAGE_LABELS } from '../domain/leadStage';
@@ -88,6 +88,7 @@ export function LeadsPage() {
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   // Role/assignee dropdown: '' = All · 'UNASSIGNED' · `user:<id>` · `role:<id>`
   const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   // Advanced filters (Filters panel — audit S-03). '' = no constraint.
   const [showFilters, setShowFilters] = useState(false);
   const [sourceFilter, setSourceFilter] = useState('');
@@ -133,10 +134,16 @@ export function LeadsPage() {
     }
   }, [leadsResponse]);
 
+  const stageCountFilters = useMemo(() => ({
+    ...assigneeParams,
+    source: sourceFilter || undefined,
+    priority: priorityFilter || undefined,
+    search: debouncedSearch || undefined,
+  }), [assigneeParams, sourceFilter, priorityFilter, debouncedSearch]);
   const { data: stageCounts = {} } = useQuery<Record<string, number>>({
-    queryKey: ['lead-stage-counts'],
-    queryFn: () => leadService.stageCounts(),
-    staleTime: 60_000,
+    queryKey: ['lead-stage-counts', stageCountFilters],
+    queryFn: () => leadService.stageCounts(stageCountFilters),
+    staleTime: 30_000,
   });
 
   const { permissions } = useAuth();
@@ -147,6 +154,18 @@ export function LeadsPage() {
     enabled: canAssign,
     staleTime: 30_000,
   });
+
+  const assigneeLabel = (() => {
+    if (!assigneeFilter) return 'Role / Assignee';
+    if (assigneeFilter === 'UNASSIGNED') return 'Unassigned';
+    for (const g of assignmentSummary?.roleGroups ?? []) {
+      if (assigneeFilter === `role:${g.roleId}`) return `All ${g.roleName}`;
+      for (const u of g.users) {
+        if (assigneeFilter === `user:${u.userId}`) return [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unnamed';
+      }
+    }
+    return 'Role / Assignee';
+  })();
 
   const { data: crmSettings } = useQuery({
     queryKey: ['crm-settings'],
@@ -193,7 +212,8 @@ export function LeadsPage() {
   // in the NEW *stage* (not the NEW lifecycle status, which is almost always all).
   // stageCounts is scope-filtered but tab/search-independent, so both stay stable.
   const stageCountTotal = Object.values(stageCounts).reduce((s, n) => s + n, 0);
-  const datasetTotal = stageCountTotal || totalCount;
+  const hasActiveFilters = !!(assigneeFilter || sourceFilter || priorityFilter || debouncedSearch);
+  const datasetTotal = hasActiveFilters ? totalCount : (stageCountTotal || totalCount);
   const newStageCount = stageCounts['NEW'] ?? 0;
 
   const deleteMutation = useMutation({
@@ -367,7 +387,7 @@ export function LeadsPage() {
         <div>
           <h1 className="type-title">Leads</h1>
           <p className="type-body">
-            {isLoading && allLeads.length === 0 ? 'Loading…' : `${datasetTotal} total · ${newStageCount} new`}
+            {isLoading && allLeads.length === 0 ? 'Loading…' : hasActiveFilters ? `${totalCount} result${totalCount !== 1 ? 's' : ''}` : `${datasetTotal} total · ${newStageCount} new`}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -396,34 +416,88 @@ export function LeadsPage() {
               <button onClick={() => { setCaseIdInput(''); navigate(`/portal-preview/${encodeURIComponent(normalisedCaseId)}`); }} style={{ fontSize: 12, padding: '4px 10px', height: 28, borderRadius: 7, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Portal preview</button>
             </>
           )}
-          {/* ROLE / ASSIGNEE FILTER — options are server-computed (assignment-summary),
-              selection filters the list server-side via ownerId/roleId params */}
+          {/* ROLE / ASSIGNEE FILTER — custom popover dropdown */}
           {canAssign && (
-            <select
-              value={assigneeFilter}
-              onChange={e => setAssigneeFilter(e.target.value)}
-              aria-label="Filter by role or assignee"
-              title="Filter by role or assignee"
-              style={{ height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', maxWidth: 220 }}
-            >
-              <option value="">Role / Assignee · All</option>
-              {assignmentSummary && assignmentSummary.unassigned > 0 && (
-                <option value="UNASSIGNED">Unassigned · {assignmentSummary.unassigned}</option>
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn-ghost"
+                aria-expanded={showAssigneeDropdown}
+                aria-haspopup="listbox"
+                onClick={() => setShowAssigneeDropdown(v => !v)}
+                style={{ height: 28, padding: '0 8px', fontSize: 13, gap: 4, color: assigneeFilter ? 'var(--color-primary,#6366f1)' : 'var(--text-secondary)' }}
+              >
+                <Users size={14} /> {assigneeLabel}{assigneeFilter ? '' : ' · All'} <ChevronDown size={12} style={{ opacity: 0.5 }} />
+              </button>
+              {showAssigneeDropdown && (
+                <>
+                  <div onClick={() => setShowAssigneeDropdown(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div role="listbox" aria-label="Filter by role or assignee" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, minWidth: 220, maxWidth: 280, maxHeight: 360, overflowY: 'auto', background: 'var(--bg-app)', border: '1px solid var(--border-medium)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '6px 0' }}>
+                    {/* All */}
+                    <button role="option" aria-selected={!assigneeFilter} onClick={() => { setAssigneeFilter(''); setShowAssigneeDropdown(false); }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 12px', fontSize: 13, background: !assigneeFilter ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                      onMouseEnter={e => { if (assigneeFilter) (e.currentTarget.style.background = 'var(--bg-subtle)'); }}
+                      onMouseLeave={e => { if (assigneeFilter) (e.currentTarget.style.background = 'transparent'); }}
+                    >
+                      <span style={{ fontWeight: !assigneeFilter ? 600 : 400 }}>All</span>
+                      {!assigneeFilter && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                    </button>
+                    {/* Unassigned */}
+                    {assignmentSummary && assignmentSummary.unassigned > 0 && (
+                      <button role="option" aria-selected={assigneeFilter === 'UNASSIGNED'} onClick={() => { setAssigneeFilter('UNASSIGNED'); setShowAssigneeDropdown(false); }}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 12px', fontSize: 13, background: assigneeFilter === 'UNASSIGNED' ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                        onMouseEnter={e => { if (assigneeFilter !== 'UNASSIGNED') (e.currentTarget.style.background = 'var(--bg-subtle)'); }}
+                        onMouseLeave={e => { if (assigneeFilter !== 'UNASSIGNED') (e.currentTarget.style.background = 'transparent'); }}
+                      >
+                        <span style={{ fontWeight: assigneeFilter === 'UNASSIGNED' ? 600 : 400 }}>Unassigned</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{assignmentSummary.unassigned}</span>
+                          {assigneeFilter === 'UNASSIGNED' && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                        </span>
+                      </button>
+                    )}
+                    {/* Role groups */}
+                    {(assignmentSummary?.roleGroups ?? []).map(g => {
+                      const roleTotal = g.users.reduce((s, u) => s + u.count, 0);
+                      const roleVal = `role:${g.roleId}`;
+                      return (
+                        <div key={g.roleId}>
+                          <div style={{ height: 1, background: 'var(--border-medium)', margin: '4px 12px' }} />
+                          <div style={{ padding: '6px 12px 2px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>{g.roleName}</div>
+                          <button role="option" aria-selected={assigneeFilter === roleVal} onClick={() => { setAssigneeFilter(roleVal); setShowAssigneeDropdown(false); }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 12px', fontSize: 13, background: assigneeFilter === roleVal ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                            onMouseEnter={e => { if (assigneeFilter !== roleVal) (e.currentTarget.style.background = 'var(--bg-subtle)'); }}
+                            onMouseLeave={e => { if (assigneeFilter !== roleVal) (e.currentTarget.style.background = 'transparent'); }}
+                          >
+                            <span style={{ fontWeight: assigneeFilter === roleVal ? 600 : 400 }}>All {g.roleName}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{roleTotal}</span>
+                              {assigneeFilter === roleVal && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                            </span>
+                          </button>
+                          {g.users.map(u => {
+                            const uVal = `user:${u.userId}`;
+                            const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unnamed';
+                            return (
+                              <button key={u.userId} role="option" aria-selected={assigneeFilter === uVal} onClick={() => { setAssigneeFilter(uVal); setShowAssigneeDropdown(false); }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 12px 7px 24px', fontSize: 13, background: assigneeFilter === uVal ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                                onMouseEnter={e => { if (assigneeFilter !== uVal) (e.currentTarget.style.background = 'var(--bg-subtle)'); }}
+                                onMouseLeave={e => { if (assigneeFilter !== uVal) (e.currentTarget.style.background = 'transparent'); }}
+                              >
+                                <span style={{ fontWeight: assigneeFilter === uVal ? 600 : 400 }}>{name}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{u.count}</span>
+                                  {assigneeFilter === uVal && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
-              {(assignmentSummary?.roleGroups ?? []).map(g => {
-                const roleTotal = g.users.reduce((s, u) => s + u.count, 0);
-                return (
-                  <optgroup key={g.roleId} label={`${g.roleName} (${roleTotal})`}>
-                    <option value={`role:${g.roleId}`}>All {g.roleName} · {roleTotal}</option>
-                    {g.users.map(u => (
-                      <option key={u.userId} value={`user:${u.userId}`}>
-                        {[u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unnamed'} · {u.count}
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </select>
+            </div>
           )}
           {/* FILTERS — real popover wired to the list query (Source + Priority,
               both server-supported). Previously an inert button (audit S-03). */}

@@ -67,7 +67,7 @@ const AVATAR_GRADIENTS = [
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function whatsappUrl(phone: string) {
-  return `https://wa.me/${phone.replace(/\D/g, '')}`;
+  return `https://web.whatsapp.com/send?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`;
 }
 
 function avatarGradient(name: string): string {
@@ -1367,7 +1367,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                       {c.phone && (
                         <button
                           className="ldp-act ldp-wa"
-                          onClick={() => window.open(whatsappUrl(c.phone!), '_blank')}
+                          onClick={() => { window.open(whatsappUrl(c.phone!), 'crm_whatsapp'); }}
                           aria-label={`WhatsApp ${c.firstName}`}
                           style={{
                             width: 30, height: 30, border: '1px solid rgba(34,197,94,0.2)',
@@ -1425,7 +1425,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   const dest = primaryWaChannel
                     ? buildWaUrl(primaryWaChannel)
                     : contactPhone ? whatsappUrl(contactPhone) : null;
-                  if (dest) window.open(dest, '_blank');
+                  if (dest) { window.open(dest, 'crm_whatsapp'); return; }
                   else setActivePanel('whatsapp');
                 }}
                 disabled={!primaryWaChannel && !contactPhone}

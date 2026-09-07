@@ -126,7 +126,7 @@ function ChannelRow({
       ) : (
         <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
           <button
-            onClick={() => window.open(buildWaUrl(channel), '_blank')}
+            onClick={() => window.open(buildWaUrl(channel), 'crm_whatsapp')}
             title="Open in WhatsApp"
             style={smBtn('rgba(34,197,94,0.08)', '#16a34a', 'rgba(34,197,94,0.2)')}
           >
