@@ -885,12 +885,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const localLead = { ...lead, caseId: localCaseId };
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
-    // Intercept QUALIFIED → open handoff confirmation dialog
-    if (stage === 'QUALIFIED' && localStage !== 'QUALIFIED') {
-      setHandoffAgreed(false);
-      setShowHandoffConfirm(true);
-      return;
-    }
     const sameStage = stage === localStage;
     if (sameStage && !followUpDate) return;
     const prev = localStage;
@@ -1226,16 +1220,16 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const bodyContent = (
         <div style={{ padding: `1.375rem ${px}` }}>
 
-          {/* Case ID — visible only when Qualified filter is active */}
-          {showCaseId && (
-            <CaseIdSection
-              lead={localLead}
-              onCaseIdGenerated={(id) => {
-                setLocalCaseId(id);
-                onUpdated?.({ ...lead, caseId: id } as Lead);
-                qc.invalidateQueries({ queryKey: ['leads'] });
-              }}
-            />
+          {showCaseId && (!lead.handoffState || lead.handoffState === 'NONE') && (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%' }}
+                onClick={() => { setHandoffAgreed(false); setShowHandoffConfirm(true); }}
+              >
+                Hand off to Documentation
+              </button>
+            </div>
           )}
 
           {showCaseId && divider}
