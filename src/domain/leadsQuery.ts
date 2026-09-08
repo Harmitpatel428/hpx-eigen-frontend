@@ -1,16 +1,11 @@
 import type { LeadStage } from '../types';
 
-// When a search term is active, search must span ALL stages. Otherwise, with the
-// intentional default of the "New" stage (product decision S-01), the search box
-// silently finds nothing for the common case — every lead that lives in another
-// stage. This is a display/query decision only: it does NOT change the persisted
-// selected stage (so the New default and its persistence are untouched); it just
-// drops the stage constraint from the query while a search is running.
-//
-// Regression guard: leadsQuery.test.ts asserts search overrides the stage filter.
+// Search operates within the selected stage. The stage filter is no longer
+// dropped when a search term is active — selecting 'All Leads' is the
+// global-search path.
 export function effectiveStageForSearch(
   stage: LeadStage | '',
-  search: string,
+  _search: string,
 ): LeadStage | '' {
-  return search.trim().length > 0 ? '' : stage;
+  return stage;
 }

@@ -544,10 +544,10 @@ export function LeadsPage() {
       </div>
 
       <StageFilterPills
-        selectedStage={effectiveStage}
+        selectedStage={selectedStage}
         stageCounts={stageCounts}
         colourfulFilters={colourfulFilters}
-        onSelect={(s) => { if (searchQuery) setSearchQuery(''); setSelectedStage(s); }}
+        onSelect={(s) => { setSelectedStage(s); }}
       />
 
 
