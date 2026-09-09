@@ -173,4 +173,23 @@ export const documentationService = {
     const res = await api.get('/api/v1/documentation/dashboard');
     return unwrap<DocDashboardKPIs>(res);
   },
+
+  // PHASE 11 — case lifecycle actions
+  generateCaseId: async (caseId: string): Promise<{ caseId: string; caseNumber: string; alreadyGenerated: boolean }> => {
+    const res = await api.post(`/api/v1/cases/${caseId}/generate-case-id`);
+    return unwrap(res);
+  },
+
+  closeCaseWithoutDocs: async (
+    caseId: string,
+    reason: 'CLIENT_FAILED_DOCS' | 'CLIENT_UNRESPONSIVE' | 'DUPLICATE_CASE' | 'FIRM_DECISION',
+  ): Promise<{ caseId: string; caseNumber: string | null; status: string; closedAt: string; closedReason: string }> => {
+    const res = await api.post(`/api/v1/cases/${caseId}/close-no-docs`, { reason });
+    return unwrap(res);
+  },
+
+  reopenCase: async (caseId: string): Promise<{ caseId: string; caseNumber: string | null; status: string; reopenedAt: string }> => {
+    const res = await api.post(`/api/v1/cases/${caseId}/reopen`);
+    return unwrap(res);
+  },
 };

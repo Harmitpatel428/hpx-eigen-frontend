@@ -914,9 +914,9 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const handleConfirmHandoff = async () => {
     setHandoffSubmitting(true);
     try {
-      await handoffService.confirmHandoff(lead.id);
+      const docCase = await handoffService.confirmHandoff(lead.id);
       setLocalStage('QUALIFIED');
-      toast.success('Lead handed off to Documentation');
+      toast.success(docCase.caseId ? `Lead handed off to Documentation. Case ID: ${docCase.caseId}` : 'Lead handed off to Documentation');
       setShowHandoffConfirm(false);
       onUpdated?.({ ...lead, stage: 'QUALIFIED', handoffState: 'HANDED_OFF' } as Lead);
       qc.invalidateQueries({ queryKey: ['leads'] });

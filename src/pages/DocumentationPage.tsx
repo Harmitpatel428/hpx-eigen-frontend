@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { useAuth } from '../auth/context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,8 +46,9 @@ const CASE_STATUS_META: Record<string, { label: string; color: string; bg: strin
   RETURNED:                { label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
   DOCUMENTATION_READY:     { label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'  },
   TRANSFERRED_TO_PROCESS:  { label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
-  CLOSED:                  { label: 'Closed',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
-  CANCELLED:               { label: 'Cancelled',   color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
+  CLOSED:                  { label: 'Closed',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
+  CANCELLED:               { label: 'Cancelled',      color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
+  CLOSED_NO_DOCS:          { label: 'Closed No Docs', color: '#6b7280', bg: 'rgba(107,114,128,0.1)'},
 };
 
 const STORAGE_LABELS: Record<DocStorageType, string> = {
@@ -685,14 +688,86 @@ function ReturnCaseDialog({
   );
 }
 
+// ─── Close Without Docs dialog ───────────────────────────────────────────────
+type CloseReason = 'CLIENT_FAILED_DOCS' | 'CLIENT_UNRESPONSIVE' | 'DUPLICATE_CASE' | 'FIRM_DECISION';
+const CLOSE_REASON_LABELS: Record<CloseReason, string> = {
+  CLIENT_FAILED_DOCS:   'Client Failed Documentation',
+  CLIENT_UNRESPONSIVE:  'Client Unresponsive',
+  DUPLICATE_CASE:       'Duplicate Case',
+  FIRM_DECISION:        'Firm Decision',
+};
+
+function CloseWithoutDocsDialog({
+  onClose, onConfirm, submitting,
+}: { onClose: () => void; onConfirm: (reason: CloseReason) => void; submitting: boolean }) {
+  const [reason, setReason] = useState<CloseReason>('CLIENT_FAILED_DOCS');
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="surface-elevated" style={{ width: 460, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Close Case Without Documentation</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', fontSize: 12, color: '#991b1b' }}>
+          This will close the case and deactivate the client portal if active. This action can be reversed by a manager.
+        </div>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
+          <select className="input" style={{ width: '100%' }} value={reason} onChange={e => setReason(e.target.value as CloseReason)}>
+            {(Object.entries(CLOSE_REASON_LABELS) as [CloseReason, string][]).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
+            disabled={submitting} onClick={() => onConfirm(reason)}>
+            {submitting ? 'Closing…' : 'Close Case'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Reopen dialog ────────────────────────────────────────────────────────────
+function ReopenCaseDialog({
+  onClose, onConfirm, submitting,
+}: { onClose: () => void; onConfirm: () => void; submitting: boolean }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="surface-elevated" style={{ width: 440, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Reopen Closed Case</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.05)', border: '1px solid rgba(5,150,105,0.2)', fontSize: 12, color: '#065f46' }}>
+          This will reopen the case and set it back to Incoming status. The Case ID will be preserved.
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" style={{ fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
+            disabled={submitting} onClick={onConfirm}>
+            {submitting ? 'Reopening…' : 'Reopen Case'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Case detail panel (ContextPanel) ────────────────────────────────────────
 function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const { permissions } = useAuth();
   const [tab, setTab]   = useState<'documents' | 'timeline' | 'notes'>('documents');
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
   const [showReturn, setShowReturn] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
 
   const { data: docCase, isLoading } = useQuery({
     queryKey:  ['doc-case', caseId],
@@ -734,6 +809,39 @@ function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => v
     onSuccess: invalidate,
   });
 
+  const generateIdMutation = useMutation({
+    mutationFn: () => documentationService.generateCaseId(caseId),
+    onSuccess: (data) => {
+      toast.success(data.alreadyGenerated ? `Case ID already set: ${data.caseNumber}` : `Case ID generated: ${data.caseNumber}`);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+    onError: () => toast.error('Failed to generate Case ID'),
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: (reason: 'CLIENT_FAILED_DOCS' | 'CLIENT_UNRESPONSIVE' | 'DUPLICATE_CASE' | 'FIRM_DECISION') =>
+      documentationService.closeCaseWithoutDocs(caseId, reason),
+    onSuccess: () => {
+      toast.success('Case closed without documentation');
+      setShowCloseDialog(false);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+    onError: () => toast.error('Failed to close case'),
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: () => documentationService.reopenCase(caseId),
+    onSuccess: () => {
+      toast.success('Case reopened');
+      setShowReopenDialog(false);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+    onError: () => toast.error('Failed to reopen case'),
+  });
+
   if (isLoading || !docCase) {
     return (
       <div style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
@@ -772,6 +880,30 @@ function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => v
               <X size={18} style={{ color: 'var(--text-tertiary)' }} />
             </button>
           </div>
+        </div>
+
+        {/* Case ID */}
+        <div style={{ marginBottom: 12 }}>
+          {docCase.caseId ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {docCase.caseId}
+              </span>
+              <button type="button" className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11 }}
+                onClick={() => { navigator.clipboard.writeText(docCase.caseId!); toast.success('Case ID copied'); }}>
+                Copy
+              </button>
+            </div>
+          ) : (
+            permissions.can('cases:generate-id') && (
+              <button type="button" className="btn btn-ghost"
+                style={{ height: 28, paddingInline: 12, fontSize: 12, borderRadius: 6 }}
+                onClick={() => generateIdMutation.mutate()}
+                disabled={generateIdMutation.isPending}>
+                {generateIdMutation.isPending ? 'Generating…' : 'Generate Case ID'}
+              </button>
+            )
+          )}
         </div>
 
         {/* Progress summary */}
@@ -841,6 +973,21 @@ function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => v
             >
               <RefreshCw size={14} />
               Return to Sales
+            </button>
+          )}
+          {['INCOMING', 'ACTIVE'].includes(docCase.status) && permissions.can('cases:close') && (
+            <button className="btn" style={{
+              fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6,
+              background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer',
+            }}
+              onClick={() => setShowCloseDialog(true)}>
+              Close Without Docs
+            </button>
+          )}
+          {docCase.status === 'CLOSED_NO_DOCS' && permissions.can('cases:reopen') && (
+            <button className="btn btn-ghost" style={{ fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6 }}
+              onClick={() => setShowReopenDialog(true)}>
+              Reopen Case
             </button>
           )}
         </div>
@@ -1098,6 +1245,20 @@ function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => v
           submitting={returnMutation.isPending}
         />
       )}
+      {showCloseDialog && (
+        <CloseWithoutDocsDialog
+          onClose={() => setShowCloseDialog(false)}
+          onConfirm={(reason) => closeMutation.mutate(reason)}
+          submitting={closeMutation.isPending}
+        />
+      )}
+      {showReopenDialog && (
+        <ReopenCaseDialog
+          onClose={() => setShowReopenDialog(false)}
+          onConfirm={() => reopenMutation.mutate()}
+          submitting={reopenMutation.isPending}
+        />
+      )}
     </div>
   );
 }
@@ -1114,7 +1275,8 @@ const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
   { key: 'DOCUMENTATION_READY',    label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'   },
   { key: 'TRANSFERRED_TO_PROCESS', label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)'  },
   { key: 'RETURNED',               label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
-  { key: 'CLOSED',                 label: 'Closed',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
+  { key: 'CLOSED',                 label: 'Closed',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
+  { key: 'CLOSED_NO_DOCS',        label: 'Closed No Docs', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
 ];
 
 export function DocumentationPage() {
