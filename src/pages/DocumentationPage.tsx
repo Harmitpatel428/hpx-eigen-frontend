@@ -1,14 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Search, Plus, FileCheck, Clock, AlertTriangle, CheckCircle2,
-  ChevronRight, X, ArrowRight, Building2, FileText, Layers,
-  MoreVertical, Shield, RefreshCw, ExternalLink, MessageSquare,
-  FolderOpen, Calendar, AlertCircle, Inbox, History, Eye,
+  Search, Plus, Clock, AlertTriangle, CheckCircle2,
+  ChevronRight, X, ArrowRight, FileText, Layers,
+  Shield, RefreshCw, ExternalLink,
+  FolderOpen, AlertCircle, Inbox, Eye,
 } from 'lucide-react';
 import { documentationService } from '../services/documentation.service';
 import { handoffService } from '../services/handoff.service';
@@ -39,13 +39,13 @@ const DOC_STATUS_META: Record<DocDocumentStatus, { label: string; color: string;
 };
 
 const CASE_STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  INCOMING:                { label: 'Incoming',             color: '#d97706', bg: 'rgba(245,158,11,0.1)' },
-  ACTIVE:                  { label: 'Active',               color: '#2563eb', bg: 'rgba(37,99,235,0.1)'  },
-  RETURNED:                { label: 'Returned',             color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
-  DOCUMENTATION_READY:     { label: 'Ready',                color: '#059669', bg: 'rgba(5,150,105,0.1)'  },
-  TRANSFERRED_TO_PROCESS:  { label: 'Transferred',          color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
-  CLOSED:                  { label: 'Closed',               color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
-  CANCELLED:               { label: 'Cancelled',            color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
+  INCOMING:                { label: 'Incoming',    color: '#d97706', bg: 'rgba(245,158,11,0.1)' },
+  ACTIVE:                  { label: 'Active',      color: '#2563eb', bg: 'rgba(37,99,235,0.1)'  },
+  RETURNED:                { label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
+  DOCUMENTATION_READY:     { label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'  },
+  TRANSFERRED_TO_PROCESS:  { label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  CLOSED:                  { label: 'Closed',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
+  CANCELLED:               { label: 'Cancelled',   color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
 };
 
 const STORAGE_LABELS: Record<DocStorageType, string> = {
@@ -77,6 +77,10 @@ const VALID_NEXT: Record<DocDocumentStatus, DocDocumentStatus[]> = {
   MANAGER_APPROVED:    [],
 };
 
+// Grid column templates — matches Leads page density
+const CASE_GRID     = 'minmax(200px,1.6fr) minmax(150px,1fr) minmax(100px,0.75fr) 72px';
+const INCOMING_GRID = 'minmax(200px,1.6fr) minmax(120px,0.9fr) 140px 160px';
+
 function initials(first: string, last: string) {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
@@ -95,33 +99,34 @@ function relativeTime(iso: string) {
 // SUB-COMPONENTS
 // ============================================================================
 
-// ─── KPI strip ───────────────────────────────────────────────────────────────
-function KpiStrip({ kpis }: { kpis: { label: string; value: number; accent?: string }[] }) {
+// ─── Avatar (matches Leads page: 22×22, rounded square, dark gradient) ────────
+function Avatar({ first, last }: { first: string; last: string }) {
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-8)' }}>
-      {kpis.map(k => (
-        <div key={k.label} className="surface" style={{
-          padding: '14px 20px', borderRadius: 'var(--radius-lg)', minWidth: 140,
-          borderLeft: `3px solid ${k.accent ?? 'var(--color-accent)'}`,
-        }}>
-          <div className="type-micro" style={{ marginBottom: 4, color: 'var(--text-tertiary)' }}>{k.label}</div>
-          <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1, color: k.accent ?? 'var(--text-primary)' }}>{k.value}</div>
-        </div>
-      ))}
+    <div style={{
+      width: 22, height: 22, borderRadius: 4, flexShrink: 0,
+      background: 'linear-gradient(135deg,#1e293b 0%,#334155 100%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.02em',
+    }}>
+      {initials(first, last)}
     </div>
   );
 }
 
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-function ProgressBar({ pct, ready }: { pct: number; ready: boolean }) {
-  const color = ready ? '#059669' : pct >= 80 ? '#d97706' : '#6366f1';
+// ─── Case status badge (matches Leads stage badge style) ──────────────────────
+function CaseBadge({ status }: { status: string }) {
+  const m = CASE_STATUS_META[status] ?? CASE_STATUS_META.ACTIVE;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 6, background: 'var(--bg-muted)', borderRadius: 99, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.4s' }} />
-      </div>
-      <span style={{ fontSize: 11, fontWeight: 600, color, minWidth: 32, textAlign: 'right' }}>{pct}%</span>
-    </div>
+    <span style={{
+      display: 'inline-block',
+      padding: '2px 6px', borderRadius: 3,
+      fontSize: 10, fontWeight: 600,
+      background: m.bg, color: m.color,
+      textTransform: 'uppercase', letterSpacing: '0.02em',
+      whiteSpace: 'nowrap',
+    }}>
+      {m.label}
+    </span>
   );
 }
 
@@ -140,59 +145,67 @@ function StatusChip({ status }: { status: DocDocumentStatus }) {
   );
 }
 
-// ─── Case row ─────────────────────────────────────────────────────────────────
+// ─── Progress bar (used in detail panel only) ─────────────────────────────────
+function ProgressBar({ pct, ready }: { pct: number; ready: boolean }) {
+  const color = ready ? '#059669' : pct >= 80 ? '#d97706' : '#6366f1';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ flex: 1, height: 6, background: 'var(--bg-muted)', borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.4s' }} />
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 600, color, minWidth: 32, textAlign: 'right' }}>{pct}%</span>
+    </div>
+  );
+}
+
+// ─── Case row (dense, matches Leads page style) ───────────────────────────────
 function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }) {
-  const sm = CASE_STATUS_META[docCase.status] ?? CASE_STATUS_META.ACTIVE;
   return (
     <div
-      className="list-row"
+      className="dense-row"
       onClick={onClick}
-      style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 180px 80px', alignItems: 'center', gap: 16, cursor: 'pointer' }}
+      style={{
+        display: 'grid', gridTemplateColumns: CASE_GRID,
+        alignItems: 'center', gap: 12, cursor: 'pointer',
+        padding: '8px 12px',
+        borderBottom: '1px solid var(--border-light)',
+        contain: 'layout style',
+      }}
     >
       {/* Lead */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0,
-        }}>
-          {initials(docCase.lead.firstName, docCase.lead.lastName)}
-        </div>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <Avatar first={docCase.lead.firstName} last={docCase.lead.lastName} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {docCase.lead.firstName} {docCase.lead.lastName}
           </div>
           {docCase.lead.company && (
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{docCase.lead.company}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {docCase.lead.company}
+            </div>
           )}
         </div>
       </div>
 
       {/* Preset */}
-      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
         {docCase.preset ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Layers size={12} />
-            {docCase.preset.name}
-          </span>
+          <>
+            <Layers size={11} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{docCase.preset.name}</span>
+          </>
         ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
       </div>
 
-      {/* Status */}
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px',
-        borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
-        background: sm.bg, color: sm.color, width: 'fit-content',
-      }}>
-        {sm.label}
-      </span>
+      {/* Status badge */}
+      <CaseBadge status={docCase.status} />
 
-      {/* Progress */}
-      <ProgressBar pct={docCase.completionPercent} ready={docCase.isReady} />
-
-      {/* Chevron */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <ChevronRight size={16} style={{ color: 'var(--text-tertiary)' }} />
+      {/* Completion % + chevron */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: docCase.isReady ? '#059669' : 'var(--text-tertiary)', minWidth: 28, textAlign: 'right' }}>
+          {docCase.completionPercent}%
+        </span>
+        <ChevronRight size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
       </div>
     </div>
   );
@@ -200,9 +213,7 @@ function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }
 
 // ─── Document row inside case panel ──────────────────────────────────────────
 function DocumentRow({
-  doc,
-  onStatusChange,
-  onAddStorageRef,
+  doc, onStatusChange, onAddStorageRef,
 }: {
   doc: DocCaseDocument;
   onStatusChange: (docId: string, status: DocDocumentStatus, remarks?: string, rejectionReason?: string) => void;
@@ -220,7 +231,6 @@ function DocumentRow({
         style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
         onClick={() => setExpanded(e => !e)}
       >
-        {/* Mandatory dot */}
         <span style={{
           width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
           background: doc.isMandatory ? '#dc2626' : '#9ca3af',
@@ -251,7 +261,6 @@ function DocumentRow({
 
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border-light)', padding: '12px 14px', background: 'var(--bg-subtle)' }}>
-          {/* Timestamps */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
             {doc.receivedAt && (
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -285,7 +294,6 @@ function DocumentRow({
             </div>
           )}
 
-          {/* Storage refs */}
           {doc.storageRefs.length > 0 && (
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 4 }}>STORAGE REFERENCES</div>
@@ -300,7 +308,6 @@ function DocumentRow({
             </div>
           )}
 
-          {/* Actions */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {nextStatuses.map(next => {
               const m = DOC_STATUS_META[next];
@@ -342,15 +349,7 @@ const storageRefSchema = z.object({
 });
 type StorageRefForm = z.infer<typeof storageRefSchema>;
 
-function StorageRefModal({
-  docId,
-  onClose,
-  onSuccess,
-}: {
-  docId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
+function StorageRefModal({ docId, onClose, onSuccess }: { docId: string; onClose: () => void; onSuccess: () => void }) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<StorageRefForm>({
     resolver: zodResolver(storageRefSchema),
     defaultValues: { storageType: 'OTHER' },
@@ -399,19 +398,16 @@ function StorageRefModal({
 
 // ─── Create Case modal ────────────────────────────────────────────────────────
 const createCaseSchema = z.object({
-  leadId:     z.string().min(1, 'Lead is required'),
-  presetId:   z.string().optional(),
-  dueDate:    z.string().optional(),
-  priority:   z.number().min(0).max(2).optional(),
-  notes:      z.string().optional(),
+  leadId:   z.string().min(1, 'Lead is required'),
+  presetId: z.string().optional(),
+  dueDate:  z.string().optional(),
+  priority: z.number().min(0).max(2).optional(),
+  notes:    z.string().optional(),
 });
 type CreateCaseForm = z.infer<typeof createCaseSchema>;
 
 function CreateCaseModal({
-  leads,
-  presets,
-  onClose,
-  onSuccess,
+  leads, presets, onClose, onSuccess,
 }: {
   leads: Array<{ id: string; firstName: string; lastName: string; company: string | null }>;
   presets: DocPreset[];
@@ -491,7 +487,7 @@ function CreateCaseModal({
   );
 }
 
-// ─── SLA waiting clock for incoming cases ───────────────────────────────────
+// ─── SLA waiting clock for incoming cases ─────────────────────────────────────
 function SlaClock({ handoffAt }: { handoffAt: string | null }) {
   if (!handoffAt) return null;
   const age = getHandoffAge(handoffAt);
@@ -510,12 +506,9 @@ function SlaClock({ handoffAt }: { handoffAt: string | null }) {
   );
 }
 
-// ─── Incoming case row ──────────────────────────────────────────────────────
+// ─── Incoming case row ────────────────────────────────────────────────────────
 function IncomingCaseRow({
-  docCase,
-  onAccept,
-  onReject,
-  accepting,
+  docCase, onAccept, onReject, accepting,
 }: {
   docCase: DocCase;
   onAccept: () => void;
@@ -523,58 +516,49 @@ function IncomingCaseRow({
   accepting: boolean;
 }) {
   return (
-    <div className="list-row" style={{
-      display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 140px 160px',
-      alignItems: 'center', gap: 16, padding: '10px 16px',
+    <div className="dense-row" style={{
+      display: 'grid', gridTemplateColumns: INCOMING_GRID,
+      alignItems: 'center', gap: 12,
+      padding: '8px 12px',
+      borderBottom: '1px solid var(--border-light)',
+      contain: 'layout style',
     }}>
       {/* Lead */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0,
-        }}>
-          {initials(docCase.lead.firstName, docCase.lead.lastName)}
-        </div>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <Avatar first={docCase.lead.firstName} last={docCase.lead.lastName} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {docCase.lead.firstName} {docCase.lead.lastName}
           </div>
           {docCase.lead.company && (
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{docCase.lead.company}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {docCase.lead.company}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Preset */}
-      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-        {docCase.preset ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Layers size={12} />
-            {docCase.preset.name}
-          </span>
-        ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
-      </div>
-
       {/* Case ID */}
-      <div style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace', color: 'var(--text-secondary)' }}>
+      <div style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {docCase.caseId ?? '—'}
       </div>
 
-      {/* SLA Clock */}
+      {/* SLA */}
       <SlaClock handoffAt={docCase.handoffAt} />
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-        <button className="btn btn-primary" style={{ fontSize: 11, padding: '5px 12px' }}
-          onClick={onAccept} disabled={accepting}>
-          <CheckCircle2 size={12} style={{ marginRight: 4 }} />
+        <button className="btn btn-primary"
+          style={{ fontSize: 11, height: 28, paddingInline: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+          onClick={onAccept} disabled={accepting}
+        >
+          <CheckCircle2 size={12} />
           Accept
         </button>
-        <button className="btn" style={{
-          fontSize: 11, padding: '5px 12px', border: '1px solid var(--border-medium)',
-          background: 'none', color: '#dc2626', cursor: 'pointer',
-        }} onClick={onReject}>
+        <button className="btn btn-ghost"
+          style={{ fontSize: 11, height: 28, paddingInline: 10, color: '#dc2626' }}
+          onClick={onReject}
+        >
           Reject
         </button>
       </div>
@@ -582,12 +566,9 @@ function IncomingCaseRow({
   );
 }
 
-// ─── Reject handoff dialog ──────────────────────────────────────────────────
+// ─── Reject handoff dialog ────────────────────────────────────────────────────
 function RejectHandoffDialog({
-  docCase,
-  onClose,
-  onConfirm,
-  submitting,
+  docCase, onClose, onConfirm, submitting,
 }: {
   docCase: DocCase;
   onClose: () => void;
@@ -605,26 +586,21 @@ function RejectHandoffDialog({
           <h3 style={{ fontWeight: 700, fontSize: 16 }}>Reject Handoff</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
         </div>
-
         <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', fontSize: 12, color: '#991b1b' }}>
           Rejecting returns the case to the Sales rep who submitted it. The lead will stay in Qualified stage with a "Returned by Docs" flag.
         </div>
-
         <div style={{ marginBottom: 'var(--space-4)', fontSize: 12, color: 'var(--text-secondary)' }}>
           <strong>Lead:</strong> {docCase.lead.firstName} {docCase.lead.lastName}
           {docCase.lead.company && ` — ${docCase.lead.company}`}
         </div>
-
         <div style={{ marginBottom: 'var(--space-3)' }}>
           <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
-          <select className="input" style={{ width: '100%' }}
-            value={reason} onChange={e => setReason(e.target.value as HandoffReturnReason)}>
+          <select className="input" style={{ width: '100%' }} value={reason} onChange={e => setReason(e.target.value as HandoffReturnReason)}>
             {Object.entries(HANDOFF_RETURN_REASON_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
         </div>
-
         <div style={{ marginBottom: 'var(--space-4)' }}>
           <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
             Note {noteRequired && <span style={{ color: '#dc2626' }}>*</span>}
@@ -633,7 +609,6 @@ function RejectHandoffDialog({
             value={note} onChange={e => setNote(e.target.value)}
             placeholder="Explain what needs to be fixed…" />
         </div>
-
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn" style={{
@@ -650,12 +625,9 @@ function RejectHandoffDialog({
   );
 }
 
-// ─── Return case dialog (post-acceptance) ───────────────────────────────────
+// ─── Return case dialog ───────────────────────────────────────────────────────
 function ReturnCaseDialog({
-  docCase,
-  onClose,
-  onConfirm,
-  submitting,
+  docCase, onClose, onConfirm, submitting,
 }: {
   docCase: DocCase;
   onClose: () => void;
@@ -673,7 +645,6 @@ function ReturnCaseDialog({
           <h3 style={{ fontWeight: 700, fontSize: 16 }}>Return to Sales</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
         </div>
-
         <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12, color: '#92400e' }}>
           This case has already been accepted. Returning it sends it back to the Sales rep for correction.
           {docCase.returnCount >= 1 && (
@@ -682,17 +653,14 @@ function ReturnCaseDialog({
             </strong>
           )}
         </div>
-
         <div style={{ marginBottom: 'var(--space-3)' }}>
           <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
-          <select className="input" style={{ width: '100%' }}
-            value={reason} onChange={e => setReason(e.target.value as HandoffReturnReason)}>
+          <select className="input" style={{ width: '100%' }} value={reason} onChange={e => setReason(e.target.value as HandoffReturnReason)}>
             {Object.entries(HANDOFF_RETURN_REASON_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
         </div>
-
         <div style={{ marginBottom: 'var(--space-4)' }}>
           <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
             Note {noteRequired && <span style={{ color: '#dc2626' }}>*</span>}
@@ -701,7 +669,6 @@ function ReturnCaseDialog({
             value={note} onChange={e => setNote(e.target.value)}
             placeholder="Describe the issue…" />
         </div>
-
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn" style={{
@@ -719,13 +686,7 @@ function ReturnCaseDialog({
 }
 
 // ─── Case detail panel (ContextPanel) ────────────────────────────────────────
-function CaseDetailPanel({
-  caseId,
-  onClose,
-}: {
-  caseId: string;
-  onClose: () => void;
-}) {
+function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [tab, setTab]   = useState<'documents' | 'timeline' | 'notes'>('documents');
   const [noteInput, setNoteInput] = useState('');
@@ -939,7 +900,6 @@ function CaseDetailPanel({
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
         {tab === 'documents' && (
           <div>
-            {/* Missing panel */}
             {missingMandatory.length > 0 && (
               <div style={{ marginBottom: 16, padding: 12, background: 'rgba(220,38,38,0.04)', borderRadius: 8, border: '1px solid rgba(220,38,38,0.12)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -1061,19 +1021,19 @@ function CaseDetailPanel({
               </div>
             </div>
 
-            {/* New note composer */}
+            {/* Note composer */}
             <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                {(['INTERNAL', 'CLIENT_VISIBLE'] as DocNoteType[]).map(nt => (
+                {(['INTERNAL', 'CUSTOMER'] as DocNoteType[]).map(nt => (
                   <button key={nt} onClick={() => setNoteType(nt)} style={{
                     fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-full)',
                     background: noteType === nt
-                      ? nt === 'CLIENT_VISIBLE' ? '#111827' : 'var(--color-accent)'
+                      ? nt === 'CUSTOMER' ? '#111827' : 'var(--color-accent)'
                       : 'var(--bg-muted)',
                     color: noteType === nt ? 'var(--text-inverse)' : 'var(--text-secondary)',
                     border: 'none', cursor: 'pointer',
                   }}>
-                    {nt === 'CLIENT_VISIBLE' ? 'Client-visible' : 'Internal'}
+                    {nt === 'CUSTOMER' ? 'Client-visible' : 'Internal'}
                   </button>
                 ))}
               </div>
@@ -1088,13 +1048,13 @@ function CaseDetailPanel({
               <button
                 style={{
                   height: 32, borderRadius: 999, paddingInline: 16, border: 'none',
-                  background: noteType === 'CLIENT_VISIBLE' ? '#111827' : 'var(--color-accent)',
+                  background: noteType === 'CUSTOMER' ? '#111827' : 'var(--color-accent)',
                   color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
                 onClick={() => noteMutation.mutate()}
                 disabled={!noteInput.trim() || noteMutation.isPending}
               >
-                {noteMutation.isPending ? 'Saving…' : noteType === 'CLIENT_VISIBLE' ? 'Publish to client' : 'Add Note'}
+                {noteMutation.isPending ? 'Saving…' : noteType === 'CUSTOMER' ? 'Publish to client' : 'Add Note'}
               </button>
             </div>
 
@@ -1105,8 +1065,8 @@ function CaseDetailPanel({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                      color: note.noteType === 'CLIENT_VISIBLE' ? '#111827' : note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
-                    }}>{note.noteType === 'CLIENT_VISIBLE' ? 'Client-visible' : note.noteType}</span>
+                      color: note.noteType === 'CUSTOMER' ? '#111827' : note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
+                    }}>{note.noteType === 'CUSTOMER' ? 'Client-visible' : note.noteType}</span>
                     {note.clientVisible && (
                       <Eye size={11} style={{ color: '#6b7280' }} />
                     )}
@@ -1122,7 +1082,6 @@ function CaseDetailPanel({
         )}
       </div>
 
-      {/* Storage ref modal */}
       {storageDocId && (
         <StorageRefModal
           docId={storageDocId}
@@ -1131,7 +1090,6 @@ function CaseDetailPanel({
         />
       )}
 
-      {/* Return to Sales dialog */}
       {showReturn && docCase && (
         <ReturnCaseDialog
           docCase={docCase}
@@ -1148,16 +1106,35 @@ function CaseDetailPanel({
 // MAIN PAGE
 // ============================================================================
 
+// Pill definitions — "All Cases" + each distinct case status
+const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
+  { key: '',                       label: 'All Cases',   color: '#0f172a', bg: 'rgba(15,23,42,0.07)'   },
+  { key: 'ACTIVE',                 label: 'Active',      color: '#2563eb', bg: 'rgba(37,99,235,0.1)'   },
+  { key: 'INCOMING',               label: 'Incoming',    color: '#d97706', bg: 'rgba(245,158,11,0.1)'  },
+  { key: 'DOCUMENTATION_READY',    label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'   },
+  { key: 'TRANSFERRED_TO_PROCESS', label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)'  },
+  { key: 'RETURNED',               label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
+  { key: 'CLOSED',                 label: 'Closed',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
+];
+
 export function DocumentationPage() {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [search, setSearch]             = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [showCreate, setShowCreate]     = useState(false);
+  const [rawSearch, setRawSearch] = useState('');
+  const [search, setSearch]       = useState('');
+  const [statusPill, setStatusPill] = useState<string>(
+    searchParams.get('status') ?? ''
+  );
+  const [showCreate, setShowCreate]       = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(searchParams.get('caseId'));
-  const [viewMode, setViewMode]         = useState<'cases' | 'incoming'>(searchParams.get('view') === 'incoming' ? 'incoming' : 'cases');
-  const [rejectTarget, setRejectTarget] = useState<DocCase | null>(null);
-  const [acceptingId, setAcceptingId]   = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget]   = useState<DocCase | null>(null);
+  const [acceptingId, setAcceptingId]     = useState<string | null>(null);
+
+  // 400ms debounce — matches Leads page
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(rawSearch), 400);
+    return () => clearTimeout(t);
+  }, [rawSearch]);
 
   useEffect(() => {
     if (selectedCaseId && searchParams.has('caseId')) {
@@ -1165,29 +1142,62 @@ export function DocumentationPage() {
     }
   }, [selectedCaseId]);
 
+  const isIncoming = statusPill === 'INCOMING';
+
   // Cases list
   const { data: casesResponse, isLoading: casesLoading } = useQuery({
-    queryKey:  ['doc-cases', { search, status: statusFilter }],
-    queryFn:   () => documentationService.listCases({ search: search || undefined, status: statusFilter || undefined, pageSize: 50 }),
+    queryKey:  ['doc-cases', { search, status: isIncoming ? undefined : statusPill || undefined }],
+    queryFn:   () => documentationService.listCases({
+      search:   search || undefined,
+      status:   isIncoming ? undefined : statusPill || undefined,
+      pageSize: 50,
+    }),
     staleTime: 30_000,
-    enabled:   viewMode === 'cases',
+    enabled:   !isIncoming,
   });
-  const cases: DocCase[] = casesResponse?.data ?? [];
+  const cases = useMemo<DocCase[]>(() => casesResponse?.data ?? [], [casesResponse]);
 
-  // Incoming handoffs
+  // Incoming handoffs — always fetched so the pill badge count is live
   const { data: incomingCases = [], isLoading: incomingLoading } = useQuery({
     queryKey:  ['incoming-handoffs'],
     queryFn:   () => handoffService.getIncoming(),
     staleTime: 15_000,
-    enabled:   viewMode === 'incoming',
   });
+
+  // KPIs — pill counts + subtitle
+  const { data: kpis } = useQuery({
+    queryKey:  ['doc-dashboard'],
+    queryFn:   () => documentationService.getDashboardKPIs(),
+    staleTime: 60_000,
+  });
+
+  // Presets & leads for create modal
+  const { data: presets = [] } = useQuery({
+    queryKey:  ['doc-presets'],
+    queryFn:   () => documentationService.listPresets(),
+    staleTime: 300_000,
+  });
+
+  const { data: leadsResponse } = useQuery({
+    queryKey: ['leads', {}],
+    queryFn:  async () => {
+      const { api } = await import('../services/api');
+      const res = await api.get('/leads?pageSize=200');
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+  const leads = useMemo(
+    () => (leadsResponse?.data ?? []) as Array<{ id: string; firstName: string; lastName: string; company: string | null }>,
+    [leadsResponse]
+  );
 
   // Accept mutation
   const acceptMutation = useMutation({
     mutationFn: (caseId: string) => handoffService.accept(caseId),
-    onMutate: (caseId) => setAcceptingId(caseId),
-    onSettled: () => setAcceptingId(null),
-    onSuccess: () => {
+    onMutate:   (caseId) => setAcceptingId(caseId),
+    onSettled:  () => setAcceptingId(null),
+    onSuccess:  () => {
       qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
       qc.invalidateQueries({ queryKey: ['doc-cases'] });
       qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
@@ -1206,118 +1216,108 @@ export function DocumentationPage() {
     },
   });
 
-  // KPIs
-  const { data: kpis } = useQuery({
-    queryKey:  ['doc-dashboard'],
-    queryFn:   () => documentationService.getDashboardKPIs(),
-    staleTime: 60_000,
-  });
+  // Map pill key → count
+  const pillCounts = useMemo<Record<string, number>>(() => ({
+    '':                       kpis?.totalCases       ?? 0,
+    'ACTIVE':                 kpis?.activeCases      ?? 0,
+    'INCOMING':               incomingCases.length,
+    'DOCUMENTATION_READY':    kpis?.readyCases       ?? 0,
+    'TRANSFERRED_TO_PROCESS': kpis?.transferredCases ?? 0,
+    'RETURNED':               0,
+    'CLOSED':                 0,
+  }), [kpis, incomingCases.length]);
 
-  // Presets & leads (for create modal)
-  const { data: presets = [] } = useQuery({
-    queryKey: ['doc-presets'],
-    queryFn:  () => documentationService.listPresets(),
-    staleTime: 300_000,
-  });
-
-  // Leads list (for create case dropdown — reuse existing leads query)
-  const { data: leadsResponse } = useQuery({
-    queryKey: ['leads', {}],
-    queryFn:  async () => {
-      const { api } = await import('../services/api');
-      const res = await api.get('/leads?pageSize=200');
-      return res.data;
-    },
-    staleTime: 60_000,
-  });
-  const leads = (leadsResponse?.data ?? []) as Array<{ id: string; firstName: string; lastName: string; company: string | null }>;
-
-  const kpiItems = kpis ? [
-    { label: 'Total Cases',       value: kpis.totalCases,       accent: '#6366f1' },
-    { label: 'Active',            value: kpis.activeCases,       accent: '#2563eb' },
-    { label: 'Ready for Process', value: kpis.readyCases,        accent: '#059669' },
-    { label: 'Transferred',       value: kpis.transferredCases,  accent: '#7c3aed' },
-    { label: 'Rejected Docs',     value: kpis.rejectedDocs,      accent: '#dc2626' },
-    { label: 'Pending Verify',    value: kpis.pendingVerification, accent: '#d97706' },
-  ] : [];
+  const totalCases    = kpis?.totalCases ?? 0;
+  const incomingCount = incomingCases.length;
 
   return (
     <div style={{ padding: 'var(--space-8)', maxWidth: 1200 }}>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
         <div>
-          <h1 className="type-title" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em' }}>Documentation</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
-            Track document collection readiness across all cases
+          <h1 className="type-title" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em' }}>
+            Documentation
+          </h1>
+          <p className="type-body" style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 3 }}>
+            {totalCases} total · {incomingCount} incoming
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          <Plus size={16} /> New Case
+          style={{ display: 'flex', alignItems: 'center', gap: 6, height: 28, paddingInline: 12, fontSize: 13, borderRadius: 6 }}>
+          <Plus size={14} />
+          New Case
         </button>
       </div>
 
-      {/* KPIs */}
-      {kpis && <KpiStrip kpis={kpiItems} />}
-
-      {/* View toggle: Cases / Incoming */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-medium)' }}>
-        {([
-          { key: 'cases' as const, label: 'All Cases', icon: FileText },
-          { key: 'incoming' as const, label: 'Incoming', icon: Inbox, count: incomingCases.length },
-        ]).map(tab => (
-          <button key={tab.key} onClick={() => setViewMode(tab.key)} style={{
-            padding: '10px 18px', fontSize: 13, fontWeight: viewMode === tab.key ? 600 : 400,
-            color: viewMode === tab.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
-            background: 'none', border: 'none', cursor: 'pointer',
-            borderBottom: viewMode === tab.key ? '2px solid var(--text-primary)' : '2px solid transparent',
-            marginBottom: -1, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <tab.icon size={14} />
-            {tab.label}
-            {tab.key === 'incoming' && viewMode !== 'incoming' && incomingCases.length > 0 && (
-              <span style={{
-                background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 700,
-                padding: '1px 6px', borderRadius: 99, minWidth: 18, textAlign: 'center',
-              }}>
-                {incomingCases.length}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Filter pills — replaces KPI strip + tab view toggle */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '6px 0', marginBottom: 'var(--space-4)',
+        overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0,
+      }}>
+        {PILL_DEFS.map(pill => {
+          const active = statusPill === pill.key;
+          const count  = pillCounts[pill.key];
+          return (
+            <button
+              key={pill.key}
+              type="button"
+              onClick={() => setStatusPill(active ? '' : pill.key)}
+              aria-pressed={active}
+              className={`stage-pill${active ? ' stage-pill--active' : ''}`}
+              style={active ? { color: pill.color, background: pill.bg, borderColor: pill.color } : undefined}
+            >
+              <span className="stage-pill-dot" style={active ? { background: pill.color, opacity: 1 } : undefined} />
+              {pill.label}
+              {/* Incoming pill: red badge when not active */}
+              {pill.key === 'INCOMING' && !active && count > 0 && (
+                <span style={{
+                  background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700,
+                  padding: '1px 5px', borderRadius: 99, minWidth: 16, textAlign: 'center',
+                }}>
+                  {count}
+                </span>
+              )}
+              {/* Count badge for all other pills */}
+              {count > 0 && !(pill.key === 'INCOMING' && !active) && (
+                <span className="stage-pill-count">{count}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {viewMode === 'cases' && (
-        <>
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
-              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-              <input
-                className="input"
-                style={{ paddingLeft: 34, width: '100%' }}
-                placeholder="Search leads…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
-            <select className="input" style={{ width: 180 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All Statuses</option>
-              {Object.entries(CASE_STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
+      {/* Search toolbar */}
+      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-3)', alignItems: 'center' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+          <input
+            className="input"
+            style={{ width: 190, paddingLeft: 30, height: 28, fontSize: 13 }}
+            placeholder="Search cases…"
+            value={rawSearch}
+            onChange={e => setRawSearch(e.target.value)}
+            aria-label="Search documentation cases"
+          />
+        </div>
+      </div>
 
-          {/* Table header */}
+      {/* ── Cases table ── */}
+      {!isIncoming && (
+        <>
           <div style={{
-            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 180px 80px',
-            padding: '8px 16px', gap: 16, marginBottom: 4,
+            display: 'grid', gridTemplateColumns: CASE_GRID,
+            padding: '6px 12px', gap: 12,
+            position: 'sticky', top: 0, zIndex: 2,
+            background: 'var(--bg-app)',
+            borderBottom: '1px solid var(--border-medium)',
           }}>
-            {['Lead', 'Preset', 'Status', 'Progress', ''].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>{h}</div>
+            {['Lead', 'Preset', 'Status', '%'].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-tertiary)' }}>
+                {h}
+              </div>
             ))}
           </div>
 
-          {/* Cases */}
           {casesLoading ? (
             <div style={{ padding: '40px 0', textAlign: 'center' }}>
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900 mx-auto" />
@@ -1326,7 +1326,9 @@ export function DocumentationPage() {
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)' }}>
               <FileText size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No documentation cases</div>
-              <div style={{ fontSize: 13 }}>Create a case from a qualified lead to start tracking documents</div>
+              <div style={{ fontSize: 13 }}>
+                {rawSearch ? 'No cases match your search' : 'Create a case from a qualified lead to start tracking documents'}
+              </div>
             </div>
           ) : (
             cases.map(c => (
@@ -1336,18 +1338,23 @@ export function DocumentationPage() {
         </>
       )}
 
-      {viewMode === 'incoming' && (
+      {/* ── Incoming table ── */}
+      {isIncoming && (
         <>
-          {/* Incoming table header */}
           <div style={{
-            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 140px 160px',
-            padding: '8px 16px', gap: 16, marginBottom: 4,
+            display: 'grid', gridTemplateColumns: INCOMING_GRID,
+            padding: '6px 12px', gap: 12,
+            position: 'sticky', top: 0, zIndex: 2,
+            background: 'var(--bg-app)',
+            borderBottom: '1px solid var(--border-medium)',
           }}>
-            {['Lead', 'Preset', 'Case ID', 'Waiting', 'Actions'].map(h => (
+            {['Lead', 'Case ID', 'Waiting', 'Actions'].map(h => (
               <div key={h} style={{
-                fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em',
                 color: 'var(--text-tertiary)', textAlign: h === 'Actions' ? 'right' : 'left',
-              }}>{h}</div>
+              }}>
+                {h}
+              </div>
             ))}
           </div>
 

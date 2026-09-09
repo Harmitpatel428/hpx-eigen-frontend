@@ -921,6 +921,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
       onUpdated?.({ ...lead, stage: 'QUALIFIED', handoffState: 'HANDED_OFF' } as Lead);
       qc.invalidateQueries({ queryKey: ['leads'] });
       qc.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      qc.invalidateQueries({ queryKey: ['doc-cases'] });
+      qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
     } catch (err: any) {
       toast.error(err?.response?.data?.message ?? 'Handoff failed');
     } finally {

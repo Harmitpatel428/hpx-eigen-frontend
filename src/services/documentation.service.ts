@@ -71,31 +71,31 @@ export const documentationService = {
 
   // PRESETS
   listPresets: async (includeInactive = false): Promise<DocPreset[]> => {
-    const res = await api.get(`/documentation/presets?includeInactive=${includeInactive}`);
+    const res = await api.get(`/api/v1/documentation/presets?includeInactive=${includeInactive}`);
     return unwrap<DocPreset[]>(res);
   },
 
   getPreset: async (id: string): Promise<DocPreset> => {
-    const res = await api.get(`/documentation/presets/${id}`);
+    const res = await api.get(`/api/v1/documentation/presets/${id}`);
     return unwrap<DocPreset>(res);
   },
 
   createPreset: async (payload: CreatePresetPayload): Promise<DocPreset> => {
-    const res = await api.post('/documentation/presets', payload);
+    const res = await api.post('/api/v1/documentation/presets', payload);
     return unwrap<DocPreset>(res);
   },
 
   updatePreset: async (id: string, payload: UpdatePresetPayload): Promise<DocPreset> => {
-    const res = await api.put(`/documentation/presets/${id}`, payload);
+    const res = await api.put(`/api/v1/documentation/presets/${id}`, payload);
     return unwrap<DocPreset>(res);
   },
 
   deletePreset: async (id: string): Promise<void> => {
-    await api.delete(`/documentation/presets/${id}`);
+    await api.delete(`/api/v1/documentation/presets/${id}`);
   },
 
   getSuggestions: async (name: string): Promise<string[]> => {
-    const res = await api.post('/documentation/presets/suggestions', { name });
+    const res = await api.post('/api/v1/documentation/presets/suggestions', { name });
     return unwrap<string[]>(res);
   },
 
@@ -108,36 +108,36 @@ export const documentationService = {
     if (params.search)              qs.set('search', params.search);
     if (params.page)                qs.set('page', String(params.page));
     if (params.pageSize)            qs.set('pageSize', String(params.pageSize));
-    const res = await api.get(`/documentation/cases?${qs}`);
+    const res = await api.get(`/api/v1/documentation/cases?${qs}`);
     return unwrapList<DocCase>(res);
   },
 
   getCase: async (id: string): Promise<DocCase> => {
-    const res = await api.get(`/documentation/cases/${id}`);
+    const res = await api.get(`/api/v1/documentation/cases/${id}`);
     return unwrap<DocCase>(res);
   },
 
   createCase: async (payload: CreateCasePayload): Promise<DocCase> => {
-    const res = await api.post('/documentation/cases', payload);
+    const res = await api.post('/api/v1/documentation/cases', payload);
     return unwrap<DocCase>(res);
   },
 
   transferToProcess: async (caseId: string): Promise<DocCase> => {
-    const res = await api.post(`/documentation/cases/${caseId}/transfer`, {});
+    const res = await api.post(`/api/v1/documentation/cases/${caseId}/transfer`, {});
     return unwrap<DocCase>(res);
   },
 
   managerOverride: async (caseId: string, reason: string, expiresAt?: string): Promise<void> => {
-    await api.post(`/documentation/cases/${caseId}/override`, { reason, expiresAt });
+    await api.post(`/api/v1/documentation/cases/${caseId}/override`, { reason, expiresAt });
   },
 
   addNote: async (caseId: string, noteType: DocNoteType, content: string) => {
-    const res = await api.post(`/documentation/cases/${caseId}/notes`, { noteType, content });
+    const res = await api.post(`/api/v1/documentation/cases/${caseId}/notes`, { noteType, content });
     return unwrap(res);
   },
 
   addReminder: async (caseId: string, reminderDate: string, dueDate?: string, message?: string) => {
-    const res = await api.post(`/documentation/cases/${caseId}/reminders`, { reminderDate, dueDate, message });
+    const res = await api.post(`/api/v1/documentation/cases/${caseId}/reminders`, { reminderDate, dueDate, message });
     return unwrap(res);
   },
 
@@ -145,7 +145,7 @@ export const documentationService = {
     name: string; description?: string; isMandatory?: boolean;
     isBlocking?: boolean; verificationRequired?: boolean;
   }) => {
-    const res = await api.post(`/documentation/cases/${caseId}/documents`, payload);
+    const res = await api.post(`/api/v1/documentation/cases/${caseId}/documents`, payload);
     return unwrap(res);
   },
 
@@ -154,23 +154,23 @@ export const documentationService = {
     status: DocDocumentStatus; remarks?: string;
     rejectionReason?: string; waivedReason?: string; expiryDate?: string;
   }) => {
-    const res = await api.patch(`/documentation/documents/${docId}/status`, payload);
+    const res = await api.patch(`/api/v1/documentation/documents/${docId}/status`, payload);
     return unwrap(res);
   },
 
   verifyDocument: async (docId: string, result: 'APPROVED' | 'REJECTED', remarks?: string, rejectionReason?: string) => {
-    const res = await api.patch(`/documentation/documents/${docId}/verify`, { result, remarks, rejectionReason });
+    const res = await api.patch(`/api/v1/documentation/documents/${docId}/verify`, { result, remarks, rejectionReason });
     return unwrap(res);
   },
 
   addStorageRef: async (docId: string, payload: { storageType: DocStorageType; reference: string; label?: string }) => {
-    const res = await api.post(`/documentation/documents/${docId}/storage-refs`, payload);
+    const res = await api.post(`/api/v1/documentation/documents/${docId}/storage-refs`, payload);
     return unwrap(res);
   },
 
   // DASHBOARD
   getDashboardKPIs: async (): Promise<DocDashboardKPIs> => {
-    const res = await api.get('/documentation/dashboard');
+    const res = await api.get('/api/v1/documentation/dashboard');
     return unwrap<DocDashboardKPIs>(res);
   },
 };
