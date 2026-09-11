@@ -9,6 +9,7 @@ import { SignupPage } from './pages/SignupPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { ClientPortalPage } from './pages/ClientPortalPage';
+import { MandateUploadPage } from './pages/MandateUploadPage';
 
 // ─── Error Boundary that wraps EVERYTHING ──────────────────────────
 class GlobalErrorBoundary extends React.Component<
@@ -127,6 +128,7 @@ export const App: React.FC = () => {
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/accept-invite" element={<AcceptInvitePage />} />
               <Route path="/client-portal" element={<ClientPortalPage />} />
+              <Route path="/mandate/upload" element={<MandateUploadPage />} />
               
               {/* Everything else loads the full app shell with providers */}
               <Route path="/*" element={

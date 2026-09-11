@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { DepartmentProvider } from './context/DepartmentContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { OverviewPage } from './pages/OverviewPage';
@@ -27,6 +28,7 @@ const PageFallback = () => (
 export default function ProtectedApp() {
   return (
     <DepartmentProvider>
+        <Toaster position="top-right" richColors closeButton />
         <Routes>
           <Route element={
             <ProtectedRoute>

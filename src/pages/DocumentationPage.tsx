@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/context/AuthContext';
+import { MandateSection } from '../components/mandate/MandateSection';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -991,6 +992,9 @@ function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => v
             </button>
           )}
         </div>
+
+        {/* Mandate lifecycle */}
+        <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} />
 
         {/* Handoff state badge */}
         {docCase.handoffState && docCase.handoffState !== 'NONE' && (
