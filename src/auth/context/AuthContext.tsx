@@ -184,14 +184,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const sessionId = res.data?.data?.sessionId;
       const permissions = res.data?.data?.permissions;
 
-      console.log('3. TOKEN EXTRACTED:', accessToken ? 'YES (' + accessToken.substring(0, 20) + '...)' : 'NO — res.data was:', JSON.stringify(res.data));
-
       if (!accessToken) {
-        console.error('3a. FATAL: No access token in response', res.data);
         throw new Error('Login failed: No token received.');
       }
 
-      console.log('4. SAVING TOKEN TO tokenStorage');
       Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
       tokenStorage.set({
         accessToken,
@@ -199,7 +195,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionId: res.data?.data?.sessionId,
         userId: user?.id,
       });
-      console.log('5. TOKEN SAVED TO tokenStorage');
       Sentry.addBreadcrumb({ category: 'auth', message: 'Token saved to tokenStorage', level: 'info' });
       if (isStorageDegraded()) {
         toast.warning("Session can’t be saved on this device — you’ll be signed out when this tab closes.");
