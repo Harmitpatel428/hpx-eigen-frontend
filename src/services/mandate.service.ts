@@ -123,8 +123,10 @@ export function uploadToPresigned(
   uploadUrl: string,
   file: File,
   onProgress: (pct: number) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new DOMException('Aborted', 'AbortError')); return; }
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl);
     xhr.setRequestHeader('Content-Type', file.type);
@@ -136,6 +138,8 @@ export function uploadToPresigned(
       else reject(new Error(`Upload failed (${xhr.status})`));
     };
     xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.onabort = () => reject(new DOMException('Aborted', 'AbortError'));
+    if (signal) signal.addEventListener('abort', () => xhr.abort(), { once: true });
     xhr.send(file);
   });
 }

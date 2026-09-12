@@ -26,7 +26,13 @@ export function MandateUploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Live across the component's life: abort an in-flight upload and stop any
+  // setState after the page unmounts (e.g. client navigates away mid-upload).
+  const mountedRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Read token once, then scrub it from the URL immediately.
   useEffect(() => {
@@ -37,6 +43,10 @@ export function MandateUploadPage() {
     } else {
       setPhase('no-token');
     }
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+    };
   }, []);
 
   function pickFile(f: File | null) {
@@ -60,6 +70,9 @@ export function MandateUploadPage() {
     setProgress(0);
     setPhase('uploading');
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const { uploadUrl, uploadId } = await mandateService.requestUploadUrl({
         token,
@@ -68,12 +81,15 @@ export function MandateUploadPage() {
         fileSizeBytes: file.size,
       });
 
-      await mandateService.uploadToPresigned(uploadUrl, file, setProgress);
+      await mandateService.uploadToPresigned(uploadUrl, file, setProgress, controller.signal);
 
       setPhase('confirming');
       await mandateService.confirmUpload({ token, uploadId, fileName: file.name });
       setPhase('done');
     } catch (e: unknown) {
+      // The page has gone away (navigated / unmounted) — the upload was aborted
+      // in cleanup; do not touch state.
+      if (!mountedRef.current || (e as { name?: string })?.name === 'AbortError') return;
       const status = (e as { response?: { status?: number } })?.response?.status;
       if (status === 410 || status === 404) {
         setPhase('expired');
@@ -114,15 +130,28 @@ export function MandateUploadPage() {
         {(phase === 'ready' || phase === 'uploading' || phase === 'confirming') && (
           <>
             <div
+              role="button"
+              tabIndex={phase === 'ready' ? 0 : -1}
+              aria-label="Upload document. Drag and drop or activate to choose a PDF, JPG or PNG. Maximum 5 megabytes."
+              aria-disabled={phase !== 'ready'}
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
-              onDrop={(e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files?.[0] ?? null); }}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); if (phase === 'ready') pickFile(e.dataTransfer.files?.[0] ?? null); }}
               onClick={() => phase === 'ready' && inputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (phase === 'ready' && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  inputRef.current?.click();
+                }
+              }}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               style={{
-                border: `2px dashed ${dragging ? '#111827' : '#d1d5db'}`,
+                border: `2px dashed ${dragging || focused ? '#111827' : '#d1d5db'}`,
                 borderRadius: 14, padding: '2rem 1rem', textAlign: 'center',
                 cursor: phase === 'ready' ? 'pointer' : 'default',
                 background: dragging ? '#f3f4f6' : '#fafafa', transition: 'all .15s',
+                outline: focused ? '2px solid #111827' : 'none', outlineOffset: 2,
               }}
             >
               <UploadCloud size={32} color="#9ca3af" style={{ margin: '0 auto 8px' }} />
@@ -139,7 +168,7 @@ export function MandateUploadPage() {
             </div>
 
             {(phase === 'uploading' || phase === 'confirming') && (
-              <div style={{ marginTop: 16 }}>
+              <div style={{ marginTop: 16 }} role="status" aria-live="polite">
                 <div style={{ height: 8, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${phase === 'confirming' ? 100 : progress}%`, background: '#111827', transition: 'width .2s' }} />
                 </div>
@@ -151,7 +180,7 @@ export function MandateUploadPage() {
             )}
 
             {error && (
-              <div style={{ marginTop: 16, padding: '10px 12px', background: 'rgba(220,38,38,0.06)', color: '#dc2626', borderRadius: 10, fontSize: 13 }}>
+              <div role="alert" style={{ marginTop: 16, padding: '10px 12px', background: 'rgba(220,38,38,0.06)', color: '#dc2626', borderRadius: 10, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -176,7 +205,7 @@ export function MandateUploadPage() {
 
 function StateCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+    <div role="status" aria-live="polite" style={{ textAlign: 'center', padding: '1.5rem 0' }}>
       <div style={{ marginBottom: 12 }}>{icon}</div>
       <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>{body}</div>
