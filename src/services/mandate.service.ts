@@ -100,6 +100,14 @@ export interface MandateRequestSummary {
 
 // ─── Error mapping ──────────────────────────────────────────────────────────
 
+/** True when the backend returned 503 STORAGE_NOT_CONFIGURED (R2 not provisioned). */
+export function isStorageNotConfigured(e: unknown): boolean {
+  const err = e as { response?: { status?: number; data?: { code?: string; error?: string } } };
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  return status === 503 && (data?.code === 'STORAGE_NOT_CONFIGURED' || data?.error === 'STORAGE_NOT_CONFIGURED');
+}
+
 /** Maps a backend HTTP status to a user-facing message. */
 export function mandateErrorMessage(status?: number, fallback = 'Something went wrong. Please try again.'): string {
   switch (status) {

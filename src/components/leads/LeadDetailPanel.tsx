@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -865,6 +866,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const leadCopyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(leadCopyTimer.current), []);
 
+  const navigate = useNavigate();
+
   // ── Handoff dialog state ─────────────────────────────────────────────────
   const [showHandoffConfirm, setShowHandoffConfirm] = useState(false);
   const [handoffSubmitting, setHandoffSubmitting] = useState(false);
@@ -916,7 +919,15 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
     try {
       const docCase = await handoffService.confirmHandoff(lead.id);
       setLocalStage('QUALIFIED');
-      toast.success(docCase.caseId ? `Lead handed off to Documentation. Case ID: ${docCase.caseId}` : 'Lead handed off to Documentation');
+      const caseHref = `/documentation?caseId=${docCase.id}`;
+      toast.success(
+        docCase.caseId ? `Handed off to Documentation · Case ID: ${docCase.caseId}` : 'Handed off to Documentation',
+        docCase.id ? {
+          duration: 10000,
+          action: { label: 'Open case', onClick: () => navigate(caseHref) },
+          cancel: { label: 'Send mandate now', onClick: () => navigate(`${caseHref}&mandate=send`) },
+        } : undefined,
+      );
       setShowHandoffConfirm(false);
       onUpdated?.({ ...lead, stage: 'QUALIFIED', handoffState: 'HANDED_OFF' } as Lead);
       qc.invalidateQueries({ queryKey: ['leads'] });

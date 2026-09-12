@@ -7,11 +7,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { UploadCloud, FileCheck2, AlertTriangle, Loader2, XCircle } from 'lucide-react';
 import {
-  mandateService, mandateErrorMessage, MANDATE_POLICY,
+  mandateService, mandateErrorMessage, isStorageNotConfigured, MANDATE_POLICY,
   type AllowedContentType,
 } from '../services/mandate.service';
 
-type Phase = 'ready' | 'uploading' | 'confirming' | 'done' | 'expired' | 'no-token';
+type Phase = 'ready' | 'uploading' | 'confirming' | 'done' | 'expired' | 'no-token' | 'storage-unconfigured';
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png';
 
@@ -90,6 +90,10 @@ export function MandateUploadPage() {
       // The page has gone away (navigated / unmounted) — the upload was aborted
       // in cleanup; do not touch state.
       if (!mountedRef.current || (e as { name?: string })?.name === 'AbortError') return;
+      if (isStorageNotConfigured(e)) {
+        setPhase('storage-unconfigured');
+        return;
+      }
       const status = (e as { response?: { status?: number } })?.response?.status;
       if (status === 410 || status === 404) {
         setPhase('expired');
@@ -120,6 +124,11 @@ export function MandateUploadPage() {
         {phase === 'expired' && (
           <StateCard icon={<AlertTriangle size={40} color="#d97706" />} title="Link expired"
             body="This upload link has expired. Please contact your advisor for a new link." />
+        )}
+
+        {phase === 'storage-unconfigured' && (
+          <StateCard icon={<AlertTriangle size={40} color="#d97706" />} title="Uploads temporarily unavailable"
+            body="Document uploads aren't available right now. Please contact your advisor — nothing is needed from you at the moment." />
         )}
 
         {phase === 'done' && (

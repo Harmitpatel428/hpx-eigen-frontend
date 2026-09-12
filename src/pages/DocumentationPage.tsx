@@ -134,6 +134,25 @@ function CaseBadge({ status }: { status: string }) {
   );
 }
 
+// ─── Mandate status indicator (case list) ─────────────────────────────────────
+const MANDATE_DOT_META: Record<string, { label: string; color: string }> = {
+  PENDING_UPLOAD: { label: 'Mandate: pending client upload', color: '#d97706' },
+  UPLOADED:       { label: 'Mandate: uploaded, awaiting verification', color: '#2563eb' },
+  VERIFIED:       { label: 'Mandate: verified', color: '#059669' },
+  REJECTED:       { label: 'Mandate: rejected — re-upload requested', color: '#dc2626' },
+  EXPIRED:        { label: 'Mandate: upload link expired', color: '#9ca3af' },
+};
+
+function MandateDot({ status }: { status?: string | null }) {
+  if (!status) return null;
+  const m = MANDATE_DOT_META[status];
+  if (!m) return null;
+  return (
+    <span title={m.label} aria-label={m.label} role="img"
+      style={{ width: 7, height: 7, borderRadius: '50%', background: m.color, flexShrink: 0, display: 'inline-block' }} />
+  );
+}
+
 // ─── Document status chip ─────────────────────────────────────────────────────
 function StatusChip({ status }: { status: DocDocumentStatus }) {
   const m = DOC_STATUS_META[status];
@@ -201,8 +220,11 @@ function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }
         ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
       </div>
 
-      {/* Status badge */}
-      <CaseBadge status={docCase.status} />
+      {/* Status badge + mandate indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <CaseBadge status={docCase.status} />
+        <MandateDot status={docCase.latestMandateStatus} />
+      </div>
 
       {/* Completion % + chevron */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
@@ -759,7 +781,7 @@ function ReopenCaseDialog({
 }
 
 // ─── Case detail panel (ContextPanel) ────────────────────────────────────────
-function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => void }) {
+function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: string; onClose: () => void; autoOpenMandateSend?: boolean }) {
   const qc = useQueryClient();
   const { permissions } = useAuth();
   const [tab, setTab]   = useState<'documents' | 'timeline' | 'notes'>('documents');
@@ -994,7 +1016,7 @@ function CaseDetailPanel({ caseId, onClose }: { caseId: string; onClose: () => v
         </div>
 
         {/* Mandate lifecycle */}
-        <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} />
+        <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} autoOpenSend={autoOpenMandateSend} />
 
         {/* Handoff state badge */}
         {docCase.handoffState && docCase.handoffState !== 'NONE' && (
@@ -1551,7 +1573,7 @@ export function DocumentationPage() {
       {/* Case detail panel */}
       <ContextPanel isOpen={!!selectedCaseId} onClose={() => setSelectedCaseId(null)} width={600}>
         {selectedCaseId && (
-          <CaseDetailPanel caseId={selectedCaseId} onClose={() => setSelectedCaseId(null)} />
+          <CaseDetailPanel caseId={selectedCaseId} onClose={() => setSelectedCaseId(null)} autoOpenMandateSend={searchParams.get('mandate') === 'send'} />
         )}
       </ContextPanel>
 

@@ -5,14 +5,14 @@
  * All three are tightly coupled to one caseId and share query invalidation, so they
  * live together rather than as separate files.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FileText, ExternalLink, CheckCircle2, XCircle, RefreshCw, Send } from 'lucide-react';
 import { Modal } from '../Modal';
 import { useAuth } from '../../auth/context/AuthContext';
 import {
-  mandateService, mandateErrorMessage,
+  mandateService, mandateErrorMessage, isStorageNotConfigured,
   type MandateRequestStatus, type MandateRequestSummary,
 } from '../../services/mandate.service';
 
@@ -32,8 +32,8 @@ function apiError(e: unknown): string {
   return mandateErrorMessage(status);
 }
 
-export function MandateSection({ caseId, caseStatus, leadEmail }: {
-  caseId: string; caseStatus: string; leadEmail: string | null;
+export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: {
+  caseId: string; caseStatus: string; leadEmail: string | null; autoOpenSend?: boolean;
 }) {
   const qc = useQueryClient();
   const { permissions } = useAuth();
@@ -56,6 +56,11 @@ export function MandateSection({ caseId, caseStatus, leadEmail }: {
   const current = requests[0]; // most recent (list is ordered desc)
   const caseOpen = ['INCOMING', 'ACTIVE'].includes(caseStatus);
 
+  // Deep-link from the handoff toast ("Send mandate now") auto-opens the dialog.
+  useEffect(() => {
+    if (autoOpenSend && canSend && caseOpen && !current) setShowSend(true);
+  }, [autoOpenSend, canSend, caseOpen, current]);
+
   const regenMutation = useMutation({
     mutationFn: (id: string) => mandateService.regenerateLink(id),
     onSuccess: () => { toast.success('New upload link sent to client. Expires in 7 days.'); invalidate(); },
@@ -77,9 +82,23 @@ export function MandateSection({ caseId, caseStatus, leadEmail }: {
       </div>
 
       {!current && (
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>
-          No mandate request yet.
-        </div>
+        canSend && caseOpen ? (
+          <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', textAlign: 'center', border: '1px dashed var(--border-subtle, #d1d5db)' }}>
+            <Send size={22} color="var(--text-tertiary)" style={{ margin: '0 auto 8px' }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>No mandate requested yet</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
+              Send a mandate request so the client can upload their signed document.
+            </div>
+            <button className="btn btn-primary" style={{ height: 30, paddingInline: 14, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              onClick={() => setShowSend(true)}>
+              <Send size={13} /> Send Mandate
+            </button>
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>
+            No mandate request yet.
+          </div>
+        )
       )}
 
       {current && <MandateStatusCard
@@ -114,13 +133,17 @@ function MandateStatusCard({ req, canVerify, canSend, onVerifyReject, onRegenera
   const meta = STATUS_META[req.status];
   const upload = req.uploads[0];
   const canRegen = ['PENDING_UPLOAD', 'EXPIRED', 'REJECTED'].includes(req.status);
+  const [storageDown, setStorageDown] = useState(false);
 
   const openDocument = async () => {
     if (!upload) return;
     try {
       const { viewUrl } = await mandateService.getViewUrl(upload.id);
       window.open(viewUrl, '_blank', 'noopener,noreferrer');
-    } catch (e) { toast.error(apiError(e)); }
+    } catch (e) {
+      if (isStorageNotConfigured(e)) { setStorageDown(true); return; }
+      toast.error(apiError(e));
+    }
   };
 
   return (
@@ -141,6 +164,12 @@ function MandateStatusCard({ req, canVerify, canSend, onVerifyReject, onRegenera
       {req.status === 'REJECTED' && req.rejectionReason && (
         <div style={{ fontSize: 12, color: '#b91c1c', background: 'rgba(220,38,38,0.06)', padding: '6px 10px', borderRadius: 8, marginBottom: 10 }}>
           Rejected: {req.rejectionReason}
+        </div>
+      )}
+
+      {storageDown && (
+        <div role="alert" style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'rgba(217,119,6,0.1)', color: '#b45309', border: '1px solid rgba(217,119,6,0.25)' }}>
+          Document storage is not configured yet. The uploaded file can’t be opened until R2 storage is provisioned.
         </div>
       )}
 

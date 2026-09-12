@@ -671,6 +671,7 @@ export interface DocCase {
   caseNotes?: DocCaseNote[];
   overrides?: DocManagerOverride[];
   _count?: { documents: number };
+  latestMandateStatus?: 'PENDING_UPLOAD' | 'UPLOADED' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED' | null;
 }
 
 export interface DocDashboardKPIs {
