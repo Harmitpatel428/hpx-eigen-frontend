@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { UploadCloud, FileCheck2, AlertTriangle, Loader2, XCircle } from 'lucide-react';
 import {
-  mandateService, mandateErrorMessage, isStorageNotConfigured, MANDATE_POLICY,
+  mandateService, mandateErrorMessage, isStorageNotConfigured, isScannerUnavailable, MANDATE_POLICY,
   type AllowedContentType,
 } from '../services/mandate.service';
 
@@ -92,6 +92,13 @@ export function MandateUploadPage() {
       if (!mountedRef.current || (e as { name?: string })?.name === 'AbortError') return;
       if (isStorageNotConfigured(e)) {
         setPhase('storage-unconfigured');
+        return;
+      }
+      // Scanner down is transient — keep the file and let the client retry, with a
+      // message distinct from the terminal STORAGE_NOT_CONFIGURED state.
+      if (isScannerUnavailable(e)) {
+        setError('Our security check is temporarily unavailable. Please wait a moment and try again.');
+        setPhase('ready');
         return;
       }
       const status = (e as { response?: { status?: number } })?.response?.status;
