@@ -1370,7 +1370,7 @@ export function DocumentationPage() {
     queryKey: ['leads', {}],
     queryFn:  async () => {
       const { api } = await import('../services/api');
-      const res = await api.get('/leads?pageSize=200');
+      const res = await api.get('/api/v1/leads?pageSize=200');
       return res.data;
     },
     staleTime: 60_000,
