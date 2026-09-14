@@ -218,7 +218,7 @@ function SendMandateDialog({ caseId, leadEmail, onClose, onSent }: {
   return (
     <Modal isOpen onClose={onClose} title="Send Mandate Request" size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#d1d5db' }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
           Mandate Type
           <input className="input" value={mandateType} maxLength={200} autoFocus
             onChange={(e) => setMandateType(e.target.value)}
@@ -226,19 +226,19 @@ function SendMandateDialog({ caseId, leadEmail, onClose, onSent }: {
             style={{ marginTop: 6, width: '100%' }} />
         </label>
 
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#d1d5db' }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
           Client Email
           <input className="input" value={leadEmail ?? 'No email on file'} disabled readOnly
             style={{ marginTop: 6, width: '100%', opacity: 0.7 }} />
         </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#d1d5db', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
           <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
           Send email notification to client
         </label>
 
         {sendEmail && !leadEmail && (
-          <div style={{ fontSize: 12, color: '#fbbf24' }}>
+          <div style={{ fontSize: 12, color: 'var(--color-warning)' }}>
             No email on file — the request will be created but no email can be sent.
           </div>
         )}
@@ -288,18 +288,18 @@ function VerifyRejectDialog({ req, onClose, onDone }: {
   return (
     <Modal isOpen onClose={onClose} title="Review Mandate Document" size="lg">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ height: 420, background: '#0f0f1e', borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {isLoading && <span style={{ color: '#9ca3af', fontSize: 13 }}>Loading document…</span>}
-          {isError && <span style={{ color: '#fca5a5', fontSize: 13 }}>Could not load the document.</span>}
+        <div style={{ height: 420, background: 'var(--bg-muted)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isLoading && <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading document…</span>}
+          {isError && <span style={{ color: 'var(--color-danger)', fontSize: 13 }}>Could not load the document.</span>}
           {view && (isImage
             ? <img src={view.viewUrl} alt={view.fileName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
             : <iframe src={view.viewUrl} title={view.fileName} style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }} />
           )}
         </div>
-        {view && <div style={{ fontSize: 12, color: '#9ca3af' }}>{view.fileName} · {(view.fileSizeBytes / 1024 / 1024).toFixed(2)} MB</div>}
+        {view && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{view.fileName} · {(view.fileSizeBytes / 1024 / 1024).toFixed(2)} MB</div>}
 
         {rejecting && (
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#d1d5db' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
             Rejection Reason
             <textarea className="input" value={reason} maxLength={1000} rows={3} autoFocus
               onChange={(e) => setReason(e.target.value)}
@@ -312,12 +312,12 @@ function VerifyRejectDialog({ req, onClose, onDone }: {
           {!rejecting ? (
             <>
               <button className="btn" onClick={() => setRejecting(true)}
-                style={{ fontSize: 13, background: '#dc2626', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                style={{ fontSize: 13, background: 'var(--color-danger)', color: 'var(--text-inverse)', border: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <XCircle size={14} /> Reject
               </button>
               <button className="btn btn-primary" onClick={() => verifyMutation.mutate()}
                 disabled={verifyMutation.isPending}
-                style={{ fontSize: 13, background: '#059669', display: 'flex', alignItems: 'center', gap: 5 }}>
+                style={{ fontSize: 13, background: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <CheckCircle2 size={14} /> {verifyMutation.isPending ? 'Approving…' : 'Approve'}
               </button>
             </>
@@ -326,7 +326,7 @@ function VerifyRejectDialog({ req, onClose, onDone }: {
               <button className="btn btn-ghost" onClick={() => { setRejecting(false); setReason(''); }} style={{ fontSize: 13 }}>Cancel</button>
               <button className="btn" onClick={() => rejectMutation.mutate()}
                 disabled={reason.trim().length < 1 || rejectMutation.isPending}
-                style={{ fontSize: 13, background: '#dc2626', color: '#fff', border: 'none' }}>
+                style={{ fontSize: 13, background: 'var(--color-danger)', color: 'var(--text-inverse)', border: 'none' }}>
                 {rejectMutation.isPending ? 'Rejecting…' : 'Confirm Rejection'}
               </button>
             </>

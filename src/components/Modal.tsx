@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useRef, useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -20,21 +20,50 @@ export function Modal({
   closeOnEsc = true,
   closeOnBackdrop = true,
 }: ModalProps) {
-  React.useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (closeOnEsc && e.key === 'Escape' && isOpen) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    triggerRef.current = document.activeElement;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (closeOnEsc && e.key === 'Escape') {
         onClose();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden';
-    }
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+
+    requestAnimationFrame(() => {
+      const autofocus = dialogRef.current?.querySelector<HTMLElement>('[autofocus]');
+      if (autofocus) autofocus.focus();
+      else dialogRef.current?.querySelector<HTMLElement>('button')?.focus();
+    });
 
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
+      if (triggerRef.current instanceof HTMLElement) triggerRef.current.focus();
     };
   }, [isOpen, closeOnEsc, onClose]);
 
@@ -53,21 +82,26 @@ export function Modal({
         onClick={closeOnBackdrop ? onClose : undefined}
         aria-hidden="true"
       />
-      <div className={`relative bg-[#1a1a2e] rounded-lg shadow-2xl w-full mx-4 ${sizeClasses[size]}`}>
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#16213e] px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={`relative surface-elevated w-full mx-4 ${sizeClasses[size]}`}
+        style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+      >
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
+          <h2 id={titleId} className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
+            className="hover:opacity-80 transition-colors"
             aria-label="Close modal"
           >
             <X size={20} />
           </button>
         </div>
-
-        {/* Content */}
-        <div className="p-6 max-h-[80vh] overflow-y-auto">
+        <div className="p-6 overflow-y-auto" style={{ flex: 1 }}>
           {children}
         </div>
       </div>
