@@ -101,9 +101,8 @@ export interface MandateRequestSummary {
 // ─── Error mapping ──────────────────────────────────────────────────────────
 
 function has503Code(e: unknown, code: string): boolean {
-  const err = e as { response?: { status?: number; data?: { code?: string; error?: string } } };
-  const data = err?.response?.data;
-  return err?.response?.status === 503 && (data?.code === code || data?.error === code);
+  const err = e as { response?: { status?: number; data?: { code?: string } } };
+  return err?.response?.status === 503 && err?.response?.data?.code === code;
 }
 
 /** True when the backend returned 503 STORAGE_NOT_CONFIGURED (R2 not provisioned). */
