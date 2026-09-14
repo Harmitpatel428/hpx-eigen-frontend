@@ -566,7 +566,7 @@ function IncomingCaseRow({
 
       {/* Case ID */}
       <div style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {docCase.caseId ?? '—'}
+        {docCase.caseNumber ?? '—'}
       </div>
 
       {/* SLA */}
@@ -907,13 +907,13 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
 
         {/* Case ID */}
         <div style={{ marginBottom: 12 }}>
-          {docCase.caseId ? (
+          {docCase.caseNumber ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                {docCase.caseId}
+                {docCase.caseNumber}
               </span>
               <button type="button" className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11 }}
-                onClick={() => { navigator.clipboard.writeText(docCase.caseId!); toast.success('Case ID copied'); }}>
+                onClick={() => { navigator.clipboard.writeText(docCase.caseNumber!); toast.success('Case ID copied'); }}>
                 Copy
               </button>
             </div>

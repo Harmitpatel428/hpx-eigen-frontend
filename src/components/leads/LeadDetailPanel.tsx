@@ -921,7 +921,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
       setLocalStage('QUALIFIED');
       const caseHref = `/documentation?caseId=${docCase.id}`;
       toast.success(
-        docCase.caseId ? `Handed off to Documentation · Case ID: ${docCase.caseId}` : 'Handed off to Documentation',
+        docCase.caseNumber ? `Handed off to Documentation · Case ID: ${docCase.caseNumber}` : 'Handed off to Documentation',
         docCase.id ? {
           duration: 10000,
           action: { label: 'Open case', onClick: () => navigate(caseHref) },

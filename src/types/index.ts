@@ -616,7 +616,7 @@ export interface DocCase {
   id: string;
   tenantId: string;
   leadId: string;
-  caseId: string | null; // HPX-XXXX-XXXX public case identifier
+  caseNumber: string | null; // HPX-XXXX-XXXX public case identifier
   presetId: string | null;
   presetVersion: number | null;
   assignedTo: string | null;
