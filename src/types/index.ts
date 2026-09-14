@@ -635,6 +635,7 @@ export interface DocCase {
   transferredAt: string | null;
   transferredBy: string | null;
   closedAt: string | null;
+  closedReason: string | null;
   notes: string | null;
   handoffState: HandoffState;
   handoffAt: string | null;

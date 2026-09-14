@@ -894,7 +894,11 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
+            <span
+              title={docCase.status === 'CLOSED_NO_DOCS' && docCase.closedAt
+                ? `Closed ${new Date(docCase.closedAt).toLocaleDateString()}${docCase.closedReason ? ` · ${CLOSE_REASON_LABELS[docCase.closedReason as CloseReason] ?? docCase.closedReason}` : ''}`
+                : undefined}
+              style={{
               display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
               borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
               background: sm.bg, color: sm.color,
