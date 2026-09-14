@@ -116,30 +116,30 @@ export function MandateUploadPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ width: '100%', maxWidth: 480, background: '#fff', borderRadius: 20, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '2rem' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Upload your document</h1>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 24 }}>
+    <div style={{ minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-subtle)', padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ width: '100%', maxWidth: 480, background: 'var(--bg-app)', borderRadius: 20, boxShadow: '0 4px 24px var(--border-medium)', padding: '2rem' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Upload your document</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
           PDF, JPG or PNG · maximum 5 MB
         </p>
 
         {phase === 'no-token' && (
-          <StateCard icon={<XCircle size={40} color="#dc2626" />} title="Invalid link"
+          <StateCard icon={<XCircle size={40} color="var(--color-danger)" />} title="Invalid link"
             body="This upload link is missing its access token. Please use the exact link your advisor sent you." />
         )}
 
         {phase === 'expired' && (
-          <StateCard icon={<AlertTriangle size={40} color="#d97706" />} title="Link expired"
+          <StateCard icon={<AlertTriangle size={40} color="var(--color-warning)" />} title="Link expired"
             body="This upload link has expired. Please contact your advisor for a new link." />
         )}
 
         {phase === 'storage-unconfigured' && (
-          <StateCard icon={<AlertTriangle size={40} color="#d97706" />} title="Uploads temporarily unavailable"
+          <StateCard icon={<AlertTriangle size={40} color="var(--color-warning)" />} title="Uploads temporarily unavailable"
             body="Document uploads aren't available right now. Please contact your advisor — nothing is needed from you at the moment." />
         )}
 
         {phase === 'done' && (
-          <StateCard icon={<FileCheck2 size={40} color="#059669" />} title="Upload complete"
+          <StateCard icon={<FileCheck2 size={40} color="var(--color-success)" />} title="Upload complete"
             body="Thank you. Our team will review your document and be in touch." />
         )}
 
@@ -163,19 +163,19 @@ export function MandateUploadPage() {
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               style={{
-                border: `2px dashed ${dragging || focused ? '#111827' : '#d1d5db'}`,
+                border: `2px dashed ${dragging || focused ? 'var(--text-primary)' : 'var(--border-strong)'}`,
                 borderRadius: 14, padding: '2rem 1rem', textAlign: 'center',
                 cursor: phase === 'ready' ? 'pointer' : 'default',
-                background: dragging ? '#f3f4f6' : '#fafafa', transition: 'all .15s',
-                outline: focused ? '2px solid #111827' : 'none', outlineOffset: 2,
+                background: dragging ? 'var(--bg-muted)' : 'var(--bg-subtle)', transition: 'all .15s',
+                outline: focused ? '2px solid var(--text-primary)' : 'none', outlineOffset: 2,
               }}
             >
-              <UploadCloud size={32} color="#9ca3af" style={{ margin: '0 auto 8px' }} />
-              <div style={{ fontSize: 14, color: '#374151', fontWeight: 500 }}>
+              <UploadCloud size={32} color="var(--text-tertiary)" style={{ margin: '0 auto 8px' }} />
+              <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
                 {file ? file.name : 'Drag & drop, or click to choose a file'}
               </div>
               {file && (
-                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
                   {(file.size / 1024 / 1024).toFixed(2)} MB
                 </div>
               )}
@@ -185,10 +185,10 @@ export function MandateUploadPage() {
 
             {(phase === 'uploading' || phase === 'confirming') && (
               <div style={{ marginTop: 16 }} role="status" aria-live="polite">
-                <div style={{ height: 8, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${phase === 'confirming' ? 100 : progress}%`, background: '#111827', transition: 'width .2s' }} />
+                <div style={{ height: 8, background: 'var(--bg-muted)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${phase === 'confirming' ? 100 : progress}%`, background: 'var(--color-accent)', transition: 'width .2s' }} />
                 </div>
-                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Loader2 size={13} className="animate-spin" />
                   {phase === 'confirming' ? 'Finalizing…' : `Uploading… ${progress}%`}
                 </div>
@@ -196,7 +196,7 @@ export function MandateUploadPage() {
             )}
 
             {error && (
-              <div role="alert" style={{ marginTop: 16, padding: '10px 12px', background: 'rgba(220,38,38,0.06)', color: '#dc2626', borderRadius: 10, fontSize: 13 }}>
+              <div role="alert" style={{ marginTop: 16, padding: '10px 12px', background: 'color-mix(in srgb, var(--color-danger) 8%, transparent)', color: 'var(--color-danger)', borderRadius: 10, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -206,7 +206,7 @@ export function MandateUploadPage() {
               disabled={!file || phase !== 'ready'}
               style={{
                 marginTop: 20, width: '100%', padding: '12px', borderRadius: 12, border: 'none',
-                background: !file || phase !== 'ready' ? '#9ca3af' : '#111827', color: '#fff',
+                background: !file || phase !== 'ready' ? 'var(--text-tertiary)' : 'var(--color-accent)', color: 'var(--text-inverse)',
                 fontSize: 14, fontWeight: 600, cursor: !file || phase !== 'ready' ? 'not-allowed' : 'pointer',
               }}
             >
@@ -223,8 +223,8 @@ function StateCard({ icon, title, body }: { icon: React.ReactNode; title: string
   return (
     <div role="status" aria-live="polite" style={{ textAlign: 'center', padding: '1.5rem 0' }}>
       <div style={{ marginBottom: 12 }}>{icon}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>{body}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{body}</div>
     </div>
   );
 }
