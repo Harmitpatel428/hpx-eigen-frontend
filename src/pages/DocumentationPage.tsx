@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/context/AuthContext';
 import { MandateSection } from '../components/mandate/MandateSection';
+import { Modal } from '../components/Modal';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -725,32 +726,26 @@ function CloseWithoutDocsDialog({
 }: { onClose: () => void; onConfirm: (reason: CloseReason) => void; submitting: boolean }) {
   const [reason, setReason] = useState<CloseReason>('CLIENT_FAILED_DOCS');
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="surface-elevated" style={{ width: 460, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
-          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Close Case Without Documentation</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
-        </div>
-        <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', fontSize: 12, color: '#991b1b' }}>
-          This will close the case and deactivate the client portal if active. This action can be reversed by a manager.
-        </div>
-        <div style={{ marginBottom: 'var(--space-4)' }}>
-          <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
-          <select className="input" style={{ width: '100%' }} value={reason} onChange={e => setReason(e.target.value as CloseReason)}>
-            {(Object.entries(CLOSE_REASON_LABELS) as [CloseReason, string][]).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
-            disabled={submitting} onClick={() => onConfirm(reason)}>
-            {submitting ? 'Closing…' : 'Close Case'}
-          </button>
-        </div>
+    <Modal isOpen onClose={onClose} title="Close Case Without Documentation" size="sm">
+      <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', fontSize: 12, color: '#991b1b' }}>
+        This will close the case and deactivate the client portal if active. This action can be reversed by a manager.
       </div>
-    </div>
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reason</label>
+        <select className="input" style={{ width: '100%' }} value={reason} onChange={e => setReason(e.target.value as CloseReason)}>
+          {(Object.entries(CLOSE_REASON_LABELS) as [CloseReason, string][]).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
+          disabled={submitting} onClick={() => onConfirm(reason)}>
+          {submitting ? 'Closing…' : 'Close Case'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -759,24 +754,18 @@ function ReopenCaseDialog({
   onClose, onConfirm, submitting,
 }: { onClose: () => void; onConfirm: () => void; submitting: boolean }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="surface-elevated" style={{ width: 440, borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
-          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Reopen Closed Case</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
-        </div>
-        <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.05)', border: '1px solid rgba(5,150,105,0.2)', fontSize: 12, color: '#065f46' }}>
-          This will reopen the case and set it back to Incoming status. The Case ID will be preserved.
-        </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" style={{ fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
-            disabled={submitting} onClick={onConfirm}>
-            {submitting ? 'Reopening…' : 'Reopen Case'}
-          </button>
-        </div>
+    <Modal isOpen onClose={onClose} title="Reopen Closed Case" size="sm">
+      <div style={{ marginBottom: 'var(--space-4)', padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.05)', border: '1px solid rgba(5,150,105,0.2)', fontSize: 12, color: '#065f46' }}>
+        This will reopen the case and set it back to Incoming status. The Case ID will be preserved.
       </div>
-    </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" style={{ fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
+          disabled={submitting} onClick={onConfirm}>
+          {submitting ? 'Reopening…' : 'Reopen Case'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

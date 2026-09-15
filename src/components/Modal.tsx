@@ -31,6 +31,9 @@ export function Modal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (closeOnEsc && e.key === 'Escape') {
+        // Stop the ESC from also reaching an outer overlay's handler (e.g. a
+        // ContextPanel window-level listener) so ESC closes only this dialog.
+        e.stopPropagation();
         onClose();
         return;
       }
