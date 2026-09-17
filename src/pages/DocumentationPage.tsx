@@ -1775,7 +1775,7 @@ export function DocumentationPage() {
       )}
 
       {/* Case detail panel */}
-      <ContextPanel isOpen={!!selectedCaseId} onClose={() => setSelectedCaseId(null)} width={600} hideCloseButton>
+      <ContextPanel isOpen={!!selectedCaseId} onClose={() => setSelectedCaseId(null)} width={1040} hideCloseButton ariaLabel="Case workspace">
         {selectedCaseId && (
           <CaseDetailPanel caseId={selectedCaseId} onClose={() => setSelectedCaseId(null)} autoOpenMandateSend={searchParams.get('mandate') === 'send'} />
         )}
