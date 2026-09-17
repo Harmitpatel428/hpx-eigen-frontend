@@ -158,6 +158,7 @@ function MandateStatusCard({ req, canVerify, canSend, onVerifyReject, onRegenera
       <div style={{ display: 'flex', gap: 20, fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10 }}>
         <div><span style={{ fontWeight: 600 }}>Sent</span> {fmtDate(req.createdAt)}</div>
         <div><span style={{ fontWeight: 600 }}>Expires</span> {fmtDate(req.tokenExpiresAt)}</div>
+        {req.verifiedAt && <div><span style={{ fontWeight: 600 }}>Verified</span> {fmtDate(req.verifiedAt)}</div>}
         {req.sentToEmail && <div>{req.sentToEmail}</div>}
       </div>
 
@@ -173,20 +174,30 @@ function MandateStatusCard({ req, canVerify, canSend, onVerifyReject, onRegenera
         </div>
       )}
 
+      {/* Post-upload status with no file on record — file cannot be previewed */}
+      {!upload && ['UPLOADED', 'VERIFIED', 'REJECTED', 'SUPERSEDED'].includes(req.status) && (
+        <div role="status" style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'var(--bg-muted)', color: 'var(--text-tertiary)', border: '1px solid var(--border-light)' }}>
+          Mandate {req.status === 'VERIFIED' ? 'accepted' : req.status.toLowerCase()}, but the uploaded file is unavailable for preview.
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {req.status === 'UPLOADED' && upload && (
-          <>
-            <button className="btn btn-ghost" style={{ height: 28, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
-              onClick={openDocument}>
-              <ExternalLink size={13} /> View Document
-            </button>
-            {canVerify && (
-              <button className="btn btn-primary" style={{ height: 28, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
-                onClick={onVerifyReject}>
-                <FileText size={13} /> Verify / Reject
-              </button>
-            )}
-          </>
+        {/* View is available whenever a file exists, regardless of status (a
+            verified/accepted mandate keeps its uploaded file — audit: preview
+            must survive verification). The URL is minted per click so it is
+            never stale. */}
+        {upload && (
+          <button className="btn btn-ghost" style={{ height: 28, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
+            onClick={openDocument}>
+            <ExternalLink size={13} /> View Document
+          </button>
+        )}
+        {/* Verify / Reject stays gated to an awaiting-review upload. */}
+        {req.status === 'UPLOADED' && upload && canVerify && (
+          <button className="btn btn-primary" style={{ height: 28, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
+            onClick={onVerifyReject}>
+            <FileText size={13} /> Verify / Reject
+          </button>
         )}
         {canRegen && canSend && (
           <button className="btn btn-ghost" style={{ height: 28, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
