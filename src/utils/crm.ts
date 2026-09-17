@@ -47,6 +47,18 @@ export function resolveLeadIdentity(
   return name || lead.company?.trim() || 'Unknown';
 }
 
+// Format a lead's structured address into a single line. Unlike the historical
+// /leads location string (area/city/state/country), this INCLUDES postalCode.
+// Joins only the present parts; falls back to freeformAddress; returns '' when
+// nothing is set so callers can render "Address not added".
+export function formatLeadAddress(
+  lead: Pick<Lead, 'area' | 'city' | 'state' | 'country' | 'postalCode' | 'freeformAddress'>,
+): string {
+  const structured = [lead.area, lead.city, lead.state, lead.postalCode, lead.country]
+    .filter(Boolean).join(', ');
+  return structured || lead.freeformAddress || '';
+}
+
 export function initialsOf(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return '?';
