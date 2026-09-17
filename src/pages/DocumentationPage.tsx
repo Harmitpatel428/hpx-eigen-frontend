@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import {
   ChevronRight, X, ArrowRight, FileText, Layers,
   Shield, RefreshCw, ExternalLink,
   FolderOpen, AlertCircle, Inbox, Eye,
+  Building2, MapPin, User, Phone, Mail,
 } from 'lucide-react';
 import { documentationService } from '../services/documentation.service';
 import { handoffService } from '../services/handoff.service';
@@ -23,6 +24,17 @@ import type {
   DocStorageType, DocPreset, HandoffReturnReason,
 } from '../types';
 import { HANDOFF_RETURN_REASON_LABELS } from '../types';
+import { leadService } from '../services/lead.service';
+import { leadContactsService, type LeadContact } from '../services/lead-contacts.service';
+import { waChannelsService, type WaChannel } from '../services/wa-channels.service';
+import { resolveDisplayContact, resolveLeadIdentity, formatLeadAddress } from '../utils/crm';
+import { LeadSectionStyles, buildContactCopyText, buildLeadCopyText } from '../components/leads/sections/shared';
+import { LeadContactInformationSection } from '../components/leads/sections/LeadContactInformationSection';
+import { LeadAllContactsSection } from '../components/leads/sections/LeadAllContactsSection';
+import { LeadQuickActionsSection } from '../components/leads/sections/LeadQuickActionsSection';
+import { LeadModal } from '../components/leads/LeadModal';
+import { DeleteConfirm } from '../components/leads/DeleteConfirm';
+import { LeadWaChannelsModal } from '../components/leads/LeadWaChannelsModal';
 
 // ============================================================================
 // HELPERS & CONSTANTS
@@ -773,18 +785,47 @@ function ReopenCaseDialog({
 function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: string; onClose: () => void; autoOpenMandateSend?: boolean }) {
   const qc = useQueryClient();
   const { permissions } = useAuth();
-  const [tab, setTab]   = useState<'documents' | 'timeline' | 'notes'>('documents');
+  const [tab, setTab]   = useState<'overview' | 'contacts' | 'documents' | 'timeline' | 'notes'>('overview');
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
   const [showReturn, setShowReturn] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [showReopenDialog, setShowReopenDialog] = useState(false);
+  // Contacts-tab lead actions — reuse the Leads-page modals; the host owns them.
+  const [editLead, setEditLead] = useState(false);
+  const [deleteLead, setDeleteLead] = useState(false);
+  const [showWaModal, setShowWaModal] = useState(false);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const { data: docCase, isLoading } = useQuery({
     queryKey:  ['doc-case', caseId],
     queryFn:   () => documentationService.getCase(caseId),
     staleTime: 10_000,
+  });
+
+  // The case carries only a thin lead projection (no address / custom fields),
+  // so fetch the full lead for the Overview address block, the Contacts-tab
+  // sections, and the Edit modal. Keyed by the same ['lead', id] / ['lead-contacts', id]
+  // as the Leads page so a contact or lead edit refreshes both consumers.
+  const leadId = docCase?.lead.id;
+  const { data: fullLead } = useQuery({
+    queryKey: ['lead', leadId],
+    queryFn:  () => leadService.findById(leadId!),
+    enabled:  !!leadId,
+    staleTime: 30_000,
+  });
+  const { data: caseContacts = [] } = useQuery<LeadContact[]>({
+    queryKey: ['lead-contacts', leadId],
+    queryFn:  () => leadContactsService.list(leadId!),
+    enabled:  !!leadId,
+    staleTime: 30_000,
+  });
+  const { data: waChannels = [] } = useQuery<WaChannel[]>({
+    queryKey: ['wa-channels', leadId],
+    queryFn:  () => waChannelsService.list(leadId!),
+    enabled:  !!leadId,
+    staleTime: 30_000,
   });
 
   const invalidate = useCallback(() => {
@@ -854,6 +895,20 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     onError: () => toast.error('Failed to reopen case'),
   });
 
+  // Soft-delete the underlying lead from the Contacts tab (recoverable via
+  // Recycle Bin); closes the case panel since the lead is gone.
+  const deleteLeadMutation = useMutation({
+    mutationFn: () => leadService.softDelete(leadId!),
+    onSuccess: () => {
+      toast.success('Lead moved to Recycle Bin');
+      setDeleteLead(false);
+      qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['doc-cases'] });
+      onClose();
+    },
+    onError: () => toast.error('Failed to delete lead'),
+  });
+
   if (isLoading || !docCase) {
     return (
       <div style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
@@ -869,20 +924,71 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const rejected = (docCase.documents ?? []).filter(d => d.status === 'REJECTED');
   const canTransfer = docCase.isReady && docCase.status !== 'TRANSFERRED_TO_PROCESS';
 
+  // Header identity — company primary, person secondary (Documentation Dept rule).
+  const companyName = docCase.lead.company || 'Company not set';
+  const personName  = `${docCase.lead.firstName} ${docCase.lead.lastName}`.trim();
+
+  // Contact / address derivations. resolveDisplayContact only needs the thin
+  // projection; address needs the full lead (fetched above).
+  const baseLead = fullLead ?? docCase.lead;
+  const resolvedContact = resolveDisplayContact(baseLead, caseContacts);
+  const addressStr = fullLead ? formatLeadAddress(fullLead) : '';
+  // Structured location without postalCode — matches the shared sections' copy text.
+  const contactLocation = fullLead
+    ? ([fullLead.area, fullLead.city, fullLead.state, fullLead.country].filter(Boolean).join(', ') || fullLead.freeformAddress || '')
+    : '';
+  const primaryWaChannel = waChannels.find(c => c.isPrimary) ?? waChannels[0] ?? null;
+
+  const priorityLabel = ['Normal', 'High', 'Urgent'][docCase.priority] ?? 'Normal';
+  const divider = <div style={{ height: 1, background: 'var(--border-light)', margin: '1.375rem 0' }} />;
+
+  const TABS = ['overview', 'contacts', 'documents', 'timeline', 'notes'] as const;
+  const tabLabel = (t: typeof TABS[number]) =>
+    t === 'overview'  ? 'Overview'
+    : t === 'contacts'  ? 'Contacts'
+    : t === 'documents' ? `Documents (${docCase.totalDocs})`
+    : t === 'timeline'  ? 'Timeline'
+    : 'Notes';
+  // Roving tabindex — arrow / Home / End move selection and focus between tabs.
+  const onTabKeyDown = (e: React.KeyboardEvent) => {
+    const i = TABS.indexOf(tab);
+    let ni = i;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') ni = (i + 1) % TABS.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ni = (i - 1 + TABS.length) % TABS.length;
+    else if (e.key === 'Home') ni = 0;
+    else if (e.key === 'End') ni = TABS.length - 1;
+    else return;
+    e.preventDefault();
+    setTab(TABS[ni]);
+    tabRefs.current[ni]?.focus();
+  };
+
+  const infoRow = (icon: React.ReactNode, label: string, value: React.ReactNode) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--text-secondary)', padding: '4px 0' }}>
+      <span style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1, display: 'flex' }}>{icon}</span>
+      <span style={{ color: 'var(--text-tertiary)', minWidth: 84, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: 'var(--text-primary)', minWidth: 0, wordBreak: 'break-word' }}>{value}</span>
+    </div>
+  );
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+      <LeadSectionStyles />
+      {/* Header — persistent across tabs */}
       <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text-primary)' }}>
-              {docCase.lead.firstName} {docCase.lead.lastName}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div title={companyName} style={{ fontWeight: 700, fontSize: 18, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <Building2 size={16} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{companyName}</span>
             </div>
-            {docCase.lead.company && (
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{docCase.lead.company}</div>
+            {personName && (
+              <div title={personName} style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {personName}
+              </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <span
               title={docCase.status === 'CLOSED_NO_DOCS' && docCase.closedAt
                 ? `Closed ${new Date(docCase.closedAt).toLocaleDateString()}${docCase.closedReason ? ` · ${CLOSE_REASON_LABELS[docCase.closedReason as CloseReason] ?? docCase.closedReason}` : ''}`
@@ -892,7 +998,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
               background: sm.bg, color: sm.color,
             }}>{sm.label}</span>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <button onClick={onClose} aria-label="Close panel" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
               <X size={18} style={{ color: 'var(--text-tertiary)' }} />
             </button>
           </div>
@@ -922,141 +1028,26 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           )}
         </div>
 
-        {/* Progress summary */}
-        <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Documentation Progress</span>
-            <span style={{ fontSize: 22, fontWeight: 800, color: docCase.isReady ? '#059669' : 'var(--text-primary)' }}>
-              {docCase.completionPercent}%
-            </span>
-          </div>
-          <ProgressBar pct={docCase.completionPercent} ready={docCase.isReady} />
-          <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
-            {[
-              { label: 'Total',    val: docCase.totalDocs },
-              { label: 'Received', val: docCase.receivedDocs },
-              { label: 'Approved', val: docCase.approvedDocs, color: '#059669' },
-              { label: 'Rejected', val: docCase.rejectedDocs, color: '#dc2626' },
-              { label: 'Mandatory Pending', val: docCase.mandatoryDocs - docCase.mandatoryApproved, color: docCase.mandatoryDocs - docCase.mandatoryApproved > 0 ? '#d97706' : '#059669' },
-            ].map(s => (
-              <div key={s.label}>
-                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: s.color ?? 'var(--text-primary)' }}>{s.val}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Missing / Rejected alert */}
-        {(missingMandatory.length > 0 || rejected.length > 0) && (
-          <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(220,38,38,0.06)', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
-            {missingMandatory.length > 0 && <div><strong>{missingMandatory.length}</strong> mandatory document(s) missing</div>}
-            {rejected.length > 0 && <div><strong>{rejected.length}</strong> document(s) rejected</div>}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          {canTransfer && (
-            <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
-              onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
-              disabled={transferMutation.isPending}
-            >
-              <ArrowRight size={14} />
-              {transferMutation.isPending ? 'Transferring…' : 'Transfer to Process'}
-            </button>
-          )}
-          {!docCase.isReady && docCase.status === 'ACTIVE' && (
-            <button className="btn" style={{ fontSize: 12, border: '1px solid var(--border-medium)', background: 'none', color: 'var(--text-secondary)', gap: 6, display: 'flex', alignItems: 'center' }}
-              onClick={() => {
-                const reason = window.prompt('Manager override reason (required):');
-                if (reason?.trim()) overrideMutation.mutate(reason.trim());
-              }}
-              disabled={overrideMutation.isPending}
-            >
-              <Shield size={14} />
-              Manager Override
-            </button>
-          )}
-          {['ACTIVE', 'DOCUMENTATION_READY'].includes(docCase.status)
-            && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
-            && docCase.handoffState === 'ACCEPTED' && (
-            <button className="btn" style={{
-              fontSize: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.04)',
-              color: '#dc2626', gap: 6, display: 'flex', alignItems: 'center', cursor: 'pointer',
-            }}
-              onClick={() => setShowReturn(true)}
-            >
-              <RefreshCw size={14} />
-              Return to Sales
-            </button>
-          )}
-          {['INCOMING', 'ACTIVE'].includes(docCase.status) && permissions.can('cases:close') && (
-            <button className="btn" style={{
-              fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6,
-              background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer',
-            }}
-              onClick={() => setShowCloseDialog(true)}>
-              Close Without Docs
-            </button>
-          )}
-          {docCase.status === 'CLOSED_NO_DOCS' && permissions.can('cases:reopen') && (
-            <button className="btn btn-ghost" style={{ fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6 }}
-              onClick={() => setShowReopenDialog(true)}>
-              Reopen Case
-            </button>
-          )}
-        </div>
-
-        {/* Mandate lifecycle */}
-        <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} autoOpenSend={autoOpenMandateSend} />
-
-        {/* Handoff state badge */}
-        {docCase.handoffState && docCase.handoffState !== 'NONE' && (
-          <div style={{
-            marginBottom: 12, padding: '8px 12px', borderRadius: 8,
-            background: `${HANDOFF_STATE_COLORS[docCase.handoffState]}10`,
-            border: `1px solid ${HANDOFF_STATE_COLORS[docCase.handoffState]}30`,
-            display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
-            color: HANDOFF_STATE_COLORS[docCase.handoffState],
-          }}>
-            <span style={{ fontWeight: 600 }}>{HANDOFF_STATE_LABELS[docCase.handoffState]}</span>
-            {docCase.returnReasonCode && (
-              <span style={{ color: 'var(--text-secondary)' }}>
-                — {RETURN_REASON_LABELS[docCase.returnReasonCode]}
-              </span>
-            )}
-            {docCase.returnCount > 0 && (
-              <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
-                returned {docCase.returnCount}×
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Stale case amber strip */}
-        {docCase.status === 'ACTIVE' && docCase.dueDate && new Date(docCase.dueDate) < new Date() && (
-          <div style={{
-            marginBottom: 12, padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
-            display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#92400e',
-          }}>
-            <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
-            Case overdue — due {new Date(docCase.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-          </div>
-        )}
-
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-medium)', marginBottom: 0 }}>
-          {(['documents', 'timeline', 'notes'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: '8px 14px', fontSize: 12, fontWeight: tab === t ? 600 : 400,
-              color: tab === t ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              background: 'none', border: 'none', cursor: 'pointer',
-              borderBottom: tab === t ? '2px solid var(--text-primary)' : '2px solid transparent',
-              marginBottom: -1,
-            }}>
-              {t === 'documents' ? `Documents (${docCase.totalDocs})` : t === 'timeline' ? 'Timeline' : 'Notes'}
+        <div role="tablist" aria-label="Case sections" onKeyDown={onTabKeyDown}
+          style={{ display: 'flex', borderBottom: '1px solid var(--border-medium)', marginBottom: 0 }}>
+          {TABS.map((t, idx) => (
+            <button key={t}
+              role="tab"
+              id={`case-tab-${t}`}
+              ref={el => { tabRefs.current[idx] = el; }}
+              aria-selected={tab === t}
+              aria-controls={`case-panel-${t}`}
+              tabIndex={tab === t ? 0 : -1}
+              onClick={() => setTab(t)}
+              style={{
+                padding: '8px 14px', fontSize: 12, fontWeight: tab === t ? 600 : 400,
+                color: tab === t ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: tab === t ? '2px solid var(--text-primary)' : '2px solid transparent',
+                marginBottom: -1,
+              }}>
+              {tabLabel(t)}
             </button>
           ))}
         </div>
@@ -1064,188 +1055,377 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
 
       {/* Tab content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
-        {tab === 'documents' && (
-          <div>
-            {missingMandatory.length > 0 && (
-              <div style={{ marginBottom: 16, padding: 12, background: 'rgba(220,38,38,0.04)', borderRadius: 8, border: '1px solid rgba(220,38,38,0.12)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Missing Mandatory Documents
+        {/* ── Overview ── */}
+        <div role="tabpanel" id="case-panel-overview" aria-labelledby="case-tab-overview" tabIndex={0} hidden={tab !== 'overview'}>
+          {tab === 'overview' && (
+            <div>
+              <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
+                {infoRow(<Building2 size={14} />, 'Company', companyName)}
+                {personName && infoRow(<User size={14} />, 'Contact', personName)}
+                {infoRow(<MapPin size={14} />, 'Address', addressStr || (fullLead ? <span style={{ color: 'var(--text-tertiary)' }}>Address not added</span> : <span style={{ color: 'var(--text-tertiary)' }}>Loading…</span>))}
+                {resolvedContact.phone && infoRow(<Phone size={14} />, 'Phone', <a href={`tel:${resolvedContact.phone}`} style={{ color: 'var(--text-primary)' }}>{resolvedContact.phone}</a>)}
+                {resolvedContact.email && infoRow(<Mail size={14} />, 'Email', <a href={`mailto:${resolvedContact.email}`} style={{ color: 'var(--text-primary)' }}>{resolvedContact.email}</a>)}
+                <div style={{ height: 1, background: 'var(--border-light)', margin: '8px 0' }} />
+                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  <div><span style={{ fontWeight: 600 }}>Preset</span> {docCase.preset?.name ?? '—'}</div>
+                  <div><span style={{ fontWeight: 600 }}>Priority</span> {priorityLabel}</div>
+                  {docCase.dueDate && <div><span style={{ fontWeight: 600 }}>Due</span> {new Date(docCase.dueDate).toLocaleDateString()}</div>}
+                  <div><span style={{ fontWeight: 600 }}>Created</span> {new Date(docCase.createdAt).toLocaleDateString()}</div>
                 </div>
-                {missingMandatory.map(d => (
-                  <div key={d.id} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                    <AlertCircle size={11} style={{ color: '#dc2626' }} />
-                    {d.name} — <StatusChip status={d.status} />
-                  </div>
-                ))}
               </div>
-            )}
 
-            {(docCase.documents ?? []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)' }}>
-                <Inbox size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                <div style={{ fontSize: 14 }}>No documents yet</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>Apply a preset or add documents manually</div>
+              {/* Missing / Rejected alert */}
+              {(missingMandatory.length > 0 || rejected.length > 0) && (
+                <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(220,38,38,0.06)', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
+                  {missingMandatory.length > 0 && <div><strong>{missingMandatory.length}</strong> mandatory document(s) missing</div>}
+                  {rejected.length > 0 && <div><strong>{rejected.length}</strong> document(s) rejected</div>}
+                </div>
+              )}
+
+              {/* Handoff state badge */}
+              {docCase.handoffState && docCase.handoffState !== 'NONE' && (
+                <div style={{
+                  marginBottom: 12, padding: '8px 12px', borderRadius: 8,
+                  background: `${HANDOFF_STATE_COLORS[docCase.handoffState]}10`,
+                  border: `1px solid ${HANDOFF_STATE_COLORS[docCase.handoffState]}30`,
+                  display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+                  color: HANDOFF_STATE_COLORS[docCase.handoffState],
+                }}>
+                  <span style={{ fontWeight: 600 }}>{HANDOFF_STATE_LABELS[docCase.handoffState]}</span>
+                  {docCase.returnReasonCode && (
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      — {RETURN_REASON_LABELS[docCase.returnReasonCode]}
+                    </span>
+                  )}
+                  {docCase.returnCount > 0 && (
+                    <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
+                      returned {docCase.returnCount}×
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Stale case amber strip */}
+              {docCase.status === 'ACTIVE' && docCase.dueDate && new Date(docCase.dueDate) < new Date() && (
+                <div style={{
+                  marginBottom: 12, padding: '8px 12px', borderRadius: 8,
+                  background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+                  display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#92400e',
+                }}>
+                  <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
+                  Case overdue — due {new Date(docCase.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                {canTransfer && (
+                  <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
+                    onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
+                    disabled={transferMutation.isPending}
+                  >
+                    <ArrowRight size={14} />
+                    {transferMutation.isPending ? 'Transferring…' : 'Transfer to Process'}
+                  </button>
+                )}
+                {!docCase.isReady && docCase.status === 'ACTIVE' && (
+                  <button className="btn" style={{ fontSize: 12, border: '1px solid var(--border-medium)', background: 'none', color: 'var(--text-secondary)', gap: 6, display: 'flex', alignItems: 'center' }}
+                    onClick={() => {
+                      const reason = window.prompt('Manager override reason (required):');
+                      if (reason?.trim()) overrideMutation.mutate(reason.trim());
+                    }}
+                    disabled={overrideMutation.isPending}
+                  >
+                    <Shield size={14} />
+                    Manager Override
+                  </button>
+                )}
+                {['ACTIVE', 'DOCUMENTATION_READY'].includes(docCase.status)
+                  && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
+                  && docCase.handoffState === 'ACCEPTED' && (
+                  <button className="btn" style={{
+                    fontSize: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.04)',
+                    color: '#dc2626', gap: 6, display: 'flex', alignItems: 'center', cursor: 'pointer',
+                  }}
+                    onClick={() => setShowReturn(true)}
+                  >
+                    <RefreshCw size={14} />
+                    Return to Sales
+                  </button>
+                )}
+                {['INCOMING', 'ACTIVE'].includes(docCase.status) && permissions.can('cases:close') && (
+                  <button className="btn" style={{
+                    fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6,
+                    background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer',
+                  }}
+                    onClick={() => setShowCloseDialog(true)}>
+                    Close Without Docs
+                  </button>
+                )}
+                {docCase.status === 'CLOSED_NO_DOCS' && permissions.can('cases:reopen') && (
+                  <button className="btn btn-ghost" style={{ fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6 }}
+                    onClick={() => setShowReopenDialog(true)}>
+                    Reopen Case
+                  </button>
+                )}
               </div>
-            ) : (
-              (docCase.documents ?? []).map(doc => (
-                <DocumentRow
-                  key={doc.id}
-                  doc={doc}
-                  onStatusChange={(docId, status, remarks, rejectionReason) =>
-                    statusMutation.mutate({ docId, status, remarks, rejectionReason })
-                  }
-                  onAddStorageRef={(docId) => setStorageDocId(docId)}
+
+              {/* Mandate lifecycle */}
+              <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} autoOpenSend={autoOpenMandateSend} />
+            </div>
+          )}
+        </div>
+
+        {/* ── Contacts ── */}
+        <div role="tabpanel" id="case-panel-contacts" aria-labelledby="case-tab-contacts" tabIndex={0} hidden={tab !== 'contacts'}>
+          {tab === 'contacts' && (
+            fullLead ? (
+              <div className="ldp-root">
+                <LeadContactInformationSection
+                  fullName={resolveLeadIdentity(fullLead)}
+                  contactPhone={resolvedContact.phone}
+                  contactEmail={resolvedContact.email}
+                  locationStr={contactLocation}
+                  copyContactText={buildContactCopyText(fullLead, caseContacts)}
                 />
-              ))
-            )}
-          </div>
-        )}
-
-        {tab === 'timeline' && (
-          <div>
-            {(docCase.events ?? []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>No events yet</div>
-            ) : (
-              <div style={{ position: 'relative', paddingLeft: 20 }}>
-                <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 1, background: 'var(--border-medium)' }} />
-                {(docCase.events ?? []).map(ev => (
-                  <div key={ev.id} style={{ position: 'relative', marginBottom: 16 }}>
-                    <div style={{
-                      position: 'absolute', left: -13, top: 4, width: 8, height: 8,
-                      borderRadius: '50%', background: 'var(--color-accent)', border: '2px solid var(--bg-app)',
-                    }} />
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
-                      {ev.eventType.replace(/_/g, ' ')}
-                    </div>
-                    {ev.fromStatus && ev.toStatus && (
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <StatusChip status={ev.fromStatus} />
-                        <ArrowRight size={10} />
-                        <StatusChip status={ev.toStatus} />
-                      </div>
-                    )}
-                    {ev.remarks && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{ev.remarks}</div>}
-                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{relativeTime(ev.createdAt)}</div>
-                  </div>
-                ))}
+                {caseContacts.length > 0 && (
+                  <>
+                    {divider}
+                    <LeadAllContactsSection contacts={caseContacts} />
+                  </>
+                )}
+                {divider}
+                <LeadQuickActionsSection
+                  onEdit={() => setEditLead(true)}
+                  onDelete={() => setDeleteLead(true)}
+                  primaryWaChannel={primaryWaChannel}
+                  contactPhone={resolvedContact.phone}
+                  copyLeadText={buildLeadCopyText(fullLead, { contacts: caseContacts })}
+                  onOpenWaModal={() => setShowWaModal(true)}
+                />
               </div>
-            )}
-          </div>
-        )}
+            ) : (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Loading contact…</div>
+            )
+          )}
+        </div>
 
-        {tab === 'notes' && (
-          <div>
-            {/* Portal contact card */}
-            {docCase.lead?.phone && (
-              <div style={{
-                marginBottom: 14, padding: '12px 14px', borderRadius: 10,
-                border: '1px solid #fde68a', background: 'rgba(251,191,36,0.06)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                    Portal contact
+        {/* ── Documents ── */}
+        <div role="tabpanel" id="case-panel-documents" aria-labelledby="case-tab-documents" tabIndex={0} hidden={tab !== 'documents'}>
+          {tab === 'documents' && (
+            <div>
+              {/* Progress summary (moved here from the header) */}
+              <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Documentation Progress</span>
+                  <span style={{ fontSize: 22, fontWeight: 800, color: docCase.isReady ? '#059669' : 'var(--text-primary)' }}>
+                    {docCase.completionPercent}%
                   </span>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, fontFamily: 'ui-monospace, monospace' }}>
-                  ••{docCase.lead.phone.replace(/\D/g, '').slice(-2)}
+                <ProgressBar pct={docCase.completionPercent} ready={docCase.isReady} />
+                <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Total',    val: docCase.totalDocs },
+                    { label: 'Received', val: docCase.receivedDocs },
+                    { label: 'Approved', val: docCase.approvedDocs, color: '#059669' },
+                    { label: 'Rejected', val: docCase.rejectedDocs, color: '#dc2626' },
+                    { label: 'Mandatory Pending', val: docCase.mandatoryDocs - docCase.mandatoryApproved, color: docCase.mandatoryDocs - docCase.mandatoryApproved > 0 ? '#d97706' : '#059669' },
+                  ].map(s => (
+                    <div key={s.label}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: s.color ?? 'var(--text-primary)' }}>{s.val}</div>
+                    </div>
+                  ))}
                 </div>
-                <div style={{ fontSize: 11, color: '#92400e', lineHeight: 1.45 }}>
-                  Changing the portal number requires manager or admin approval. Sessions are revoked on change.
+              </div>
+
+              {missingMandatory.length > 0 && (
+                <div style={{ marginBottom: 16, padding: 12, background: 'rgba(220,38,38,0.04)', borderRadius: 8, border: '1px solid rgba(220,38,38,0.12)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Missing Mandatory Documents
+                  </div>
+                  {missingMandatory.map(d => (
+                    <div key={d.id} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                      <AlertCircle size={11} style={{ color: '#dc2626' }} />
+                      {d.name} — <StatusChip status={d.status} />
+                    </div>
+                  ))}
                 </div>
-                <button style={{
-                  marginTop: 8, fontSize: 11, fontWeight: 600, color: '#7C3AED',
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              )}
+
+              {(docCase.documents ?? []).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)' }}>
+                  <Inbox size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                  <div style={{ fontSize: 14 }}>No documents yet</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>Apply a preset or add documents manually</div>
+                </div>
+              ) : (
+                (docCase.documents ?? []).map(doc => (
+                  <DocumentRow
+                    key={doc.id}
+                    doc={doc}
+                    onStatusChange={(docId, status, remarks, rejectionReason) =>
+                      statusMutation.mutate({ docId, status, remarks, rejectionReason })
+                    }
+                    onAddStorageRef={(docId) => setStorageDocId(docId)}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Timeline ── */}
+        <div role="tabpanel" id="case-panel-timeline" aria-labelledby="case-tab-timeline" tabIndex={0} hidden={tab !== 'timeline'}>
+          {tab === 'timeline' && (
+            <div>
+              {(docCase.events ?? []).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>No events yet</div>
+              ) : (
+                <div style={{ position: 'relative', paddingLeft: 20 }}>
+                  <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 1, background: 'var(--border-medium)' }} />
+                  {(docCase.events ?? []).map(ev => (
+                    <div key={ev.id} style={{ position: 'relative', marginBottom: 16 }}>
+                      <div style={{
+                        position: 'absolute', left: -13, top: 4, width: 8, height: 8,
+                        borderRadius: '50%', background: 'var(--color-accent)', border: '2px solid var(--bg-app)',
+                      }} />
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                        {ev.eventType.replace(/_/g, ' ')}
+                      </div>
+                      {ev.fromStatus && ev.toStatus && (
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <StatusChip status={ev.fromStatus} />
+                          <ArrowRight size={10} />
+                          <StatusChip status={ev.toStatus} />
+                        </div>
+                      )}
+                      {ev.remarks && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{ev.remarks}</div>}
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{relativeTime(ev.createdAt)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Notes ── */}
+        <div role="tabpanel" id="case-panel-notes" aria-labelledby="case-tab-notes" tabIndex={0} hidden={tab !== 'notes'}>
+          {tab === 'notes' && (
+            <div>
+              {/* Portal contact card */}
+              {docCase.lead?.phone && (
+                <div style={{
+                  marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+                  border: '1px solid #fde68a', background: 'rgba(251,191,36,0.06)',
                 }}>
-                  Request contact change…
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      Portal contact
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, fontFamily: 'ui-monospace, monospace' }}>
+                    ••{docCase.lead.phone.replace(/\D/g, '').slice(-2)}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#92400e', lineHeight: 1.45 }}>
+                    Changing the portal number requires manager or admin approval. Sessions are revoked on change.
+                  </div>
+                  <button style={{
+                    marginTop: 8, fontSize: 11, fontWeight: 600, color: '#7C3AED',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  }}>
+                    Request contact change…
+                  </button>
+                </div>
+              )}
+
+              {/* Portal activation status */}
+              <div style={{
+                marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+                border: '1px solid var(--border-light)', background: 'var(--bg-subtle)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    Portal activation
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                    background: docCase.portalEnabled && docCase.portalActivatedAt ? 'rgba(5,150,105,0.1)' : 'rgba(156,163,175,0.1)',
+                    color: docCase.portalEnabled && docCase.portalActivatedAt ? '#059669' : '#9ca3af',
+                  }}>
+                    {docCase.portalEnabled && docCase.portalActivatedAt ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  {!docCase.portalEnabled
+                    ? 'Portal disabled for this case.'
+                    : !docCase.portalActivatedAt
+                    ? 'Awaiting activation — add a client-visible note or document first.'
+                    : `Activated ${relativeTime(docCase.portalActivatedAt)}`}
+                </div>
+              </div>
+
+              {/* Note composer */}
+              <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  {(['INTERNAL', 'CUSTOMER'] as DocNoteType[]).map(nt => (
+                    <button key={nt} onClick={() => setNoteType(nt)} style={{
+                      fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-full)',
+                      background: noteType === nt
+                        ? nt === 'CUSTOMER' ? '#111827' : 'var(--color-accent)'
+                        : 'var(--bg-muted)',
+                      color: noteType === nt ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                      border: 'none', cursor: 'pointer',
+                    }}>
+                      {nt === 'CUSTOMER' ? 'Client-visible' : 'Internal'}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={noteInput}
+                  onChange={e => setNoteInput(e.target.value)}
+                  className="input"
+                  rows={3}
+                  style={{ width: '100%', resize: 'vertical', marginBottom: 8 }}
+                  placeholder={noteType === 'INTERNAL' ? 'Internal note (only visible to staff)…' : 'Client-facing note — will appear in the client portal…'}
+                />
+                <button
+                  style={{
+                    height: 32, borderRadius: 999, paddingInline: 16, border: 'none',
+                    background: noteType === 'CUSTOMER' ? '#111827' : 'var(--color-accent)',
+                    color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                  onClick={() => noteMutation.mutate()}
+                  disabled={!noteInput.trim() || noteMutation.isPending}
+                >
+                  {noteMutation.isPending ? 'Saving…' : noteType === 'CUSTOMER' ? 'Publish to client' : 'Add Note'}
                 </button>
               </div>
-            )}
 
-            {/* Portal activation status */}
-            <div style={{
-              marginBottom: 14, padding: '12px 14px', borderRadius: 10,
-              border: '1px solid var(--border-light)', background: 'var(--bg-subtle)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  Portal activation
-                </span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
-                  background: docCase.portalEnabled && docCase.portalActivatedAt ? 'rgba(5,150,105,0.1)' : 'rgba(156,163,175,0.1)',
-                  color: docCase.portalEnabled && docCase.portalActivatedAt ? '#059669' : '#9ca3af',
-                }}>
-                  {docCase.portalEnabled && docCase.portalActivatedAt ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                {!docCase.portalEnabled
-                  ? 'Portal disabled for this case.'
-                  : !docCase.portalActivatedAt
-                  ? 'Awaiting activation — add a client-visible note or document first.'
-                  : `Activated ${relativeTime(docCase.portalActivatedAt)}`}
-              </div>
-            </div>
-
-            {/* Note composer */}
-            <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                {(['INTERNAL', 'CUSTOMER'] as DocNoteType[]).map(nt => (
-                  <button key={nt} onClick={() => setNoteType(nt)} style={{
-                    fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-full)',
-                    background: noteType === nt
-                      ? nt === 'CUSTOMER' ? '#111827' : 'var(--color-accent)'
-                      : 'var(--bg-muted)',
-                    color: noteType === nt ? 'var(--text-inverse)' : 'var(--text-secondary)',
-                    border: 'none', cursor: 'pointer',
-                  }}>
-                    {nt === 'CUSTOMER' ? 'Client-visible' : 'Internal'}
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={noteInput}
-                onChange={e => setNoteInput(e.target.value)}
-                className="input"
-                rows={3}
-                style={{ width: '100%', resize: 'vertical', marginBottom: 8 }}
-                placeholder={noteType === 'INTERNAL' ? 'Internal note (only visible to staff)…' : 'Client-facing note — will appear in the client portal…'}
-              />
-              <button
-                style={{
-                  height: 32, borderRadius: 999, paddingInline: 16, border: 'none',
-                  background: noteType === 'CUSTOMER' ? '#111827' : 'var(--color-accent)',
-                  color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}
-                onClick={() => noteMutation.mutate()}
-                disabled={!noteInput.trim() || noteMutation.isPending}
-              >
-                {noteMutation.isPending ? 'Saving…' : noteType === 'CUSTOMER' ? 'Publish to client' : 'Add Note'}
-              </button>
-            </div>
-
-            {/* Existing notes */}
-            {(docCase.caseNotes ?? []).map(note => (
-              <div key={note.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                      color: note.noteType === 'CUSTOMER' ? '#111827' : note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
-                    }}>{note.noteType === 'CUSTOMER' ? 'Client-visible' : note.noteType}</span>
-                    {note.clientVisible && (
-                      <Eye size={11} style={{ color: '#6b7280' }} />
-                    )}
+              {/* Existing notes */}
+              {(docCase.caseNotes ?? []).map(note => (
+                <div key={note.id} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        color: note.noteType === 'CUSTOMER' ? '#111827' : note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
+                      }}>{note.noteType === 'CUSTOMER' ? 'Client-visible' : note.noteType}</span>
+                      {note.clientVisible && (
+                        <Eye size={11} style={{ color: '#6b7280' }} />
+                      )}
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{relativeTime(note.createdAt)}</span>
                   </div>
-                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{relativeTime(note.createdAt)}</span>
+                  <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: 8 }}>
+                    {note.content}
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: 8 }}>
-                  {note.content}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {storageDocId && (
@@ -1276,6 +1456,37 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           onClose={() => setShowReopenDialog(false)}
           onConfirm={() => reopenMutation.mutate()}
           submitting={reopenMutation.isPending}
+        />
+      )}
+
+      {/* Contacts-tab lead modals (reuse the Leads-page components) */}
+      {editLead && fullLead && (
+        <LeadModal
+          mode="edit"
+          lead={fullLead}
+          onClose={() => setEditLead(false)}
+          onSuccess={() => {
+            setEditLead(false);
+            qc.invalidateQueries({ queryKey: ['lead', leadId] });
+            qc.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+            qc.invalidateQueries({ queryKey: ['leads'] });
+            invalidate();
+          }}
+        />
+      )}
+      {deleteLead && fullLead && (
+        <DeleteConfirm
+          lead={fullLead}
+          onConfirm={() => deleteLeadMutation.mutate()}
+          onCancel={() => setDeleteLead(false)}
+          isDeleting={deleteLeadMutation.isPending}
+        />
+      )}
+      {showWaModal && leadId && (
+        <LeadWaChannelsModal
+          leadId={leadId}
+          leadName={personName || companyName}
+          onClose={() => setShowWaModal(false)}
         />
       )}
     </div>
@@ -1564,7 +1775,7 @@ export function DocumentationPage() {
       )}
 
       {/* Case detail panel */}
-      <ContextPanel isOpen={!!selectedCaseId} onClose={() => setSelectedCaseId(null)} width={600}>
+      <ContextPanel isOpen={!!selectedCaseId} onClose={() => setSelectedCaseId(null)} width={600} hideCloseButton>
         {selectedCaseId && (
           <CaseDetailPanel caseId={selectedCaseId} onClose={() => setSelectedCaseId(null)} autoOpenMandateSend={searchParams.get('mandate') === 'send'} />
         )}
