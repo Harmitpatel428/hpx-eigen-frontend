@@ -208,18 +208,16 @@ function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }
         contain: 'layout style',
       }}
     >
-      {/* Lead */}
+      {/* Lead — company primary, person secondary (Documentation Dept rule) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <Avatar first={docCase.lead.firstName} last={docCase.lead.lastName} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div title={docCase.lead.company ?? undefined} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {docCase.lead.company || 'Company not set'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {docCase.lead.firstName} {docCase.lead.lastName}
           </div>
-          {docCase.lead.company && (
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {docCase.lead.company}
-            </div>
-          )}
         </div>
       </div>
 
@@ -562,18 +560,16 @@ function IncomingCaseRow({
       borderBottom: '1px solid var(--border-light)',
       contain: 'layout style',
     }}>
-      {/* Lead */}
+      {/* Lead — company primary, person secondary (Documentation Dept rule) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <Avatar first={docCase.lead.firstName} last={docCase.lead.lastName} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div title={docCase.lead.company ?? undefined} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {docCase.lead.company || 'Company not set'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {docCase.lead.firstName} {docCase.lead.lastName}
           </div>
-          {docCase.lead.company && (
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {docCase.lead.company}
-            </div>
-          )}
         </div>
       </div>
 
