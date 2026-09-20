@@ -5,16 +5,21 @@
  * All three are tightly coupled to one caseId and share query invalidation, so they
  * live together rather than as separate files.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FileText, ExternalLink, CheckCircle2, XCircle, RefreshCw, Send } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle2, XCircle, RefreshCw, Send, Upload, Building2 } from 'lucide-react';
 import { Modal } from '../Modal';
+import { FileDropzone } from '../documents/FileDropzone';
 import { useAuth } from '../../auth/context/AuthContext';
 import {
-  mandateService, mandateErrorMessage, isStorageNotConfigured,
-  type MandateRequestStatus, type MandateRequestSummary,
+  mandateService, mandateErrorMessage, isStorageNotConfigured, uploadToPresigned,
+  type MandateRequestStatus, type MandateRequestSummary, type FirmSourceChannel,
 } from '../../services/mandate.service';
+
+const FIRM_CHANNEL_LABELS: Record<FirmSourceChannel, string> = {
+  WHATSAPP: 'WhatsApp', EMAIL: 'Email', PHYSICAL: 'Physical', FIRM_UPLOAD: 'Firm upload', OTHER: 'Other',
+};
 
 const STATUS_META: Record<MandateRequestStatus, { label: string; bg: string; color: string }> = {
   PENDING_UPLOAD: { label: 'Pending upload', bg: 'rgba(217,119,6,0.12)',  color: '#b45309' },
@@ -38,11 +43,13 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
   const qc = useQueryClient();
   const { permissions } = useAuth();
   const [showSend, setShowSend] = useState(false);
+  const [showFirmUpload, setShowFirmUpload] = useState(false);
   const [verifyReq, setVerifyReq] = useState<MandateRequestSummary | null>(null);
 
   const canSend = permissions.can('mandate:send');
   const canVerify = permissions.can('mandate:verify');
   const canView = permissions.can('mandate:view');
+  const canUpload = permissions.can('mandate:upload');
 
   const { data: requests = [] } = useQuery({
     queryKey: ['mandate-requests', caseId],
@@ -73,26 +80,44 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Mandate</span>
-        {canSend && caseOpen && (
-          <button className="btn btn-ghost" style={{ height: 26, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
-            onClick={() => setShowSend(true)}>
-            <Send size={13} /> Send Mandate Request
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {canUpload && caseOpen && (
+            <button className="btn btn-ghost" style={{ height: 26, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
+              onClick={() => setShowFirmUpload(true)}>
+              <Upload size={13} /> Upload Mandate
+            </button>
+          )}
+          {canSend && caseOpen && (
+            <button className="btn btn-ghost" style={{ height: 26, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
+              onClick={() => setShowSend(true)}>
+              <Send size={13} /> Send Mandate Request
+            </button>
+          )}
+        </div>
       </div>
 
       {!current && (
-        canSend && caseOpen ? (
+        (canSend || canUpload) && caseOpen ? (
           <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', textAlign: 'center', border: '1px dashed var(--border-subtle, #d1d5db)' }}>
             <Send size={22} color="var(--text-tertiary)" style={{ margin: '0 auto 8px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>No mandate requested yet</div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
-              Send a mandate request so the client can upload their signed document.
+              Send a request so the client can upload, or upload a mandate you already received.
             </div>
-            <button className="btn btn-primary" style={{ height: 30, paddingInline: 14, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              onClick={() => setShowSend(true)}>
-              <Send size={13} /> Send Mandate
-            </button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              {canSend && (
+                <button className="btn btn-primary" style={{ height: 30, paddingInline: 14, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  onClick={() => setShowSend(true)}>
+                  <Send size={13} /> Send Mandate
+                </button>
+              )}
+              {canUpload && (
+                <button className="btn btn-ghost" style={{ height: 30, paddingInline: 14, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  onClick={() => setShowFirmUpload(true)}>
+                  <Upload size={13} /> Upload Mandate
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>
@@ -113,6 +138,11 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
       {showSend && (
         <SendMandateDialog caseId={caseId} leadEmail={leadEmail}
           onClose={() => setShowSend(false)} onSent={invalidate} />
+      )}
+
+      {showFirmUpload && (
+        <FirmMandateUploadDialog caseId={caseId} canVerify={canVerify}
+          onClose={() => setShowFirmUpload(false)} onDone={invalidate} />
       )}
 
       {verifyReq && (
@@ -161,6 +191,14 @@ function MandateStatusCard({ req, canVerify, canSend, onVerifyReject, onRegenera
         {req.verifiedAt && <div><span style={{ fontWeight: 600 }}>Verified</span> {fmtDate(req.verifiedAt)}</div>}
         {req.sentToEmail && <div>{req.sentToEmail}</div>}
       </div>
+
+      {upload?.uploadedByParty === 'FIRM' && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 10, padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>
+          <Building2 size={11} />
+          Uploaded by firm{upload.sourceChannel && upload.sourceChannel !== 'FIRM_UPLOAD' && upload.sourceChannel !== 'CLIENT_PORTAL'
+            ? ` · via ${FIRM_CHANNEL_LABELS[upload.sourceChannel as FirmSourceChannel] ?? upload.sourceChannel}` : ''}
+        </div>
+      )}
 
       {req.status === 'REJECTED' && req.rejectionReason && (
         <div style={{ fontSize: 12, color: '#b91c1c', background: 'rgba(220,38,38,0.06)', padding: '6px 10px', borderRadius: 8, marginBottom: 10 }}>
@@ -342,6 +380,125 @@ function VerifyRejectDialog({ req, onClose, onDone }: {
               </button>
             </>
           )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Firm mandate upload dialog (staff direct upload) ───────────────────────
+
+function FirmMandateUploadDialog({ caseId, canVerify, onClose, onDone }: {
+  caseId: string; canVerify: boolean; onClose: () => void; onDone: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [mandateType, setMandateType] = useState('');
+  const [sourceChannel, setSourceChannel] = useState<FirmSourceChannel>('WHATSAPP');
+  const [internalNote, setInternalNote] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [verify, setVerify] = useState(false);
+  const [phase, setPhase] = useState<'ready' | 'uploading' | 'confirming'>('ready');
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // R1: reuse the same uploadId across retries; only re-PUT if the bytes never landed.
+  const uploadIdRef = useRef<string | null>(null);
+  const uploadedRef = useRef(false);
+  const busy = phase !== 'ready';
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+
+  async function submit() {
+    if (!file || busy) return;
+    setError(null);
+    const controller = new AbortController();
+    try {
+      if (!uploadIdRef.current || !uploadedRef.current) {
+        setPhase('uploading'); setProgress(0);
+        const { uploadUrl, uploadId } = await mandateService.firmUploadUrl(caseId, {
+          fileName: file.name, contentType: file.type, fileSizeBytes: file.size,
+        });
+        uploadIdRef.current = uploadId; uploadedRef.current = false;
+        await uploadToPresigned(uploadUrl, file, (p) => setProgress(p), controller.signal);
+        uploadedRef.current = true;
+      }
+      setPhase('confirming');
+      const res = await mandateService.firmConfirmUpload(caseId, {
+        uploadId: uploadIdRef.current!,
+        fileName: file.name,
+        mandateType: mandateType.trim() || undefined,
+        sourceChannel,
+        internalNote: internalNote.trim() || undefined,
+        expiresAt: expiresAt ? new Date(`${expiresAt}T00:00:00`).toISOString() : undefined,
+        verify: verify || undefined,
+      });
+      toast.success(res.status === 'VERIFIED' ? 'Mandate uploaded and verified.' : 'Mandate uploaded.');
+      onDone();
+      onClose();
+    } catch (e) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      const serverMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const retryable = status === undefined || status >= 500;
+      if (!retryable) { uploadIdRef.current = null; uploadedRef.current = false; } // terminal → fresh attempt
+      setError(serverMsg || apiError(e));
+      setPhase('ready');
+      setProgress(null);
+    }
+  }
+
+  return (
+    <Modal isOpen onClose={busy ? () => {} : onClose} title="Upload Mandate" size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <FileDropzone file={file} onSelect={setFile} disabled={busy} progress={progress} />
+
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          Received via
+          <select className="input" value={sourceChannel} disabled={busy}
+            onChange={(e) => setSourceChannel(e.target.value as FirmSourceChannel)}
+            style={{ marginTop: 6, width: '100%' }}>
+            {(Object.keys(FIRM_CHANNEL_LABELS) as FirmSourceChannel[]).map((c) => (
+              <option key={c} value={c}>{FIRM_CHANNEL_LABELS[c]}</option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          Mandate type <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span>
+          <input className="input" value={mandateType} maxLength={200} disabled={busy}
+            onChange={(e) => setMandateType(e.target.value)}
+            placeholder="e.g. Signed authorization form"
+            style={{ marginTop: 6, width: '100%' }} />
+        </label>
+
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          Internal note <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional, staff-only)</span>
+          <textarea className="input" value={internalNote} maxLength={2000} rows={2} disabled={busy}
+            onChange={(e) => setInternalNote(e.target.value)}
+            style={{ marginTop: 6, width: '100%', resize: 'vertical' }} />
+        </label>
+
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          Expiry date <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span>
+          <input className="input" type="date" value={expiresAt} min={tomorrow} disabled={busy}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            style={{ marginTop: 6, width: '100%' }} />
+        </label>
+
+        {canVerify ? (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer' }}>
+            <input type="checkbox" checked={verify} disabled={busy} onChange={(e) => setVerify(e.target.checked)} />
+            Mark as verified (accepted) on upload
+          </label>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Status after upload: <strong>Received</strong>.</div>
+        )}
+
+        {error && <div role="alert" style={{ fontSize: 12, color: '#dc2626' }}>{error}</div>}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <button className="btn btn-ghost" onClick={onClose} disabled={busy} style={{ fontSize: 13 }}>Cancel</button>
+          <button className="btn btn-primary" onClick={submit} disabled={!file || busy} style={{ fontSize: 13 }}>
+            {phase === 'uploading' ? 'Uploading…' : phase === 'confirming' ? 'Saving…' : 'Upload'}
+          </button>
         </div>
       </div>
     </Modal>

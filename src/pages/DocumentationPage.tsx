@@ -14,6 +14,7 @@ import {
   Shield, RefreshCw, ExternalLink,
   FolderOpen, AlertCircle, Inbox, Eye,
   Building2, MapPin, User, Phone, Mail,
+  Upload, Trash2, Download,
 } from 'lucide-react';
 import { documentationService } from '../services/documentation.service';
 import { handoffService } from '../services/handoff.service';
@@ -22,8 +23,11 @@ import { getHandoffAge, HANDOFF_AGE_COLORS, HANDOFF_STATE_LABELS, HANDOFF_STATE_
 import type {
   DocCase, DocCaseDocument, DocDocumentStatus, DocNoteType,
   DocStorageType, DocPreset, HandoffReturnReason,
+  CaseDocument, DocFileStatus, DocSourceChannel,
 } from '../types';
 import { HANDOFF_RETURN_REASON_LABELS } from '../types';
+import { FileDropzone } from '../components/documents/FileDropzone';
+import { uploadToPresigned } from '../services/mandate.service';
 import { leadService } from '../services/lead.service';
 import { leadContactsService, type LeadContact } from '../services/lead-contacts.service';
 import { waChannelsService, type WaChannel } from '../services/wa-channels.service';
@@ -248,13 +252,65 @@ function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }
   );
 }
 
+// ─── Uploaded document file (unified Document store) ─────────────────────────
+const DOC_FILE_STATUS_META: Record<DocFileStatus, { label: string; color: string; bg: string }> = {
+  UPLOADING:        { label: 'Uploading',    color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+  SCANNING:         { label: 'Scanning',     color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+  RECEIVED:         { label: 'Received',     color: '#2563eb', bg: 'rgba(37,99,235,0.1)' },
+  UNDER_REVIEW:     { label: 'Under review', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  VERIFIED:         { label: 'Verified',     color: '#059669', bg: 'rgba(5,150,105,0.1)' },
+  REJECTED:         { label: 'Rejected',     color: '#dc2626', bg: 'rgba(220,38,38,0.1)' },
+  EXPIRED:          { label: 'Expired',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
+  ARCHIVED:         { label: 'Archived',     color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+  MALWARE_DETECTED: { label: 'Malware',      color: '#dc2626', bg: 'rgba(220,38,38,0.1)' },
+};
+const SOURCE_LABELS: Record<DocSourceChannel, string> = {
+  CLIENT_PORTAL: 'Client portal', WHATSAPP: 'WhatsApp', EMAIL: 'Email', PHYSICAL: 'Physical', FIRM_UPLOAD: 'Firm upload', OTHER: 'Other',
+};
+
+function DocumentFileRow({ file, canManageFile, onView, onDelete }: {
+  file: CaseDocument; canManageFile: boolean; onView: () => void; onDelete: () => void;
+}) {
+  const s = DOC_FILE_STATUS_META[file.status];
+  const isFirm = file.uploadedByParty === 'FIRM';
+  const pastDue = file.expiresAt && new Date(file.expiresAt) < new Date();
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: 'var(--bg-subtle)', marginBottom: 4 }}>
+      <FileText size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
+          <span title={isFirm ? 'Uploaded by firm' : 'Uploaded by client'} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: isFirm ? 'rgba(124,58,237,0.1)' : 'rgba(37,99,235,0.1)', color: isFirm ? '#7c3aed' : '#2563eb' }}>{isFirm ? 'FIRM' : 'CLIENT'}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{SOURCE_LABELS[file.sourceChannel] ?? file.sourceChannel}</span>
+          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: s.bg, color: s.color }}>{s.label}</span>
+          {pastDue && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}>PAST DUE</span>}
+        </div>
+      </div>
+      <button className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }} onClick={onView}>
+        <Download size={12} /> View
+      </button>
+      {canManageFile && (
+        <button aria-label={`Delete ${file.name}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4, display: 'flex' }} onClick={onDelete}>
+          <Trash2 size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Document row inside case panel ──────────────────────────────────────────
 function DocumentRow({
-  doc, onStatusChange, onAddStorageRef,
+  doc, files, canUpload, canManageFile, onStatusChange, onAddStorageRef, onUpload, onViewFile, onDeleteFile,
 }: {
   doc: DocCaseDocument;
+  files: CaseDocument[];
+  canUpload: boolean;
+  canManageFile: boolean;
   onStatusChange: (docId: string, status: DocDocumentStatus, remarks?: string, rejectionReason?: string) => void;
   onAddStorageRef: (docId: string) => void;
+  onUpload: (doc: DocCaseDocument) => void;
+  onViewFile: (fileId: string) => void;
+  onDeleteFile: (fileId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const nextStatuses = VALID_NEXT[doc.status];
@@ -372,6 +428,27 @@ function DocumentRow({
               + Storage Ref
             </button>
           </div>
+
+          {/* Firm/client uploaded files (unified Document store) */}
+          {(files.length > 0 || canUpload) && (
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uploaded files</span>
+                {canUpload && (
+                  <button className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => onUpload(doc)}>
+                    <Upload size={12} /> Upload
+                  </button>
+                )}
+              </div>
+              {files.length === 0
+                ? <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No file uploaded yet.</div>
+                : files.map(f => (
+                    <DocumentFileRow key={f.id} file={f} canManageFile={canManageFile}
+                      onView={() => onViewFile(f.id)} onDelete={() => onDeleteFile(f.id)} />
+                  ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -793,6 +870,11 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const [deleteLead, setDeleteLead] = useState(false);
   const [showWaModal, setShowWaModal] = useState(false);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  // Documents-tab firm upload
+  const [fileUploadTarget, setFileUploadTarget] = useState<{ category: 'REQUIREMENT' | 'GENERAL'; requirementId?: string; requirementName?: string } | null>(null);
+  const canUploadDoc = permissions.can('doc:upload');
+  const canManageFile = permissions.can('doc:file:manage');
+  const canVerifyDoc = permissions.can('doc:verify');
 
   const { data: docCase, isLoading } = useQuery({
     queryKey:  ['doc-case', caseId],
@@ -829,6 +911,22 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     qc.invalidateQueries({ queryKey: ['doc-cases'] });
     qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
   }, [qc, caseId]);
+
+  const onViewFile = useCallback(async (fileId: string) => {
+    try {
+      const { viewUrl } = await documentationService.getFileViewUrl(fileId);
+      window.open(viewUrl, '_blank', 'noopener,noreferrer');
+    } catch { toast.error('Could not open the document.'); }
+  }, []);
+
+  const deleteFileMutation = useMutation({
+    mutationFn: (fileId: string) => documentationService.deleteFile(fileId),
+    onSuccess: () => { toast.success('File removed'); invalidate(); },
+    onError: () => toast.error('Failed to remove file'),
+  });
+  const onDeleteFile = useCallback((fileId: string) => {
+    if (window.confirm('Remove this uploaded file? You can re-upload later.')) deleteFileMutation.mutate(fileId);
+  }, [deleteFileMutation]);
 
   const returnMutation = useMutation({
     mutationFn: ({ reasonCode, note }: { reasonCode: HandoffReturnReason; note: string }) =>
@@ -919,6 +1017,19 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   );
   const rejected = (docCase.documents ?? []).filter(d => d.status === 'REJECTED');
   const canTransfer = docCase.isReady && docCase.status !== 'TRANSFERRED_TO_PROCESS';
+
+  // Group uploaded files (unified Document store) by requirement; R8: null/orphan → general.
+  const uploadedFiles = docCase.uploadedDocuments ?? [];
+  const filesByRequirement = new Map<string, CaseDocument[]>();
+  const generalFiles: CaseDocument[] = [];
+  for (const f of uploadedFiles) {
+    if (f.category === 'REQUIREMENT' && f.requirementId) {
+      const arr = filesByRequirement.get(f.requirementId) ?? [];
+      arr.push(f); filesByRequirement.set(f.requirementId, arr);
+    } else {
+      generalFiles.push(f);
+    }
+  }
 
   // Header identity — company primary, person secondary (Documentation Dept rule).
   const companyName = docCase.lead.company || 'Company not set';
@@ -1249,23 +1360,49 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               )}
 
-              {(docCase.documents ?? []).length === 0 ? (
+              {canUploadDoc && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                  <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+                    onClick={() => setFileUploadTarget({ category: 'GENERAL' })}>
+                    <Upload size={13} /> Add Document
+                  </button>
+                </div>
+              )}
+
+              {(docCase.documents ?? []).length === 0 && generalFiles.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)' }}>
                   <Inbox size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
                   <div style={{ fontSize: 14 }}>No documents yet</div>
-                  <div style={{ fontSize: 12, marginTop: 4 }}>Apply a preset or add documents manually</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>{canUploadDoc ? 'Apply a preset, or upload a document with “Add Document”.' : 'Apply a preset or add documents manually'}</div>
                 </div>
               ) : (
                 (docCase.documents ?? []).map(doc => (
                   <DocumentRow
                     key={doc.id}
                     doc={doc}
+                    files={filesByRequirement.get(doc.id) ?? []}
+                    canUpload={canUploadDoc}
+                    canManageFile={canManageFile}
                     onStatusChange={(docId, status, remarks, rejectionReason) =>
                       statusMutation.mutate({ docId, status, remarks, rejectionReason })
                     }
                     onAddStorageRef={(docId) => setStorageDocId(docId)}
+                    onUpload={(d) => setFileUploadTarget({ category: 'REQUIREMENT', requirementId: d.id, requirementName: d.name })}
+                    onViewFile={onViewFile}
+                    onDeleteFile={onDeleteFile}
                   />
                 ))
+              )}
+
+              {/* General documents (not tied to a requirement) — includes R8 orphans */}
+              {generalFiles.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>General documents</div>
+                  {generalFiles.map(f => (
+                    <DocumentFileRow key={f.id} file={f} canManageFile={canManageFile}
+                      onView={() => onViewFile(f.id)} onDelete={() => onDeleteFile(f.id)} />
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -1485,7 +1622,135 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           onClose={() => setShowWaModal(false)}
         />
       )}
+
+      {fileUploadTarget && (
+        <FirmDocumentUploadDialog
+          caseId={docCase.id}
+          target={fileUploadTarget}
+          canVerify={canVerifyDoc}
+          onClose={() => setFileUploadTarget(null)}
+          onDone={invalidate}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Firm document upload dialog (unified Document store) ────────────────────
+function FirmDocumentUploadDialog({ caseId, target, canVerify, onClose, onDone }: {
+  caseId: string;
+  target: { category: 'REQUIREMENT' | 'GENERAL'; requirementId?: string; requirementName?: string };
+  canVerify: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState(target.requirementName ?? '');
+  const [sourceChannel, setSourceChannel] = useState<'WHATSAPP' | 'EMAIL' | 'PHYSICAL' | 'FIRM_UPLOAD' | 'OTHER'>('WHATSAPP');
+  const [internalNote, setInternalNote] = useState('');
+  const [clientVisible, setClientVisible] = useState(target.category === 'REQUIREMENT');
+  const [verify, setVerify] = useState(false);
+  const [phase, setPhase] = useState<'ready' | 'uploading' | 'confirming'>('ready');
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const uploadIdRef = useRef<string | null>(null);
+  const uploadedRef = useRef(false);
+  const busy = phase !== 'ready';
+
+  const CHANNELS: Record<typeof sourceChannel, string> = { WHATSAPP: 'WhatsApp', EMAIL: 'Email', PHYSICAL: 'Physical', FIRM_UPLOAD: 'Firm upload', OTHER: 'Other' };
+
+  async function submit() {
+    if (!file || busy) return;
+    if (target.category === 'GENERAL' && !name.trim()) { setError('A document name is required.'); return; }
+    setError(null);
+    const controller = new AbortController();
+    try {
+      if (!uploadIdRef.current || !uploadedRef.current) {
+        setPhase('uploading'); setProgress(0);
+        const { uploadUrl, uploadId } = await documentationService.fileUploadUrl(caseId, { fileName: file.name, contentType: file.type, fileSizeBytes: file.size });
+        uploadIdRef.current = uploadId; uploadedRef.current = false;
+        await uploadToPresigned(uploadUrl, file, (p) => setProgress(p), controller.signal);
+        uploadedRef.current = true;
+      }
+      setPhase('confirming');
+      await documentationService.fileConfirmUpload(caseId, {
+        uploadId: uploadIdRef.current!,
+        fileName: file.name,
+        category: target.category,
+        name: name.trim() || undefined,
+        requirementId: target.requirementId,
+        sourceChannel,
+        internalNote: internalNote.trim() || undefined,
+        clientVisible,
+        verify: verify || undefined,
+      });
+      toast.success(verify && canVerify ? 'Document uploaded and verified.' : 'Document uploaded.');
+      onDone();
+      onClose();
+    } catch (e) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      const serverMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const retryable = status === undefined || status >= 500;
+      if (!retryable) { uploadIdRef.current = null; uploadedRef.current = false; }
+      setError(serverMsg || 'Upload failed. Please try again.');
+      setPhase('ready');
+      setProgress(null);
+    }
+  }
+
+  return (
+    <Modal isOpen onClose={busy ? () => {} : onClose} title={target.category === 'REQUIREMENT' ? `Upload — ${target.requirementName}` : 'Add Document'} size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <FileDropzone file={file} onSelect={setFile} disabled={busy} progress={progress} />
+
+        {target.category === 'GENERAL' && (
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+            Document name <span style={{ color: '#dc2626' }}>*</span>
+            <input className="input" value={name} maxLength={200} disabled={busy}
+              onChange={(e) => setName(e.target.value)} placeholder="e.g. Bank statement"
+              style={{ marginTop: 6, width: '100%' }} />
+          </label>
+        )}
+
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          Received via
+          <select className="input" value={sourceChannel} disabled={busy}
+            onChange={(e) => setSourceChannel(e.target.value as typeof sourceChannel)}
+            style={{ marginTop: 6, width: '100%' }}>
+            {(Object.keys(CHANNELS) as (typeof sourceChannel)[]).map((c) => <option key={c} value={c}>{CHANNELS[c]}</option>)}
+          </select>
+        </label>
+
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          Internal note <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional, staff-only)</span>
+          <textarea className="input" value={internalNote} maxLength={2000} rows={2} disabled={busy}
+            onChange={(e) => setInternalNote(e.target.value)} style={{ marginTop: 6, width: '100%', resize: 'vertical' }} />
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer' }}>
+          <input type="checkbox" checked={clientVisible} disabled={busy} onChange={(e) => setClientVisible(e.target.checked)} />
+          Visible to the client in the portal
+        </label>
+
+        {canVerify ? (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer' }}>
+            <input type="checkbox" checked={verify} disabled={busy} onChange={(e) => setVerify(e.target.checked)} />
+            Mark as verified on upload
+          </label>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Status after upload: <strong>Received</strong>.</div>
+        )}
+
+        {error && <div role="alert" style={{ fontSize: 12, color: '#dc2626' }}>{error}</div>}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <button className="btn btn-ghost" onClick={onClose} disabled={busy} style={{ fontSize: 13 }}>Cancel</button>
+          <button className="btn btn-primary" onClick={submit} disabled={!file || busy} style={{ fontSize: 13 }}>
+            {phase === 'uploading' ? 'Uploading…' : phase === 'confirming' ? 'Saving…' : 'Upload'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
