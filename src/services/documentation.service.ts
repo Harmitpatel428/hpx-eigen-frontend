@@ -1,8 +1,36 @@
 import { api } from './api';
 import type {
   DocCase, DocPreset, DocDashboardKPIs, DocDocumentStatus,
-  DocNoteType, DocStorageType, DocPresetCategory, DocPresetItem,
+  DocNoteType, DocStorageType, DocPresetCategory,
+  DocFileStatus, DocSourceChannel,
 } from '../types';
+
+export type FirmDocChannel = Exclude<DocSourceChannel, 'CLIENT_PORTAL'>;
+export interface FileUploadUrlResponse { uploadUrl: string; uploadId: string; }
+export interface DocFileConfirmPayload {
+  uploadId: string;
+  fileName: string;
+  category: 'REQUIREMENT' | 'GENERAL';
+  name?: string;
+  requirementId?: string;
+  sourceChannel: FirmDocChannel;
+  internalNote?: string;
+  clientVisible?: boolean;
+  expiresAt?: string;
+  receivedAt?: string;
+  verify?: boolean;
+  requirementStatus?: DocDocumentStatus;
+}
+export interface DocFileReplacePayload {
+  uploadId: string;
+  fileName: string;
+  sourceChannel: FirmDocChannel;
+  internalNote?: string;
+  clientVisible?: boolean;
+  verify?: boolean;
+  name?: string;
+  expiresAt?: string;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -191,5 +219,25 @@ export const documentationService = {
   reopenCase: async (caseId: string): Promise<{ caseId: string; caseNumber: string | null; status: string; reopenedAt: string }> => {
     const res = await api.post(`/api/v1/cases/${caseId}/reopen`);
     return unwrap(res);
+  },
+
+  // ─── UNIFIED DOCUMENT FILES (firm direct upload) ──────────────────────────
+  fileUploadUrl: async (caseId: string, body: { fileName: string; contentType: string; fileSizeBytes: number }): Promise<FileUploadUrlResponse> =>
+    unwrap(await api.post(`/api/v1/documentation/cases/${caseId}/files/upload-url`, body)),
+
+  fileConfirmUpload: async (caseId: string, body: DocFileConfirmPayload): Promise<{ documentId: string; status: DocFileStatus }> =>
+    unwrap(await api.post(`/api/v1/documentation/cases/${caseId}/files/confirm-upload`, body)),
+
+  getFileViewUrl: async (documentId: string): Promise<{ viewUrl: string; fileName: string; contentType: string; sizeBytes: number; expiresAt: string }> =>
+    unwrap(await api.get(`/api/v1/documentation/files/${documentId}/view-url`)),
+
+  updateFileStatus: async (documentId: string, body: { status: DocFileStatus; rejectionReason?: string }): Promise<{ documentId: string; status: DocFileStatus }> =>
+    unwrap(await api.patch(`/api/v1/documentation/files/${documentId}/status`, body)),
+
+  replaceFile: async (documentId: string, body: DocFileReplacePayload): Promise<{ documentId: string; versionOfId: string | null; status: DocFileStatus }> =>
+    unwrap(await api.post(`/api/v1/documentation/files/${documentId}/replace`, body)),
+
+  deleteFile: async (documentId: string): Promise<void> => {
+    await api.delete(`/api/v1/documentation/files/${documentId}`);
   },
 };

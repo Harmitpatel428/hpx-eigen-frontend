@@ -668,11 +668,43 @@ export interface DocCase {
   };
   preset: { id: string; name: string; category: DocPresetCategory; color: string | null; icon: string | null } | null;
   documents?: DocCaseDocument[];
+  uploadedDocuments?: CaseDocument[];
   events?: DocCaseEvent[];
   caseNotes?: DocCaseNote[];
   overrides?: DocManagerOverride[];
   _count?: { documents: number };
   latestMandateStatus?: 'PENDING_UPLOAD' | 'UPLOADED' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED' | null;
+}
+
+// ─── Unified document files (firm direct upload, Phase 1) ───────────────────
+export type DocFileStatus = 'UPLOADING' | 'SCANNING' | 'RECEIVED' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'ARCHIVED' | 'MALWARE_DETECTED';
+export type DocFileCategory = 'MANDATE' | 'REQUIREMENT' | 'GENERAL' | 'CUSTOM_GROUP_DOCUMENT' | 'CUSTOM_FIELD_DOCUMENT';
+export type UploadedByParty = 'CLIENT' | 'FIRM' | 'SYSTEM';
+export type DocSourceChannel = 'CLIENT_PORTAL' | 'WHATSAPP' | 'EMAIL' | 'PHYSICAL' | 'FIRM_UPLOAD' | 'OTHER';
+
+export interface CaseDocument {
+  id: string;
+  category: DocFileCategory;
+  name: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum: string | null;
+  status: DocFileStatus;
+  sourceChannel: DocSourceChannel;
+  uploadedByParty: UploadedByParty;
+  uploadedByUserId: string | null;
+  clientVisible: boolean;
+  internalNote: string | null;
+  isActive: boolean;
+  receivedAt: string;
+  expiresAt: string | null;
+  versionOfId: string | null;
+  requirementId: string | null;
+  verifiedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
 }
 
 export interface DocDashboardKPIs {

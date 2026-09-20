@@ -75,13 +75,34 @@ export interface GetViewUrlResponse {
   expiresAt: string;
 }
 
+export type UploadedByParty = 'CLIENT' | 'FIRM' | 'SYSTEM';
+export type FirmSourceChannel = 'WHATSAPP' | 'EMAIL' | 'PHYSICAL' | 'FIRM_UPLOAD' | 'OTHER';
+export type DocumentSourceChannel = 'CLIENT_PORTAL' | FirmSourceChannel;
+
 export interface MandateUploadSummary {
   id: string;
   fileName: string;
   contentType: string;
   fileSizeBytes: number;
   uploadedAt: string;
+  uploadedByParty?: UploadedByParty;
+  sourceChannel?: DocumentSourceChannel;
+  uploadedByUserId?: string | null;
+  internalNote?: string | null;
+  expiresAt?: string | null;
 }
+
+export interface FirmUploadUrlResponse { uploadUrl: string; uploadId: string; expiresAt: string; }
+export interface FirmMandateConfirmRequest {
+  uploadId: string;
+  fileName: string;
+  mandateType?: string;
+  sourceChannel: FirmSourceChannel;
+  internalNote?: string;
+  expiresAt?: string;
+  verify?: boolean;
+}
+export interface FirmMandateConfirmResponse { mandateRequestId: string; uploadId: string; status: 'UPLOADED' | 'VERIFIED'; }
 export interface MandateRequestSummary {
   id: string;
   mandateType: string;
@@ -180,6 +201,13 @@ export const mandateService = {
 
   getViewUrl: async (uploadId: string): Promise<GetViewUrlResponse> =>
     unwrap(await api.get(`/api/v1/mandate/uploads/${uploadId}/view-url`)),
+
+  // Firm direct upload (staff)
+  firmUploadUrl: async (caseId: string, body: { fileName: string; contentType: string; fileSizeBytes: number }): Promise<FirmUploadUrlResponse> =>
+    unwrap(await api.post(`/api/v1/cases/${caseId}/mandate/firm-upload-url`, body)),
+
+  firmConfirmUpload: async (caseId: string, body: FirmMandateConfirmRequest): Promise<FirmMandateConfirmResponse> =>
+    unwrap(await api.post(`/api/v1/cases/${caseId}/mandate/firm-confirm-upload`, body)),
 
   // Public (token in body is the credential)
   requestUploadUrl: async (body: RequestUploadUrlRequest): Promise<RequestUploadUrlResponse> =>
