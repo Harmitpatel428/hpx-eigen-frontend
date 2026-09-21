@@ -32,6 +32,7 @@ import { leadService } from '../services/lead.service';
 import { leadContactsService, type LeadContact } from '../services/lead-contacts.service';
 import { waChannelsService, type WaChannel } from '../services/wa-channels.service';
 import { resolveDisplayContact, resolveLeadIdentity, formatLeadAddress } from '../utils/crm';
+import { findDuplicateByChecksum } from '../utils/doc-duplicate';
 import { LeadSectionStyles, buildContactCopyText, buildLeadCopyText } from '../components/leads/sections/shared';
 import { LeadContactInformationSection } from '../components/leads/sections/LeadContactInformationSection';
 import { LeadAllContactsSection } from '../components/leads/sections/LeadAllContactsSection';
@@ -1628,6 +1629,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           caseId={docCase.id}
           target={fileUploadTarget}
           canVerify={canVerifyDoc}
+          activeDocuments={docCase.uploadedDocuments ?? []}
           onClose={() => setFileUploadTarget(null)}
           onDone={invalidate}
         />
@@ -1637,14 +1639,16 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
 }
 
 // ─── Firm document upload dialog (unified Document store) ────────────────────
-function FirmDocumentUploadDialog({ caseId, target, canVerify, onClose, onDone }: {
+function FirmDocumentUploadDialog({ caseId, target, canVerify, activeDocuments, onClose, onDone }: {
   caseId: string;
   target: { category: 'REQUIREMENT' | 'GENERAL'; requirementId?: string; requirementName?: string };
   canVerify: boolean;
+  activeDocuments: CaseDocument[];
   onClose: () => void;
   onDone: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [dupWarning, setDupWarning] = useState<CaseDocument | null>(null);
   const [name, setName] = useState(target.requirementName ?? '');
   const [sourceChannel, setSourceChannel] = useState<'WHATSAPP' | 'EMAIL' | 'PHYSICAL' | 'FIRM_UPLOAD' | 'OTHER'>('WHATSAPP');
   const [internalNote, setInternalNote] = useState('');
@@ -1658,6 +1662,20 @@ function FirmDocumentUploadDialog({ caseId, target, canVerify, onClose, onDone }
   const busy = phase !== 'ready';
 
   const CHANNELS: Record<typeof sourceChannel, string> = { WHATSAPP: 'WhatsApp', EMAIL: 'Email', PHYSICAL: 'Physical', FIRM_UPLOAD: 'Firm upload', OTHER: 'Other' };
+
+  // I2: non-blocking duplicate-checksum pre-flight. Client-side only — the server
+  // still owns the real duplicate-409 guard (see catch block below).
+  async function onSelectFile(f: File | null) {
+    setFile(f);
+    setDupWarning(null);
+    if (!f) return;
+    try {
+      const buf = await crypto.subtle.digest('SHA-256', await f.arrayBuffer());
+      const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+      const dup = findDuplicateByChecksum(activeDocuments, hex, target);
+      if (dup) setDupWarning(dup);
+    } catch { /* crypto.subtle unavailable (non-secure context): skip pre-flight, server still guards */ }
+  }
 
   async function submit() {
     if (!file || busy) return;
@@ -1692,6 +1710,8 @@ function FirmDocumentUploadDialog({ caseId, target, canVerify, onClose, onDone }
       const serverMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       const retryable = status === undefined || status >= 500;
       if (!retryable) { uploadIdRef.current = null; uploadedRef.current = false; }
+      // I2: a server 409 (duplicate_active_requirement) already carries its own message in
+      // serverMsg, which renders as-is below — it is never overwritten by the generic fallback.
       setError(serverMsg || 'Upload failed. Please try again.');
       setPhase('ready');
       setProgress(null);
@@ -1701,7 +1721,17 @@ function FirmDocumentUploadDialog({ caseId, target, canVerify, onClose, onDone }
   return (
     <Modal isOpen onClose={busy ? () => {} : onClose} title={target.category === 'REQUIREMENT' ? `Upload — ${target.requirementName}` : 'Add Document'} size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <FileDropzone file={file} onSelect={setFile} disabled={busy} progress={progress} />
+        <FileDropzone file={file} onSelect={onSelectFile} disabled={busy} progress={progress} />
+
+        {dupWarning && (
+          <div role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: '#92400e', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.3)', borderRadius: 6, padding: 10 }}>
+            <span>An identical file is already attached. Continue as a new version?</span>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" className="btn btn-ghost" style={{ fontSize: 12, height: 26 }} onClick={() => { setFile(null); setDupWarning(null); }}>Cancel</button>
+              <button type="button" className="btn btn-primary" style={{ fontSize: 12, height: 26 }} onClick={() => setDupWarning(null)}>Continue</button>
+            </div>
+          </div>
+        )}
 
         {target.category === 'GENERAL' && (
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
