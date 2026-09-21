@@ -5,7 +5,10 @@
 export interface DupCandidate {
   checksum: string | null;
   isActive: boolean;
-  category: 'REQUIREMENT' | 'GENERAL';
+  // Widened to `string` (not the narrow 'REQUIREMENT' | 'GENERAL') so wider real-world
+  // category unions (e.g. CaseDocument's DocFileCategory) satisfy this constraint — inBucket
+  // below only equality-compares it against target.category, which stays narrow.
+  category: string;
   requirementId: string | null;
 }
 export type DupTarget = { category: 'REQUIREMENT' | 'GENERAL'; requirementId?: string };
