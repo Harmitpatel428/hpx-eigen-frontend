@@ -60,7 +60,9 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['mandate-requests', caseId] });
 
-  const current = requests[0]; // most recent (list is ordered desc)
+  // F2: current = first non-SUPERSEDED (list is ordered desc). When every request
+  // is superseded, current is undefined and the empty/send state renders.
+  const current = requests.find(r => r.status !== 'SUPERSEDED');
   const caseOpen = ['INCOMING', 'ACTIVE'].includes(caseStatus);
 
   // Deep-link from the handoff toast ("Send mandate now") auto-opens the dialog.

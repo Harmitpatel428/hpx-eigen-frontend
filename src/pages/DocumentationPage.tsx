@@ -285,6 +285,8 @@ function DocumentFileRow({ file, canManageFile, onView, onDelete }: {
           <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{SOURCE_LABELS[file.sourceChannel] ?? file.sourceChannel}</span>
           <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: s.bg, color: s.color }}>{s.label}</span>
           {pastDue && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}>PAST DUE</span>}
+          {/* R8: a REQUIREMENT file only reaches the general section when its requirement was deleted. */}
+          {file.category === 'REQUIREMENT' && <span title="This file's requirement was removed" style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'rgba(217,119,6,0.12)', color: '#b45309' }}>Unlinked requirement</span>}
         </div>
       </div>
       <button className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }} onClick={onView}>
@@ -1019,12 +1021,15 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const rejected = (docCase.documents ?? []).filter(d => d.status === 'REJECTED');
   const canTransfer = docCase.isReady && docCase.status !== 'TRANSFERRED_TO_PROCESS';
 
-  // Group uploaded files (unified Document store) by requirement; R8: null/orphan → general.
+  // Group uploaded files (unified Document store) by requirement; R8: general docs AND
+  // orphans (a REQUIREMENT file whose requirement was later deleted → stale requirementId
+  // not in the live list) fall to generalFiles, else they'd render nowhere.
   const uploadedFiles = docCase.uploadedDocuments ?? [];
+  const liveRequirementIds = new Set((docCase.documents ?? []).map(d => d.id));
   const filesByRequirement = new Map<string, CaseDocument[]>();
   const generalFiles: CaseDocument[] = [];
   for (const f of uploadedFiles) {
-    if (f.category === 'REQUIREMENT' && f.requirementId) {
+    if (f.category === 'REQUIREMENT' && f.requirementId && liveRequirementIds.has(f.requirementId)) {
       const arr = filesByRequirement.get(f.requirementId) ?? [];
       arr.push(f); filesByRequirement.set(f.requirementId, arr);
     } else {
