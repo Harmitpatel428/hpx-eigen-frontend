@@ -1,12 +1,10 @@
 import { memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
-import { leadNotesService } from '../../services/lead-notes.service';
+import { leadNotesService, leadNotesKeys } from '../../services/lead-notes.service';
 
 interface LeadNotesSummaryProps {
   leadId: string;
-  leadName: string;
-  legacyNote?: string | null;
   onOpen: () => void;
 }
 
@@ -19,22 +17,45 @@ function fmtDateTime(dateStr: string): string {
 
 export const LeadNotesSummary = memo(function LeadNotesSummary({
   leadId,
-  leadName,
-  legacyNote,
   onOpen,
 }: LeadNotesSummaryProps) {
 
-  const { data: summary } = useQuery({
-    queryKey: ['notes-summary', leadId],
+  const { data: summary, isLoading, isError, refetch } = useQuery({
+    queryKey: leadNotesKeys.summary(leadId),
     queryFn: () => leadNotesService.summary(leadId),
     staleTime: 30_000,
   });
 
+  // Single source of truth: the notes table via the summary endpoint (sorted createdAt desc
+  // server-side, so `latest` is the most recent persisted note and `count` the persisted count).
   const count = summary?.count ?? 0;
   const latest = summary?.latest ?? null;
-  const hasNotes = count > 0 || !!legacyNote;
 
-  if (!hasNotes && !summary) return null;
+  // While loading, show a skeleton — never a "No notes yet." flash and no height jump when it fills.
+  if (isLoading) {
+    return (
+      <div aria-hidden style={{ margin: '0 0 10px' }}>
+        <div style={{ height: 38, background: 'var(--bg-subtle, #f1f5f9)', borderRadius: 8, marginBottom: 8 }} />
+        <div style={{ height: 14, width: 110, background: 'var(--bg-subtle, #f1f5f9)', borderRadius: 5 }} />
+      </div>
+    );
+  }
+
+  // On load error, offer a retry instead of silently rendering nothing (which reads as "no notes").
+  if (isError) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 10px' }}>
+        <span style={{ fontSize: 12, color: '#b91c1c' }}>Couldn’t load notes.</span>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          style={{ fontSize: 12, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -60,17 +81,6 @@ export const LeadNotesSummary = memo(function LeadNotesSummary({
               {fmtDateTime(latest.createdAt)}
             </div>
           </>
-        ) : legacyNote ? (
-          <p style={{
-            fontSize: 13,
-            color: 'var(--text-secondary)',
-            lineHeight: 1.65,
-            margin: '0 0 10px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}>
-            {legacyNote}
-          </p>
         ) : (
           <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 10px' }}>No notes yet.</p>
         )}

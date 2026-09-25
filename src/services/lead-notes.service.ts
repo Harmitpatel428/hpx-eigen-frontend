@@ -1,4 +1,25 @@
+import type { QueryClient } from '@tanstack/react-query';
 import { api } from './api';
+
+/** React-query keys for a lead's notes. Notes live in the leadNote table; two views are cached:
+ *  the full list (modal) and a cheap {count, latest} summary (panel preview). */
+export const leadNotesKeys = {
+  list: (leadId: string) => ['notes', leadId] as const,
+  summary: (leadId: string) => ['notes-summary', leadId] as const,
+};
+
+/**
+ * Invalidate BOTH cached views after any leadNote write. Every notes mutation must call this so the
+ * modal (list) and the panel preview (summary) converge on server truth.
+ *
+ * Consistency window: the two keys refetch independently, so for a few frames one view can be a
+ * refetch ahead of the other. This is acceptable — both endpoints read the same leadNote table with
+ * identical filters/order server-side, so the surfaces converge to the same data once both settle.
+ */
+export function invalidateLeadNotes(queryClient: QueryClient, leadId: string): void {
+  queryClient.invalidateQueries({ queryKey: leadNotesKeys.list(leadId) });
+  queryClient.invalidateQueries({ queryKey: leadNotesKeys.summary(leadId) });
+}
 
 export interface LeadNote {
   id: string;
@@ -6,6 +27,8 @@ export interface LeadNote {
   tenantId: string;
   authorId: string;
   content: string;
+  /** Provenance. 'user' (default) or 'legacy_backfill'. May be absent on very old cached payloads. */
+  source?: string | null;
   followUpDate: string | null;
   followUpTime: string | null;
   createdAt: string;

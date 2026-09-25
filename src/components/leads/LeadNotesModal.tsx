@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leadNotesService, type LeadNote } from '../../services/lead-notes.service';
+import { leadNotesService, invalidateLeadNotes, leadNotesKeys, type LeadNote } from '../../services/lead-notes.service';
 import { LeadNoteItem } from './LeadNoteItem';
 import { EditLeadNote } from './EditLeadNote';
 import { NoteCharacterCounter } from './NoteCharacterCounter';
@@ -66,18 +66,15 @@ export const LeadNotesModal = memo(function LeadNotesModal({
   const [addError, setAddError] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
-  const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['notes', leadId],
+  const { data: notes = [], isLoading, isError, refetch } = useQuery({
+    queryKey: leadNotesKeys.list(leadId),
     queryFn: () => leadNotesService.list(leadId),
   });
 
   const count = notes.length;
   const atLimit = count >= 15;
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['notes', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['notes-summary', leadId] });
-  };
+  const invalidate = () => invalidateLeadNotes(queryClient, leadId);
 
   const createMutation = useMutation({
     mutationFn: (p: Parameters<typeof leadNotesService.create>[1]) => leadNotesService.create(leadId, p),
@@ -261,6 +258,13 @@ export const LeadNotesModal = memo(function LeadNotesModal({
 
       {isLoading ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Loading…</div>
+      ) : isError ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: '#b91c1c', margin: '0 0 8px' }}>Couldn’t load notes.</p>
+          <button onClick={() => refetch()} style={{ fontSize: 11.5, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+            Retry
+          </button>
+        </div>
       ) : notes.length === 0 && !isAdding ? (
         <div style={{ padding: '52px 16px', textAlign: 'center' }}>
           <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 7px' }}>No notes yet.</p>
@@ -298,7 +302,7 @@ export const LeadNotesModal = memo(function LeadNotesModal({
                       isEditable={isEditableToday(note)}
                       onEdit={n => setEditingNoteId(n.id)}
                       onDelete={() => handleDelete(note.id)}
-                      authorName="You"
+                      authorName={note.source === 'legacy_backfill' ? 'Migrated' : 'You'}
                       isDeleting={deleteMutation.isPending && deleteMutation.variables === note.id}
                       compact
                     />

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Check, Clock, Plus, X, ChevronDown, MapPin, User, Keyboard, Lock, Settings } from 'lucide-react';
 import { leadActivityService, GlobalFilter, LeadActivityItem } from '../services/lead-activity.service';
 import { leadService } from '../services/lead.service';
+import { invalidateLeadNotes } from '../services/lead-notes.service';
 import { toast } from 'sonner';
 import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
@@ -296,8 +297,7 @@ function QuickCompleteForm({ item, onClose }: QuickCompleteProps) {
     },
     onSuccess: () => {
       // Invalidate notes so the saved note appears immediately in the lead panel
-      qc.invalidateQueries({ queryKey: ['notes-summary', item.leadId] });
-      qc.invalidateQueries({ queryKey: ['notes', item.leadId] });
+      invalidateLeadNotes(qc, item.leadId);
       onClose();
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['lead-activities'] }),

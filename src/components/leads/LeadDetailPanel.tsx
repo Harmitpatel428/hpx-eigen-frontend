@@ -1014,8 +1014,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
             <Section label="Notes" delay={130}>
               <LeadNotesSummary
                 leadId={lead.id}
-                leadName={fullName}
-                legacyNote={lead.notes}
                 onOpen={() => setActivePanel('notes')}
               />
             </Section>
