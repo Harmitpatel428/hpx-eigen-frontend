@@ -70,12 +70,23 @@ describe('AuthContext', () => {
   });
 
   it('Login updates FSM and sets user', async () => {
+    // Mock must mirror the REAL backend envelope for POST /api/auth/login
+    // (see hpx-eigen-s1-foundation src/routes/auth.router.ts):
+    // { success, data: { accessToken, refreshToken, user, sessionId, ... } }.
+    // AuthContext.login() reads res.data?.data?.accessToken (double-unwrap:
+    // axios's own `.data` + the backend's `{success,data}` envelope) — this
+    // mock was previously single-wrapped, so accessToken always came back
+    // undefined and login() threw "No token received" every run. Not a
+    // timing/async issue: the mock shape just didn't match the API contract.
     vi.mocked(api.post).mockResolvedValueOnce({
       data: {
-        accessToken: 'new-a',
-        refreshToken: 'new-r',
-        sessionId: 'new-s',
-        user: { id: 'user2' }
+        success: true,
+        data: {
+          accessToken: 'new-a',
+          refreshToken: 'new-r',
+          sessionId: 'new-s',
+          user: { id: 'user2' }
+        }
       }
     });
 
