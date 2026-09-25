@@ -715,7 +715,10 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                 <Divider label="First note" />
                 <div style={{ marginBottom: '1.25rem' }}>
                   {/* One entry point for notes: this initial note is created as a real leadNote row,
-                      atomically with the lead (see createLead). It no longer writes Lead.notes. */}
+                      atomically with the lead (see createLead). It no longer writes Lead.notes.
+                      maxLength=500: JS counts UTF-16 code units, Postgres VARCHAR(500) counts code
+                      points, so for astral chars the client cap is the STRICTER of the two — safe
+                      direction (never lets through a value the column would reject). Do not "fix". */}
                   <textarea {...register('notes')} className={inp} rows={3} maxLength={500} placeholder="Add an optional first note for this lead…" style={{ resize: 'vertical' }} />
                   <div style={{ fontSize: 11, color: (watch('notes')?.length ?? 0) >= 500 ? '#dc2626' : '#94a3b8', textAlign: 'right', marginTop: 2 }}>
                     {watch('notes')?.length ?? 0}/500
