@@ -476,7 +476,9 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
       priority,
       expectedCloseDate: values.expectedCloseDate || undefined,
       ...locationFields,
-      notes: values.notes || undefined,
+      // Notes are only captured at creation (routed to a real leadNote). Edit mode has no notes
+      // field and must never resubmit the legacy value back to Lead.notes.
+      notes: mode === 'create' ? (values.notes || undefined) : undefined,
       customFieldValues: customFieldValues.length > 0
         ? customFieldValues.map(v => ({ fieldId: v.fieldId, value: v.value }))
         : undefined,
@@ -697,7 +699,6 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                 <div style={{ marginBottom: '0.75rem' }}>
                   <LeadNotesSummary
                     leadId={lead.id}
-                    leadName={`${lead.firstName} ${lead.lastName}`}
                     onOpen={() => setNotesOpen(true)}
                   />
                   {notesOpen && (
@@ -711,9 +712,14 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
               </>
             ) : (
               <>
-                <Divider label="Notes" />
+                <Divider label="First note" />
                 <div style={{ marginBottom: '1.25rem' }}>
-                  <textarea {...register('notes')} className={inp} rows={3} placeholder="Key context about this lead…" style={{ resize: 'vertical' }} />
+                  {/* One entry point for notes: this initial note is created as a real leadNote row,
+                      atomically with the lead (see createLead). It no longer writes Lead.notes. */}
+                  <textarea {...register('notes')} className={inp} rows={3} maxLength={500} placeholder="Add an optional first note for this lead…" style={{ resize: 'vertical' }} />
+                  <div style={{ fontSize: 11, color: (watch('notes')?.length ?? 0) >= 500 ? '#dc2626' : '#94a3b8', textAlign: 'right', marginTop: 2 }}>
+                    {watch('notes')?.length ?? 0}/500
+                  </div>
                 </div>
               </>
             )}
