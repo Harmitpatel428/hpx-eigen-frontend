@@ -80,8 +80,8 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Mandate</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', flex: 'none' }}>Mandate</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {canUpload && caseOpen && (
             <button className="btn btn-ghost" style={{ height: 26, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}

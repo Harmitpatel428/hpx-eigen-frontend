@@ -337,9 +337,9 @@ ul, ol { list-style: none; }
   flex-shrink: 0;
   cursor: pointer;
   user-select: none;
-  color: var(--text-tertiary);
-  background: transparent;
-  border: 1px solid transparent;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-medium);
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast),
@@ -347,8 +347,8 @@ ul, ol { list-style: none; }
     transform 80ms ease;
 }
 .stage-pill:hover {
-  color: var(--text-secondary);
-  background: var(--bg-subtle);
+  color: var(--text-primary);
+  background: var(--bg-muted);
 }
 .stage-pill:active {
   transform: scale(0.97);
