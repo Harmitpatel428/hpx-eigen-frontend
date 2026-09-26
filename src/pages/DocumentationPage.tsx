@@ -1795,7 +1795,7 @@ function FirmDocumentUploadDialog({ caseId, target, canVerify, activeDocuments, 
 
 // Pill definitions — "All Cases" + each distinct case status
 const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
-  { key: '',                       label: 'All Cases',   color: '#0f172a', bg: 'rgba(15,23,42,0.07)'   },
+  { key: '',                       label: 'All Cases',   color: 'var(--text-primary)', bg: 'var(--bg-muted)' },
   { key: 'ACTIVE',                 label: 'Active',      color: '#2563eb', bg: 'rgba(37,99,235,0.1)'   },
   { key: 'INCOMING',               label: 'Incoming',    color: '#d97706', bg: 'rgba(245,158,11,0.1)'  },
   { key: 'DOCUMENTATION_READY',    label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'   },
@@ -1939,7 +1939,7 @@ export function DocumentationPage() {
 
       {/* Filter pills — replaces KPI strip + tab view toggle */}
       <div style={{
-        display: 'flex', gap: 6, padding: '6px 0', marginBottom: 'var(--space-4)',
+        display: 'flex', gap: 6, padding: '6px', marginBottom: 'var(--space-4)',
         overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0,
       }}>
         {PILL_DEFS.map(pill => {
