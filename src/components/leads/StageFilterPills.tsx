@@ -68,10 +68,10 @@ export const StageFilterPills = memo(function StageFilterPills({
         type="button"
         onClick={() => handleClick('')}
         className={`${PILL_CLASS}${allActive ? ` ${PILL_ACTIVE_CLASS}` : ''}`}
-        style={allActive ? { color: '#0f172a', background: 'rgba(15,23,42,0.07)', borderColor: 'rgba(15,23,42,0.15)' } : undefined}
+        style={allActive ? { color: 'var(--text-primary)', background: 'var(--bg-muted)', borderColor: 'var(--border-strong)' } : undefined}
         aria-pressed={allActive}
       >
-        <span className="stage-pill-dot" style={allActive ? { background: '#0f172a', opacity: 1 } : undefined} />
+        <span className="stage-pill-dot" style={allActive ? { background: 'var(--text-primary)', opacity: 1 } : undefined} />
         All Leads
         {allTotal > 0 && <span className="stage-pill-count">{allTotal}</span>}
       </button>

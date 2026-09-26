@@ -1231,7 +1231,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               )}
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                 {canTransfer && (
                   <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
                     onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
@@ -1268,15 +1268,15 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 )}
                 {['INCOMING', 'ACTIVE'].includes(docCase.status) && permissions.can('cases:close') && (
                   <button className="btn" style={{
-                    fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6,
-                    background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer',
+                    fontSize: 12, background: 'var(--color-danger)', color: 'var(--text-inverse)',
+                    border: 'none', cursor: 'pointer',
                   }}
                     onClick={() => setShowCloseDialog(true)}>
                     Close Without Docs
                   </button>
                 )}
                 {docCase.status === 'CLOSED_NO_DOCS' && permissions.can('cases:reopen') && (
-                  <button className="btn btn-ghost" style={{ fontSize: 12, height: 28, paddingInline: 12, borderRadius: 6 }}
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }}
                     onClick={() => setShowReopenDialog(true)}>
                     Reopen Case
                   </button>
