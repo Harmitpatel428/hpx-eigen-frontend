@@ -51,11 +51,11 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
   const canView = permissions.can('mandate:view');
   const canUpload = permissions.can('mandate:upload');
 
-  const { data: requests = [] } = useQuery({
+  const { data: requests = [], isPending, isError, isSuccess, refetch } = useQuery({
     queryKey: ['mandate-requests', caseId],
     queryFn: () => mandateService.listForCase(caseId),
     enabled: canView,
-    staleTime: 10_000,
+    staleTime: 30_000,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['mandate-requests', caseId] });
@@ -66,9 +66,11 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
   const caseOpen = ['INCOMING', 'ACTIVE'].includes(caseStatus);
 
   // Deep-link from the handoff toast ("Send mandate now") auto-opens the dialog.
+  // Gated on isSuccess so this can't fire while the list is still loading (avoids
+  // racing the empty state open before we know whether a mandate already exists).
   useEffect(() => {
-    if (autoOpenSend && canSend && caseOpen && !current) setShowSend(true);
-  }, [autoOpenSend, canSend, caseOpen, current]);
+    if (autoOpenSend && canSend && caseOpen && isSuccess && !current) setShowSend(true);
+  }, [autoOpenSend, canSend, caseOpen, isSuccess, current]);
 
   const regenMutation = useMutation({
     mutationFn: (id: string) => mandateService.regenerateLink(id),
@@ -98,7 +100,22 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
         </div>
       </div>
 
-      {!current && (
+      {isPending && (
+        <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 90 }}>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900" />
+        </div>
+      )}
+
+      {isError && (
+        <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>Couldn't load mandate status.</div>
+          <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12 }} onClick={() => refetch()}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {isSuccess && !current && (
         (canSend || canUpload) && caseOpen ? (
           <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', textAlign: 'center', border: '1px dashed var(--border-subtle, #d1d5db)' }}>
             <Send size={22} color="var(--text-tertiary)" style={{ margin: '0 auto 8px' }} />
@@ -128,7 +145,7 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
         )
       )}
 
-      {current && <MandateStatusCard
+      {isSuccess && current && <MandateStatusCard
         req={current}
         canVerify={canVerify}
         canSend={canSend}

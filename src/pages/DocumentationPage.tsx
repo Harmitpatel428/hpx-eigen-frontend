@@ -27,7 +27,7 @@ import type {
 } from '../types';
 import { HANDOFF_RETURN_REASON_LABELS } from '../types';
 import { FileDropzone } from '../components/documents/FileDropzone';
-import { uploadToPresigned } from '../services/mandate.service';
+import { mandateService, uploadToPresigned } from '../services/mandate.service';
 import { leadService } from '../services/lead.service';
 import { leadContactsService, type LeadContact } from '../services/lead-contacts.service';
 import { waChannelsService, type WaChannel } from '../services/wa-channels.service';
@@ -1807,6 +1807,7 @@ const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
 
 export function DocumentationPage() {
   const qc = useQueryClient();
+  const { permissions } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rawSearch, setRawSearch] = useState('');
   const [search, setSearch]       = useState('');
@@ -2020,7 +2021,12 @@ export function DocumentationPage() {
             </div>
           ) : (
             cases.map(c => (
-              <CaseRow key={c.id} docCase={c} onClick={() => setSelectedCaseId(c.id)} />
+              <CaseRow key={c.id} docCase={c} onClick={() => {
+                if (permissions.can('mandate:view')) {
+                  qc.prefetchQuery({ queryKey: ['mandate-requests', c.id], queryFn: () => mandateService.listForCase(c.id), staleTime: 30_000 });
+                }
+                setSelectedCaseId(c.id);
+              }} />
             ))
           )}
         </>
