@@ -16,10 +16,14 @@ const mockUseAuth = (status: AuthState, setupPermissions?: (perms: PermissionSer
   
   vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
     status,
-    user: null,
+    // Current contract: AUTHENTICATED/error states require a truthy user
+    // (ProtectedRoute redirects to /login when `!user`). A realistic user
+    // object is required here so those states actually reach their branch.
+    user: { id: 'test-user-1', email: 'test@example.com' },
     permissions,
     login: vi.fn(),
     logout: vi.fn(),
+    refreshUser: vi.fn(),
   });
 };
 
@@ -35,16 +39,21 @@ const renderWithRouter = (ui: React.ReactElement) => {
 };
 
 describe('ProtectedRoute', () => {
-  it('renders loading UI during RESTORING', () => {
+  it('renders nothing during RESTORING (avoids dashboard flash, per d0273c5)', () => {
     mockUseAuth('RESTORING');
-    
-    renderWithRouter(
+
+    const { container } = renderWithRouter(
       <ProtectedRoute>
-        <div>Content</div>
+        <div data-testid="content">Content</div>
       </ProtectedRoute>
     );
-    
-    expect(screen.getByTestId('auth-loading')).toBeInTheDocument();
+
+    // Deliberate product behavior (commit d0273c5, "production incident
+    // resolution"): ProtectedRoute returns null while RESTORING instead of
+    // rendering loadingFallback, so children never flash before redirect/auth.
+    expect(screen.queryByTestId('content')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('login-page')).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('redirects to login when UNAUTHENTICATED', () => {
