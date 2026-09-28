@@ -168,12 +168,15 @@ describe('Auth Integration (Phase 7)', () => {
     expect(screen.queryByText('Admin Settings Visible')).not.toBeInTheDocument();
 
     // Now user logs in again (or profile updates) giving them the admin role
+    // AuthContext.login reads the standardized envelope: { success, data: { accessToken, ... } }
     vi.mocked(api.post).mockResolvedValueOnce({
       data: {
-        accessToken: 'new-a',
-        refreshToken: 'new-r',
-        sessionId: 'new-s',
-        user: { id: 'u1', roles: ['admin'], permissions: {} }
+        data: {
+          accessToken: 'new-a',
+          refreshToken: 'new-r',
+          sessionId: 'new-s',
+          user: { id: 'u1', roles: ['admin'], permissions: {} }
+        }
       }
     });
 
