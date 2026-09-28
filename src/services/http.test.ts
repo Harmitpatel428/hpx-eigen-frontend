@@ -78,6 +78,52 @@ describe('http authed client', () => {
   });
 });
 
+// ─── 2b. Behavioral: auth-scope headers omitted on /auth/login & /auth/refresh ──
+describe('http authed client: auth-endpoint header omission', () => {
+  let mock: MockAdapter;
+
+  beforeEach(() => {
+    mock = new MockAdapter(api);
+    tokenStorage.set({ accessToken: 'acc', refreshToken: 'ref', sessionId: 's1', userId: 'u1' });
+    tokenStorage.setTenantId('tenant-9');
+    localStorage.setItem('hpx:active-department', 'dept-5');
+  });
+
+  afterEach(() => {
+    mock.restore();
+    vi.restoreAllMocks();
+    tokenStorage.clear();
+    localStorage.removeItem('hpx:active-department');
+  });
+
+  it('omits Authorization, x-tenant-id, X-Department-Id on /auth/login but keeps X-Correlation-ID', async () => {
+    mock.onPost('/api/v1/auth/login').reply(200, { ok: true });
+    const res = await api.post('/api/v1/auth/login', {});
+    expect(res.config.headers.has('Authorization')).toBe(false);
+    expect(res.config.headers.has('x-tenant-id')).toBe(false);
+    expect(res.config.headers.has('X-Department-Id')).toBe(false);
+    expect(res.config.headers.has('X-Correlation-ID')).toBe(true);
+  });
+
+  it('omits Authorization, x-tenant-id, X-Department-Id on /auth/refresh but keeps X-Correlation-ID', async () => {
+    mock.onPost('/api/v1/auth/refresh').reply(200, { ok: true });
+    const res = await api.post('/api/v1/auth/refresh', {});
+    expect(res.config.headers.has('Authorization')).toBe(false);
+    expect(res.config.headers.has('x-tenant-id')).toBe(false);
+    expect(res.config.headers.has('X-Department-Id')).toBe(false);
+    expect(res.config.headers.has('X-Correlation-ID')).toBe(true);
+  });
+
+  it('still attaches Authorization, x-tenant-id, X-Department-Id on a non-auth url (control)', async () => {
+    mock.onGet('/api/v1/users/me').reply(200, { ok: true });
+    const res = await api.get('/api/v1/users/me');
+    expect(res.config.headers.get('Authorization')).toBe('Bearer acc');
+    expect(res.config.headers.get('x-tenant-id')).toBe('tenant-9');
+    expect(res.config.headers.get('X-Department-Id')).toBe('dept-5');
+    expect(res.config.headers.has('X-Correlation-ID')).toBe(true);
+  });
+});
+
 // ─── 3. Public client: no auth teardown on 401 ──────────────────────────────
 describe('http public client', () => {
   let mock: MockAdapter;

@@ -61,7 +61,12 @@ function createApiClient(withAuth: boolean): AxiosInstance {
         config.headers.set('X-Correlation-ID', correlationId);
       }
 
-      if (withAuth) {
+      // /auth/login and /auth/refresh are public endpoints — a stale Bearer/tenant/
+      // department header there is meaningless and only bloats the CORS preflight.
+      const isAuthEndpoint =
+        !!config.url && (config.url.includes('/auth/login') || config.url.includes('/auth/refresh'));
+
+      if (withAuth && !isAuthEndpoint) {
         const tokens = tokenStorage.get();
         if (tokens?.accessToken) {
           config.headers.set('Authorization', `Bearer ${tokens.accessToken}`);
