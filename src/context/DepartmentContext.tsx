@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { get } from '../auth/services/api';
 import { tokenStorage } from '../auth/storage/tokenStorage';
+import { authEventBus, AUTH_EVENTS } from '../auth/events/authEvents';
 
 export type DepartmentType = 'SALES' | 'PROCESS' | 'DOCUMENTATION';
 
@@ -77,6 +78,15 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     
     navigate('/overview', { replace: true });
   }, [activeDepartmentId, queryClient, navigate]);
+
+  useEffect(() => {
+    // On logout, cancel + drop in-flight queries so nothing retries post-logout.
+    const unsubscribe = authEventBus.subscribe(AUTH_EVENTS.LOGOUT, () => {
+      queryClient.cancelQueries();
+      queryClient.removeQueries();
+    });
+    return unsubscribe;
+  }, [queryClient]);
 
   useEffect(() => {
     // Heal the stored ID when it's missing OR no longer valid for this

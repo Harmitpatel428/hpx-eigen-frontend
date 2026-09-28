@@ -7,11 +7,8 @@
  * (token-authenticated) endpoints use a bare client with no auth interceptor so a
  * stray 401 never bounces a public visitor to /login.
  */
-import axios from 'axios';
 import { api } from './api';
-
-const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-const publicApi = axios.create({ baseURL, headers: { 'Content-Type': 'application/json' } });
+import { publicApi } from './http';
 
 function unwrap<T>(res: { data: { data: T } }): T {
   return res.data.data;
