@@ -154,3 +154,87 @@ export interface CreateRulePayload {
 }
 
 export type UpdateRulePayload = Partial<CreateRulePayload> & { isActive?: boolean };
+
+// Per-case workspace (Phase 11)
+export interface FieldRuntime {
+  isHidden: boolean;
+  isApplicable: boolean;
+  isRequired: boolean;
+  defaultValue: unknown | null;
+}
+export type CaseFieldWithRuntime = CaseFieldDefinition & FieldRuntime;
+
+export interface StoredFieldValue {
+  id: string;
+  fieldId: string;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueBoolean: boolean | null;
+  valueDate: string | null;
+  optionId: string | null;
+  selections: { optionId: string }[];
+  version: number;
+}
+
+export interface FieldValuesResponse {
+  fields: CaseFieldWithRuntime[];
+  values: StoredFieldValue[];
+}
+
+export type CaseStageStatus =
+  | 'PENDING' | 'READY' | 'IN_PROGRESS' | 'WAITING_EXTERNAL' | 'BLOCKED' | 'COMPLETED' | 'SKIPPED';
+export type CaseSlaState =
+  | 'ON_TRACK' | 'AT_RISK' | 'OVERDUE' | 'WAITING_EXTERNAL'
+  | 'COMPLETED_ON_TIME' | 'COMPLETED_LATE' | 'EXCEPTION_APPROVED'
+  | null;
+
+export interface CaseStage {
+  id: string;
+  timelineId: string;
+  templateId: string | null;
+  key: string;
+  label: string;
+  sequence: number;
+  status: CaseStageStatus;
+  durationValue: number | null;
+  durationType: 'DAYS' | 'WEEKS' | 'MONTHS' | null;
+  externalWaiting: boolean;
+  dependsOnPrevious: boolean;
+  enforceRequiredOnComplete: boolean;
+  hardBlock: boolean;
+  slaState: CaseSlaState;
+  startedAt: string | null;
+  completedAt: string | null;
+  plannedStart: string | null;
+  plannedFinish: string | null;
+  latestFinish: string | null;
+  hardBlockUnlockedAt: string | null;
+  hardBlockUnlockedReason: string | null;
+}
+
+export interface CaseTimelineResponse {
+  timeline: {
+    id: string;
+    caseId: string;
+    caseTypeId: string;
+    status: string;
+    targetDate?: string | null;
+  } | null;
+  stages: CaseStage[];
+}
+
+export interface ForecastResponse {
+  projectedCompletion: string | null;
+  stages: { stageKey: string; estimateDays: number; confidence: string; explanation: string }[];
+}
+
+export interface PatchValueEntry {
+  fieldId: string;
+  valueText?: string | null;
+  valueNumber?: number | null;
+  valueBoolean?: boolean | null;
+  valueDate?: string | null;
+  optionId?: string | null;
+  selections?: { optionId: string }[];
+  version?: number;
+}

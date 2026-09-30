@@ -618,6 +618,7 @@ export interface DocCase {
   leadId: string;
   caseNumber: string | null; // HPX-XXXX-XXXX public case identifier
   presetId: string | null;
+  caseTypeId: string | null;
   presetVersion: number | null;
   assignedTo: string | null;
   status: DocCaseStatus;
