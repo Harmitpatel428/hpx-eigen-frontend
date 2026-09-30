@@ -73,3 +73,84 @@ export interface CaseFieldOptionPayload {
   displayOrder?: number;
   isActive?: boolean;
 }
+
+export type CaseTypeStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+export type CaseFieldRuleEffectType = 'REQUIRE_FIELD' | 'HIDE_FIELD' | 'SET_DEFAULT';
+export type CaseFieldConditionOperator =
+  | 'EQUALS' | 'NOT_EQUALS' | 'IS_EMPTY' | 'IS_NOT_EMPTY'
+  | 'GREATER_THAN' | 'LESS_THAN' | 'IN' | 'NOT_IN';
+
+export interface CaseType {
+  id: string;
+  tenantId: string;
+  key: string;
+  name: string;
+  description: string | null;
+  status: CaseTypeStatus;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface CaseTypeFieldPlacement {
+  id: string;
+  tenantId: string;
+  caseTypeId: string;
+  fieldId: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CaseFieldRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  priority: number;
+  conditionFieldId: string;
+  conditionOperator: CaseFieldConditionOperator;
+  conditionValue: unknown;
+  conditionOptionId: string | null;
+  effectType: CaseFieldRuleEffectType;
+  targetFieldId: string;
+  defaultPayload: unknown;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface CreateCaseTypePayload {
+  key: string;
+  name: string;
+  description?: string;
+  displayOrder?: number;
+}
+
+export interface UpdateCaseTypePayload {
+  name?: string;
+  description?: string | null;
+  displayOrder?: number;
+}
+
+export interface PlacementPayload {
+  fieldId: string;
+  displayOrder?: number;
+}
+
+export interface CreateRulePayload {
+  name: string;
+  description?: string;
+  priority?: number;
+  conditionFieldId: string;
+  conditionOperator: CaseFieldConditionOperator;
+  conditionValue?: unknown;
+  conditionOptionId?: string | null;
+  effectType: CaseFieldRuleEffectType;
+  targetFieldId: string;
+  defaultPayload?: unknown;
+}
+
+export type UpdateRulePayload = Partial<CreateRulePayload> & { isActive?: boolean };

@@ -1,6 +1,11 @@
 import { useAuth } from '../auth/public';
 import { useCaseEngineSettings, useSetCaseEngineEnabled } from '../hooks/useCaseFields';
+import { useState } from 'react';
 import { FieldBuilder } from './configuration/FieldBuilder';
+import { CaseTypeBuilder } from './configuration/CaseTypeBuilder';
+import { RuleBuilder } from './configuration/RuleBuilder';
+
+const TABS = ['Fields', 'Case Types', 'Rules'] as const;
 
 const tabBase = {
   display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
@@ -13,6 +18,7 @@ export function ConfigurationPage() {
   const setEnabled = useSetCaseEngineEnabled();
   const canManage = permissions.can('case-engine:manage');
   const enabled = data?.caseOperationsEngineEnabled;
+  const [tab, setTab] = useState<(typeof TABS)[number]>('Fields');
 
   if (isLoading) return null;
 
@@ -41,21 +47,17 @@ export function ConfigurationPage() {
       <div style={{ width: 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
         <h1 className="type-title" style={{ marginBottom: 'var(--space-8)' }}>Configuration</h1>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-          <button
-            className="type-ui"
-            aria-current="page"
-            style={{ ...tabBase, backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)', fontWeight: 500 }}
-          >
-            Fields
-          </button>
-          {['Case Types', 'Rules'].map(t => (
+          {TABS.map(t => (
             <button
               key={t}
               className="type-ui"
-              disabled
-              style={{ ...tabBase, color: 'var(--text-tertiary)', cursor: 'not-allowed', opacity: 0.6 }}
+              aria-current={tab === t ? 'page' : undefined}
+              onClick={() => setTab(t)}
+              style={tab === t
+                ? { ...tabBase, backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)', fontWeight: 500 }
+                : { ...tabBase, color: 'var(--text-secondary)' }}
             >
-              {t} <span className="type-micro">Coming soon</span>
+              {t}
             </button>
           ))}
         </div>
@@ -71,7 +73,9 @@ export function ConfigurationPage() {
         )}
       </div>
       <div style={{ flex: 1, paddingBottom: 'var(--space-24)', marginTop: 72 }}>
-        <FieldBuilder />
+        {tab === 'Fields' && <FieldBuilder />}
+        {tab === 'Case Types' && <CaseTypeBuilder />}
+        {tab === 'Rules' && <RuleBuilder />}
       </div>
     </div>
   );
