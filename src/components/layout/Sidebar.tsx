@@ -13,7 +13,10 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useAuth } from '../../auth/public';
+import { useCaseEngineSettings } from '../../hooks/useCaseFields';
 
 const baseNavigation = [
   { name: 'Overview',   href: '/overview',   icon: LayoutDashboard },
@@ -38,6 +41,14 @@ const bottomNavigation = [
 export const Sidebar: React.FC = () => {
   const { activeDepartment } = useDepartment();
   const location = useLocation();
+  const { permissions } = useAuth();
+  const { data: engineSettings } = useCaseEngineSettings();
+  const showConfig =
+    permissions.can('case-engine:manage') ||
+    (!!engineSettings?.caseOperationsEngineEnabled && permissions.canAny(['case-field:view', 'case-type:view']));
+  const bottomItems = showConfig
+    ? [bottomNavigation[0], { name: 'Configuration', href: '/configuration', icon: SlidersHorizontal }, ...bottomNavigation.slice(1)]
+    : bottomNavigation;
   const [deptOpen, setDeptOpen] = React.useState(
     departmentItems.some(d => location.pathname === d.href)
   );
@@ -179,7 +190,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Bottom nav */}
       <nav className="sidebar-bottom-border" style={{ padding: '6px 12px 12px' }}>
-        {bottomNavigation.map(item => {
+        {bottomItems.map(item => {
           const isActive = location.pathname === item.href;
           return (
             <NavLink

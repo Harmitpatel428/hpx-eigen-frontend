@@ -19,7 +19,9 @@ const DocumentationPage = React.lazy(() => import('./pages/DocumentationPage').t
 const RecycleBinPage = React.lazy(() => import('./pages/RecycleBinPage').then(m => ({ default: m.RecycleBinPage })));
 const PortalPreviewPage = React.lazy(() => import('./pages/ClientPortalPage').then(m => ({ default: m.PortalPreviewPage })));
 
-const PageFallback = () => (
+const ConfigurationPage = React.lazy(() => import('./pages/ConfigurationPage').then(m => ({ default: m.ConfigurationPage })));
+
+const PageFallback =() => (
   <div className="flex h-full items-center justify-center">
     <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900" />
   </div>
@@ -43,7 +45,8 @@ export default function ProtectedApp() {
             <Route path="/invoices" element={<React.Suspense fallback={<PageFallback />}><InvoicesPage /></React.Suspense>} />
             <Route path="/payments" element={<React.Suspense fallback={<PageFallback />}><PaymentsPage /></React.Suspense>} />
             <Route path="/settings" element={<React.Suspense fallback={<PageFallback />}><SettingsPage /></React.Suspense>} />
-            <Route path="/documentation" element={<React.Suspense fallback={<PageFallback />}><DocumentationPage /></React.Suspense>} />
+            <Route path="/configuration" element={<ProtectedRoute requireAnyPermission={['case-field:view', 'case-type:view', 'case-engine:manage']}><React.Suspense fallback={<PageFallback />}><ConfigurationPage /></React.Suspense></ProtectedRoute>} />
+            <Route path="/documentation"element={<React.Suspense fallback={<PageFallback />}><DocumentationPage /></React.Suspense>} />
             <Route path="/recycle-bin" element={<React.Suspense fallback={<PageFallback />}><RecycleBinPage /></React.Suspense>} />
             <Route path="/portal-preview/:caseId" element={<React.Suspense fallback={<PageFallback />}><PortalPreviewPage /></React.Suspense>} />
           </Route>
