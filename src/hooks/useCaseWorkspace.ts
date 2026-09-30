@@ -59,5 +59,35 @@ export const useUnlockStage = (caseId: string) =>
     STAGE_KEYS,
   );
 
+export const useSetTarget = (caseId: string) =>
+  useEngineMutation(caseId, (targetDate: string | null) => caseWorkspaceService.setTarget(caseId, targetDate), STAGE_KEYS);
+
+export const useApproveException = (caseId: string) =>
+  useEngineMutation(caseId, (reason: string) => caseWorkspaceService.approveException(caseId, reason), STAGE_KEYS);
+
+export const usePauseStage = (caseId: string) =>
+  useEngineMutation(caseId, (v: { stageId: string }) => caseWorkspaceService.pauseStage(caseId, v.stageId), STAGE_KEYS);
+
+export const useResumeStage = (caseId: string) =>
+  useEngineMutation(caseId, (v: { stageId: string }) => caseWorkspaceService.resumeStage(caseId, v.stageId), STAGE_KEYS);
+
+export const useReopenStage = (caseId: string) =>
+  useEngineMutation(caseId, (v: { stageId: string }) => caseWorkspaceService.reopenStage(caseId, v.stageId), STAGE_KEYS);
+
+export const useSkipStage = (caseId: string) =>
+  useEngineMutation(
+    caseId,
+    (v: { stageId: string; reason: string }) => caseWorkspaceService.skipStage(caseId, v.stageId, v.reason),
+    STAGE_KEYS,
+  );
+
+export const useOverrideDuration = (caseId: string) =>
+  useEngineMutation(
+    caseId,
+    (v: { stageId: string; remainingDuration: number; reason: string }) =>
+      caseWorkspaceService.overrideDuration(caseId, v.stageId, v.remainingDuration, v.reason),
+    STAGE_KEYS,
+  );
+
 export const useAssignCaseType = (caseId: string) =>
   useEngineMutation(caseId, (caseTypeId: string) => caseWorkspaceService.assignCaseType(caseId, caseTypeId), ['doc-case']);

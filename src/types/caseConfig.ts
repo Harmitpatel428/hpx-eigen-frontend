@@ -218,7 +218,11 @@ export interface CaseTimelineResponse {
     caseId: string;
     caseTypeId: string;
     status: string;
-    targetDate?: string | null;
+    targetDate: string | null;
+    feasible: boolean | null;
+    deficitDays: number | null;
+    exceptionApproved: boolean;
+    exceptionReason: string | null;
   } | null;
   stages: CaseStage[];
 }

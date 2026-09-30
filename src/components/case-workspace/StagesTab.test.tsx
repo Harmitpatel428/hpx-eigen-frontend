@@ -6,6 +6,8 @@ import { StagesTab } from './StagesTab';
 
 let granted: string[] = [];
 let status = 'IN_PROGRESS';
+let timeline: Record<string, unknown> | null = null;
+const m = { setTarget: vi.fn(), approve: vi.fn(), pause: vi.fn(), resume: vi.fn(), reopen: vi.fn(), skip: vi.fn(), dur: vi.fn() };
 const completeMutate = vi.fn();
 const validate = vi.fn();
 const toastError = vi.fn();
@@ -21,7 +23,7 @@ vi.mock('../../services/case-workspace.service', () => ({
 vi.mock('../../hooks/useCaseWorkspace', () => ({
   useCaseTimeline: () => ({
     data: {
-      timeline: null,
+      timeline,
       stages: [{ id: 's1', key: 'k1', label: 'Stage One', sequence: 1, status, slaState: 'AT_RISK', plannedStart: null, plannedFinish: null, latestFinish: null }],
     },
   }),
@@ -29,9 +31,16 @@ vi.mock('../../hooks/useCaseWorkspace', () => ({
   useStartStage: () => ({ mutate: vi.fn() }),
   useCompleteStage: () => ({ mutate: completeMutate }),
   useUnlockStage: () => ({ mutate: vi.fn() }),
+  useSetTarget: () => ({ mutate: m.setTarget }),
+  useApproveException: () => ({ mutate: m.approve }),
+  usePauseStage: () => ({ mutate: m.pause }),
+  useResumeStage: () => ({ mutate: m.resume }),
+  useReopenStage: () => ({ mutate: m.reopen }),
+  useSkipStage: () => ({ mutate: m.skip }),
+  useOverrideDuration: () => ({ mutate: m.dur }),
 }));
 
-beforeEach(() => { granted = []; status = 'IN_PROGRESS'; completeMutate.mockReset(); validate.mockReset(); });
+beforeEach(() => { timeline = null; Object.values(m).forEach((f) => f.mockReset()); granted = []; status = 'IN_PROGRESS'; completeMutate.mockReset(); validate.mockReset(); });
 
 describe('StagesTab', () => {
   it('BLOCKED stage shows banner; Unlock only with sla:unlock', () => {
@@ -70,5 +79,108 @@ describe('StagesTab', () => {
     render(<StagesTab caseId="c1" />);
     await userEvent.click(screen.getByRole('button', { name: 'Complete' }));
     await waitFor(() => expect(completeMutate).toHaveBeenCalledWith({ stageId: 's1' }));
+  });
+
+  const ALL = ['case-stage:pause', 'case-stage:resume', 'case-stage:skip', 'case-stage:reopen', 'case-stage:override'];
+  const has = (n: string) => screen.queryByRole('button', { name: n }) !== null;
+
+  it.each([
+    ['IN_PROGRESS', ['Pause', 'Skip', 'Override duration'], ['Resume', 'Reopen']],
+    ['WAITING_EXTERNAL', ['Resume', 'Skip', 'Override duration'], ['Pause', 'Reopen']],
+    ['READY', ['Skip', 'Override duration'], ['Pause', 'Resume', 'Reopen']],
+    ['COMPLETED', ['Reopen'], ['Skip', 'Pause', 'Resume', 'Override duration']],
+    ['SKIPPED', ['Reopen'], ['Skip', 'Pause']],
+    ['BLOCKED', [], ['Pause', 'Skip', 'Reopen', 'Override duration']],
+  ])('%s action visibility', (st, shown, hidden) => {
+    status = st; granted = ALL;
+    render(<StagesTab caseId="c1" />);
+    shown.forEach((n) => expect(has(n)).toBe(true));
+    hidden.forEach((n) => expect(has(n)).toBe(false));
+  });
+
+  it('no-reason actions call hooks with stageId', async () => {
+    granted = ALL;
+    render(<StagesTab caseId="c1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(m.pause).toHaveBeenCalledWith({ stageId: 's1' });
+  });
+
+  it('Skip dialog requires a reason', async () => {
+    granted = ALL;
+    render(<StagesTab caseId="c1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Reason'), 'nope');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(m.skip).toHaveBeenCalledWith({ stageId: 's1', reason: 'nope' });
+  });
+
+  it('Override duration requires valid days and reason', async () => {
+    granted = ALL;
+    render(<StagesTab caseId="c1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Override duration' }));
+    const confirm = screen.getByRole('button', { name: 'Confirm' });
+    await userEvent.type(screen.getByLabelText('Reason'), 'why');
+    expect(confirm).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Remaining days'), '-1');
+    expect(confirm).toBeDisabled();
+    await userEvent.clear(screen.getByLabelText('Remaining days'));
+    await userEvent.type(screen.getByLabelText('Remaining days'), '3');
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+    expect(m.dur).toHaveBeenCalledWith({ stageId: 's1', remainingDuration: 3, reason: 'why' });
+  });
+
+  it('Set target sends date; Clear sends null; gated', async () => {
+    timeline = { targetDate: null, feasible: null, deficitDays: null, exceptionApproved: false };
+    const { unmount } = render(<StagesTab caseId="c1" />);
+    expect(has('Set target')).toBe(false);
+    unmount();
+    granted = ['case-timeline:manage'];
+    const r = render(<StagesTab caseId="c1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Set target' }));
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Target date'), '2026-12-01');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(m.setTarget).toHaveBeenCalledWith('2026-12-01');
+    r.unmount();
+    render(<StagesTab caseId="c1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Set target' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(m.setTarget).toHaveBeenLastCalledWith(null);
+  });
+
+  it('Approve exception gating', async () => {
+    granted = ['case-exception:approve'];
+    const tl = (o: object) => ({ targetDate: '2026-12-01', feasible: false, deficitDays: 4, exceptionApproved: false, ...o });
+    timeline = tl({ feasible: true });
+    let r = render(<StagesTab caseId="c1" />);
+    expect(has('Approve exception')).toBe(false);
+    r.unmount();
+    timeline = tl({ exceptionApproved: true });
+    r = render(<StagesTab caseId="c1" />);
+    expect(has('Approve exception')).toBe(false);
+    expect(screen.getByText('Exception approved')).toBeInTheDocument();
+    r.unmount();
+    timeline = tl({});
+    r = render(<StagesTab caseId="c1" />);
+    expect(screen.getByText(/Infeasible — 4 days short/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Approve exception' }));
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Reason'), 'ok');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(m.approve).toHaveBeenCalledWith('ok');
+    r.unmount();
+    granted = [];
+    render(<StagesTab caseId="c1" />);
+    expect(has('Approve exception')).toBe(false);
+  });
+
+  it('403 error surfaces message via toast', async () => {
+    granted = ['case-stage:complete'];
+    validate.mockRejectedValue({ response: { status: 403, data: { code: 'FORBIDDEN', message: 'Not allowed.' } } });
+    render(<StagesTab caseId="c1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Complete' }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Not allowed.'));
   });
 });

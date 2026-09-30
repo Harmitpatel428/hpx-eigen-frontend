@@ -39,6 +39,27 @@ export const caseWorkspaceService = {
   unlockStage(caseId: string, stageId: string, reason: string): Promise<unknown> {
     return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/unlock`, { reason }));
   },
+  setTarget(caseId: string, targetDate: string | null): Promise<unknown> {
+    return unwrap(api.put(`${caseBase(caseId)}/timeline/target`, { targetDate }));
+  },
+  approveException(caseId: string, reason: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/timeline/approve-exception`, { reason }));
+  },
+  pauseStage(caseId: string, stageId: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/pause`));
+  },
+  resumeStage(caseId: string, stageId: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/resume`));
+  },
+  skipStage(caseId: string, stageId: string, reason: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/skip`, { reason }));
+  },
+  reopenStage(caseId: string, stageId: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/reopen`));
+  },
+  overrideDuration(caseId: string, stageId: string, remainingDuration: number, reason: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/override-duration`, { remainingDuration, reason }));
+  },
   assignCaseType(caseId: string, caseTypeId: string): Promise<unknown> {
     return unwrap(api.patch(`${caseBase(caseId)}/case-type`, { caseTypeId }));
   },
