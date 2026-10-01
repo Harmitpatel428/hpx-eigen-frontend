@@ -72,6 +72,8 @@ export const DocumentationDashboard: React.FC = () => {
             { title: 'Review Turnaround',  value: `${metrics.reviewTurnaround} ${metrics.unit}`,        trend: 'down' as const, trendValue: '-3 hrs', accent: 'amber'   as const },
             { title: 'Compliance Rate',    value: `${metrics.complianceRate}%`,                          trend: 'up'   as const, trendValue: '+2%',    accent: 'emerald' as const },
             { title: 'Pending Signatures', value: metrics.pendingSignatures,                             subtitle: 'Awaiting client', accent: 'rose'    as const },
+            { title: 'Overdue stages',     value: metrics.overdueStages,                                 subtitle: 'Past deadline',   accent: 'rose'    as const },
+            { title: 'At-risk stages',     value: metrics.atRiskStages,                                  subtitle: 'Approaching deadline', accent: 'amber' as const },
           ].map((card, i) => (
             <div key={card.title} style={anim(220 + i * 60)}>
               <KpiCard {...card} />

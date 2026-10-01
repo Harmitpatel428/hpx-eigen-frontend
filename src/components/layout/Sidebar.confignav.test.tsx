@@ -39,6 +39,23 @@ describe('Sidebar Configuration link', () => {
     expect(screen.getByRole('link', { name: 'Configuration' })).toBeTruthy();
   });
 
+  it('shows Reports only with doc:view and engine enabled', () => {
+    granted = ['doc:view']; flag = true;
+    renderSidebar();
+    expect(screen.getByRole('link', { name: 'Reports' }).getAttribute('href')).toBe('/reports');
+  });
+
+  it('hides Reports without doc:view or with engine off', () => {
+    flag = true; renderSidebar();
+    expect(screen.queryByRole('link', { name: 'Reports' })).toBeNull();
+  });
+
+  it('hides Reports when engine disabled', () => {
+    granted = ['doc:view'];
+    renderSidebar();
+    expect(screen.queryByRole('link', { name: 'Reports' })).toBeNull();
+  });
+
   it('is absent when flag off + only case-field:view', () => {
     granted = ['case-field:view'];
     renderSidebar();

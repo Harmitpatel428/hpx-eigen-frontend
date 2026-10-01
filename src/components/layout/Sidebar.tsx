@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Trash2,
   SlidersHorizontal,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../../auth/public';
 import { useCaseEngineSettings } from '../../hooks/useCaseFields';
@@ -46,9 +47,11 @@ export const Sidebar: React.FC = () => {
   const showConfig =
     permissions.can('case-engine:manage') ||
     (!!engineSettings?.caseOperationsEngineEnabled && permissions.canAny(['case-field:view', 'case-type:view']));
-  const bottomItems = showConfig
-    ? [bottomNavigation[0], { name: 'Configuration', href: '/configuration', icon: SlidersHorizontal }, ...bottomNavigation.slice(1)]
-    : bottomNavigation;
+  const extra = [
+    ...(permissions.can('doc:view') && !!engineSettings?.caseOperationsEngineEnabled ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
+    ...(showConfig ? [{ name: 'Configuration', href: '/configuration', icon: SlidersHorizontal }] : []),
+  ];
+  const bottomItems = [bottomNavigation[0], ...extra, ...bottomNavigation.slice(1)];
   const [deptOpen, setDeptOpen] = React.useState(
     departmentItems.some(d => location.pathname === d.href)
   );

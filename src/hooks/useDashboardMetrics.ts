@@ -24,6 +24,8 @@ export interface DocumentationMetrics {
   reviewTurnaround: number;
   complianceRate: number;
   pendingSignatures: number;
+  overdueStages: number;
+  atRiskStages: number;
   unit: string;
 }
 

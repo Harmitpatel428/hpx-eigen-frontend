@@ -4,6 +4,7 @@ import type {
   DocNoteType, DocStorageType, DocPresetCategory,
   DocFileStatus, DocSourceChannel,
 } from '../types';
+import type { CaseFieldConditionOperator } from '../types/caseConfig';
 
 export type FirmDocChannel = Exclude<DocSourceChannel, 'CLIENT_PORTAL'>;
 export interface FileUploadUrlResponse { uploadUrl: string; uploadId: string; }
@@ -84,6 +85,8 @@ export interface CreateCasePayload {
   notes?: string;
 }
 
+export interface CaseFieldFilter { fieldId: string; operator: CaseFieldConditionOperator; value?: unknown }
+
 export interface ListCasesParams {
   status?: string;
   assignedTo?: string;
@@ -91,6 +94,9 @@ export interface ListCasesParams {
   search?: string;
   page?: number;
   pageSize?: number;
+  fieldFilters?: CaseFieldFilter[];
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -136,6 +142,9 @@ export const documentationService = {
     if (params.search)              qs.set('search', params.search);
     if (params.page)                qs.set('page', String(params.page));
     if (params.pageSize)            qs.set('pageSize', String(params.pageSize));
+    if (params.fieldFilters?.length) qs.set('fieldFilters', JSON.stringify(params.fieldFilters));
+    if (params.sortBy)              qs.set('sortBy', params.sortBy);
+    if (params.sortDir)             qs.set('sortDir', params.sortDir);
     const res = await api.get(`/api/v1/documentation/cases?${qs}`);
     return unwrapList<DocCase>(res);
   },
