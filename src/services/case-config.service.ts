@@ -5,7 +5,10 @@ import type {
   CaseFieldOptionPayload,
   CaseFieldRule,
   CaseType,
+  CaseStageTemplate,
   CaseTypeFieldPlacement,
+  CreateStageTemplatePayload,
+  UpdateStageTemplatePayload,
   CreateCaseFieldPayload,
   CreateCaseTypePayload,
   CreateRulePayload,
@@ -79,6 +82,21 @@ export const caseConfigService = {
   },
   updatePlacement(caseTypeId: string, fieldId: string, payload: { displayOrder: number }): Promise<CaseTypeFieldPlacement> {
     return unwrap(api.patch(`${typesBase}/${caseTypeId}/fields/${fieldId}`, payload));
+  },
+  listStageTemplates(caseTypeId: string, includeArchived = false): Promise<CaseStageTemplate[]> {
+    return unwrap(api.get(`${typesBase}/${caseTypeId}/stages?includeArchived=${includeArchived}`));
+  },
+  createStageTemplate(caseTypeId: string, payload: CreateStageTemplatePayload): Promise<CaseStageTemplate> {
+    return unwrap(api.post(`${typesBase}/${caseTypeId}/stages`, payload));
+  },
+  updateStageTemplate(caseTypeId: string, templateId: string, payload: UpdateStageTemplatePayload): Promise<CaseStageTemplate> {
+    return unwrap(api.patch(`${typesBase}/${caseTypeId}/stages/${templateId}`, payload));
+  },
+  archiveStageTemplate(caseTypeId: string, templateId: string): Promise<CaseStageTemplate> {
+    return unwrap(api.post(`${typesBase}/${caseTypeId}/stages/${templateId}/archive`));
+  },
+  reorderStageTemplates(caseTypeId: string, orderedIds: string[]): Promise<CaseStageTemplate[]> {
+    return unwrap(api.put(`${typesBase}/${caseTypeId}/stages/reorder`, { orderedIds }));
   },
   removePlacement(caseTypeId: string, fieldId: string): Promise<unknown> {
     return unwrap(api.delete(`${typesBase}/${caseTypeId}/fields/${fieldId}`));

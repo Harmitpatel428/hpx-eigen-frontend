@@ -52,7 +52,7 @@ export function RuleBuilder() {
         data={data}
         rowKey="id"
         isLoading={isLoading}
-        emptyMessage="No rules yet"
+        emptyMessage="No rules yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage ? (r) => (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => setModal({ open: true, rule: r })}>Edit</button>

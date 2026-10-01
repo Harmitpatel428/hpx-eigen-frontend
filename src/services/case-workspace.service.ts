@@ -60,6 +60,9 @@ export const caseWorkspaceService = {
   overrideDuration(caseId: string, stageId: string, remainingDuration: number, reason: string): Promise<unknown> {
     return unwrap(api.post(`${caseBase(caseId)}/stages/${stageId}/override-duration`, { remainingDuration, reason }));
   },
+  createTimeline(caseId: string): Promise<unknown> {
+    return unwrap(api.post(`${caseBase(caseId)}/timeline`));
+  },
   assignCaseType(caseId: string, caseTypeId: string): Promise<unknown> {
     return unwrap(api.patch(`${caseBase(caseId)}/case-type`, { caseTypeId }));
   },

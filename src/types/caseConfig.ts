@@ -188,6 +188,28 @@ export type CaseSlaState =
   | 'COMPLETED_ON_TIME' | 'COMPLETED_LATE' | 'EXCEPTION_APPROVED'
   | null;
 
+export type CaseStageDurationType = 'DAYS' | 'WEEKS' | 'MONTHS';
+
+export interface CaseStageTemplate {
+  id: string;
+  caseTypeId: string;
+  key: string;
+  label: string;
+  sequence: number;
+  durationValue: number | null;
+  durationType: CaseStageDurationType | null;
+  externalWaiting: boolean;
+  bufferDays: number | null;
+  dependsOnPrevious: boolean;
+  enforceRequiredOnComplete: boolean;
+  atRiskPercent: number | null;
+  warnDaysRemaining: number | null;
+  hardBlock: boolean;
+  deletedAt: string | null;
+}
+export type UpdateStageTemplatePayload = Omit<CaseStageTemplate, 'id' | 'caseTypeId' | 'sequence' | 'deletedAt' | 'key'>;
+export type CreateStageTemplatePayload = UpdateStageTemplatePayload & { key: string };
+
 export interface CaseStage {
   id: string;
   timelineId: string;
@@ -197,7 +219,7 @@ export interface CaseStage {
   sequence: number;
   status: CaseStageStatus;
   durationValue: number | null;
-  durationType: 'DAYS' | 'WEEKS' | 'MONTHS' | null;
+  durationType: CaseStageDurationType | null;
   externalWaiting: boolean;
   dependsOnPrevious: boolean;
   enforceRequiredOnComplete: boolean;

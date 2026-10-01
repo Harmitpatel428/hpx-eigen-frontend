@@ -58,7 +58,7 @@ export function FieldBuilder() {
         data={data}
         rowKey="id"
         isLoading={isLoading}
-        emptyMessage="No fields yet"
+        emptyMessage="No fields yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage ? (f) => (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => setModal({ open: true, field: f })}>Edit</button>

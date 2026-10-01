@@ -11,6 +11,9 @@ interface ModalProps {
   closeOnBackdrop?: boolean;
 }
 
+// open modals, innermost last: only the topmost reacts to Esc (nested modals)
+const openStack: symbol[] = [];
+
 export function Modal({
   isOpen,
   onClose,
@@ -24,12 +27,27 @@ export function Modal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
 
+  // registered once per open (not per onClose change) so re-renders keep nesting order
+  const idRef = useRef(Symbol());
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = idRef.current;
+    openStack.push(id);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      openStack.splice(openStack.indexOf(id), 1);
+      // scroll lock is released only when the LAST modal closes, in any close order
+      if (openStack.length === 0) document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
 
     triggerRef.current = document.activeElement;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && openStack[openStack.length - 1] !== idRef.current) return;
       if (closeOnEsc && e.key === 'Escape') {
         // Stop the ESC from also reaching an outer overlay's handler (e.g. a
         // ContextPanel window-level listener) so ESC closes only this dialog.
@@ -55,7 +73,6 @@ export function Modal({
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    document.body.style.overflow = 'hidden';
 
     requestAnimationFrame(() => {
       const autofocus = dialogRef.current?.querySelector<HTMLElement>('[autofocus]');
@@ -65,7 +82,6 @@ export function Modal({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'unset';
       if (triggerRef.current instanceof HTMLElement) triggerRef.current.focus();
     };
   }, [isOpen, closeOnEsc, onClose]);

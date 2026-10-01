@@ -59,6 +59,8 @@ export function FieldsTab({ caseId }: { caseId: string }) {
     });
   };
 
+  if (fields.length === 0) return <div className="case-fields-tab">No fields on this case type yet — place fields on the case type in Configuration.</div>;
+
   return (
     <div className="case-fields-tab">
       {fields.map((f) => (

@@ -1221,6 +1221,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     disabled={!assignTypeId} onClick={() => setShowAssignDialog(true)}>
                     Assign
                   </button>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Assign a case type to enable custom fields and stages</span>
                 </div>
               )}
               <Modal isOpen={showAssignDialog} onClose={() => setShowAssignDialog(false)} title="Assign case type?" size="sm">
@@ -1469,7 +1470,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               {tab === 'fields' && <FieldsTab caseId={docCase.id} />}
             </div>
             <div role="tabpanel" id="case-panel-stages" aria-labelledby="case-tab-stages" tabIndex={0} hidden={tab !== 'stages'}>
-              {tab === 'stages' && <StagesTab caseId={docCase.id} />}
+              {tab === 'stages' && <StagesTab caseId={docCase.id} caseTypeId={docCase.caseTypeId ?? null} />}
             </div>
           </>
         )}

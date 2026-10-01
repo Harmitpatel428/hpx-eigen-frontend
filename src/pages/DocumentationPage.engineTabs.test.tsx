@@ -80,6 +80,7 @@ describe('CaseDetailPanel engine tabs', () => {
     expect(screen.queryByRole('tab', { name: 'Fields' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Stages' })).toBeNull();
     expect(screen.getByLabelText('Assign case type')).toBeTruthy();
+    expect(screen.getByText('Assign a case type to enable custom fields and stages')).toBeTruthy();
   });
 
   it('typed case: shows Fields + Stages tabs and History label, no assign control', async () => {

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { RuleBuilder } from './RuleBuilder';
 
 let perms: string[] = [];
+let empty = false;
 const createAsync = vi.fn();
 vi.mock('../../auth/public', () => ({ useAuth: () => ({ permissions: { can: (p: string) => perms.includes(p) } }) }));
 vi.mock('../../hooks/useCaseFields', () => ({
@@ -22,7 +23,7 @@ vi.mock('../../hooks/useCaseFieldRules', () => {
   return {
     useCaseFieldRules: () => ({
       isLoading: false,
-      data: [{ id: 'r1', name: 'Big amount', isActive: true, priority: 0, conditionFieldId: 'f1', conditionOperator: 'GREATER_THAN', conditionValue: 5, conditionOptionId: null, effectType: 'REQUIRE_FIELD', targetFieldId: 'f2', defaultPayload: null, deletedAt: null }],
+      data: empty ? [] : [{ id: 'r1', name: 'Big amount', isActive: true, priority: 0, conditionFieldId: 'f1', conditionOperator: 'GREATER_THAN', conditionValue: 5, conditionOptionId: null, effectType: 'REQUIRE_FIELD', targetFieldId: 'f2', defaultPayload: null, deletedAt: null }],
     }),
     useCreateRule: () => ({ mutate: vi.fn(), mutateAsync: createAsync, isPending: false }),
     useUpdateRule: mut, useArchiveRule: mut,
@@ -30,7 +31,7 @@ vi.mock('../../hooks/useCaseFieldRules', () => {
 });
 
 describe('RuleBuilder', () => {
-  beforeEach(() => { perms = []; createAsync.mockReset(); });
+  beforeEach(() => { empty = false; perms = []; createAsync.mockReset(); });
 
   it('view-only: no controls', () => {
     perms = ['case-field:view'];
@@ -73,5 +74,11 @@ describe('RuleBuilder', () => {
     await user.click(screen.getByRole('button', { name: 'Create' }));
     await waitFor(() => expect(createAsync).toHaveBeenCalled());
     expect(createAsync.mock.calls[0][0]).toMatchObject({ conditionOperator: 'IN', conditionOptionId: 'o1' });
+  });
+
+  it('empty list shows the setup chain', () => {
+    empty = true;
+    render(<RuleBuilder />);
+    expect(screen.getByText(/Create field → Activate → place on a case type → Publish → assign to a case/)).toBeTruthy();
   });
 });

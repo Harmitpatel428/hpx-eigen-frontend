@@ -8,6 +8,7 @@ import {
   caseTypeFormSchema, buildCreateCaseTypePayload, buildUpdateCaseTypePayload, type CaseTypeFormValues,
 } from './caseTypeSchema';
 import { PlacementEditor } from './PlacementEditor';
+import { StageTemplateEditor } from './StageTemplateEditor';
 
 interface Props { isOpen: boolean; onClose: () => void; caseType?: CaseType | null }
 
@@ -70,6 +71,8 @@ export function CaseTypeFormModal({ isOpen, onClose, caseType }: Props) {
           <button type="submit" disabled={archived || create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
         </div>
       </form>
+      {/* outside the <form>: the stage modal has its own form and Modal does not portal */}
+      {isEdit && <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-medium)' }}><StageTemplateEditor caseTypeId={caseType!.id} disabled={archived} /></div>}
     </Modal>
   );
 }

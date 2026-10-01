@@ -3,12 +3,13 @@ import { render, screen } from '@testing-library/react';
 import { FieldBuilder } from './FieldBuilder';
 
 let perms: string[] = [];
+let empty = false;
 vi.mock('../../auth/public', () => ({ useAuth: () => ({ permissions: { can: (p: string) => perms.includes(p) } }) }));
 vi.mock('../../context/DepartmentContext', () => ({ useDepartment: () => ({ activeDepartment: { id: 'd1' } }) }));
 vi.mock('../../hooks/useCaseFields', () => {
   const mut = () => ({ mutate: vi.fn(), isPending: false });
   return {
-  useCaseFields: () => ({ isLoading: false, data: [{ id: 'f1', key: 'loan_type', name: 'Loan type', type: 'TEXT', status: 'DRAFT', reportable: true, filterable: false, validationRules: {}, description: null }] }),
+  useCaseFields: () => ({ isLoading: false, data: empty ? [] : [{ id: 'f1', key: 'loan_type', name: 'Loan type', type: 'TEXT', status: 'DRAFT', reportable: true, filterable: false, validationRules: {}, description: null }] }),
   useCaseFieldOptions: () => ({ data: [], isLoading: false }),
   useCreateField: mut, useUpdateField: mut, useActivateField: mut, useSetFieldReadOnly: mut,
   useArchiveField: mut, useCreateOption: mut, useUpdateOption: mut, useArchiveOption: mut,
@@ -16,7 +17,7 @@ vi.mock('../../hooks/useCaseFields', () => {
 });
 
 describe('FieldBuilder permission gating', () => {
-  beforeEach(() => { perms = []; });
+  beforeEach(() => { empty = false; perms = []; });
 
   it('view-only: no New field / row actions', () => {
     perms = ['case-field:view'];
@@ -33,5 +34,11 @@ describe('FieldBuilder permission gating', () => {
     expect(screen.getByText('New field')).toBeTruthy();
     expect(screen.getByText('Edit')).toBeTruthy();
     expect(screen.getByText('Activate')).toBeTruthy();
+  });
+
+  it('empty list shows the setup chain', () => {
+    empty = true;
+    render(<FieldBuilder />);
+    expect(screen.getByText(/Create field → Activate → place on a case type → Publish → assign to a case/)).toBeTruthy();
   });
 });

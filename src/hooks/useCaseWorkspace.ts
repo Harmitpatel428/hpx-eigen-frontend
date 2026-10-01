@@ -89,5 +89,8 @@ export const useOverrideDuration = (caseId: string) =>
     STAGE_KEYS,
   );
 
+export const useCreateTimeline = (caseId: string) =>
+  useEngineMutation(caseId, (_: void) => caseWorkspaceService.createTimeline(caseId), STAGE_KEYS);
+
 export const useAssignCaseType = (caseId: string) =>
   useEngineMutation(caseId, (caseTypeId: string) => caseWorkspaceService.assignCaseType(caseId, caseTypeId), ['doc-case']);

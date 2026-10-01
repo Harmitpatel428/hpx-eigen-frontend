@@ -5,10 +5,11 @@ import { useAuth } from '../../auth/public';
 import { Modal } from '../Modal';
 import { caseWorkspaceService } from '../../services/case-workspace.service';
 import {
-  useCaseTimeline, useCaseForecast, useStartStage, useCompleteStage, useUnlockStage,
+  useCaseTimeline, useCreateTimeline, useCaseForecast, useStartStage, useCompleteStage, useUnlockStage,
   useSetTarget, useApproveException, usePauseStage, useResumeStage, useReopenStage, useSkipStage, useOverrideDuration,
 } from '../../hooks/useCaseWorkspace';
 import type { CaseStage } from '../../types/caseConfig';
+import { useStageTemplates } from '../../hooks/useCaseTypes';
 import { SlaBadge } from './SlaBadge';
 
 const fmt = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '-');
@@ -25,10 +26,12 @@ const TITLES: Record<string, string> = {
   duration: 'Override duration', exception: 'Approve exception', target: 'Set target',
 };
 
-export function StagesTab({ caseId }: { caseId: string }) {
+export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: string | null }) {
   const { permissions } = useAuth();
-  const { data: tl } = useCaseTimeline(caseId, true);
+  const { data: tl, isLoading: tlLoading } = useCaseTimeline(caseId, true);
   const { data: forecast } = useCaseForecast(caseId, true);
+  const { data: templates = [], isLoading: tplLoading } = useStageTemplates(caseTypeId);
+  const createTimeline = useCreateTimeline(caseId);
   const start = useStartStage(caseId);
   const complete = useCompleteStage(caseId);
   const unlock = useUnlockStage(caseId);
@@ -88,6 +91,19 @@ export function StagesTab({ caseId }: { caseId: string }) {
   const clearTarget = () => { setTarget.mutate(null); close(); };
   const submitDisabled =
     dlg?.kind === 'target' ? !date : !reason.trim() || (dlg?.kind === 'duration' && !daysValid);
+
+  if (tlLoading || tplLoading) return <div>Loading…</div>;
+  if (!timeline && stages.length === 0) {
+    return templates.length > 0 ? (
+      permissions.can('case-timeline:manage') ? (
+        <button type="button" disabled={createTimeline.isPending} onClick={() => createTimeline.mutate()}>Create timeline</button>
+      ) : (
+        <div>No timeline yet.</div>
+      )
+    ) : (
+      <div>This case type has no stage templates yet</div>
+    );
+  }
 
   return (
     <div>

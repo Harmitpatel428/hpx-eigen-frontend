@@ -3,12 +3,13 @@ import { render, screen } from '@testing-library/react';
 import { CaseTypeBuilder } from './CaseTypeBuilder';
 
 let perms: string[] = [];
+let empty = false;
 vi.mock('../../auth/public', () => ({ useAuth: () => ({ permissions: { can: (p: string) => perms.includes(p) } }) }));
 vi.mock('../../hooks/useCaseFields', () => ({ useCaseFields: () => ({ data: [], isLoading: false }) }));
 vi.mock('../../hooks/useCaseTypes', () => {
   const mut = () => ({ mutate: vi.fn(), isPending: false });
   return {
-    useCaseTypes: () => ({ isLoading: false, data: [{ id: 'c1', key: 'loan_case', name: 'Loan case', description: null, status: 'DRAFT', displayOrder: 0 }] }),
+    useCaseTypes: () => ({ isLoading: false, data: empty ? [] : [{ id: 'c1', key: 'loan_case', name: 'Loan case', description: null, status: 'DRAFT', displayOrder: 0 }] }),
     usePlacements: () => ({ data: [], isLoading: false }),
     useCreateCaseType: mut, useUpdateCaseType: mut, usePublishCaseType: mut, useArchiveCaseType: mut,
     useAddPlacement: mut, useUpdatePlacement: mut, useRemovePlacement: mut,
@@ -16,7 +17,7 @@ vi.mock('../../hooks/useCaseTypes', () => {
 });
 
 describe('CaseTypeBuilder permission gating', () => {
-  beforeEach(() => { perms = []; });
+  beforeEach(() => { empty = false; perms = []; });
 
   it('view-only: no controls', () => {
     perms = ['case-type:view'];
@@ -39,5 +40,11 @@ describe('CaseTypeBuilder permission gating', () => {
     render(<CaseTypeBuilder />);
     expect(screen.getByText('Publish')).toBeTruthy();
     expect(screen.queryByText('New case type')).toBeNull();
+  });
+
+  it('empty list shows the setup chain', () => {
+    empty = true;
+    render(<CaseTypeBuilder />);
+    expect(screen.getByText(/Create field → Activate → place on a case type → Publish → assign to a case/)).toBeTruthy();
   });
 });

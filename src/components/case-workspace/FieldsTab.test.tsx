@@ -6,6 +6,7 @@ import { FieldsTab } from './FieldsTab';
 let granted: string[] = [];
 const ISO = '2026-03-05T10:30:00.000Z';
 let extraField: Record<string, unknown> | null = null;
+let noApplicable = false;
 
 vi.mock('../../auth/public', () => ({
   useAuth: () => ({ permissions: { can: (s: string) => granted.includes(s) } }),
@@ -18,7 +19,7 @@ vi.mock('../../hooks/useCaseWorkspace', () => ({
     data: {
       fields: [
         ...(extraField ? [extraField] : []),
-        { id: 'f1', name: 'Title', type: 'TEXT', isHidden: false, isApplicable: true, isRequired: true, defaultValue: null },
+        { id: 'f1', name: 'Title', type: 'TEXT', isHidden: false, isApplicable: !noApplicable, isRequired: true, defaultValue: null },
         { id: 'f2', name: 'Secret', type: 'TEXT', isHidden: false, isApplicable: false, isRequired: false, defaultValue: null },
       ],
       values: [{ id: 'v2', fieldId: 'dt', valueDate: ISO, version: 1, selections: [] }, { id: 'v1', fieldId: 'f1', valueText: 'hello', version: 1, selections: [] }],
@@ -28,7 +29,7 @@ vi.mock('../../hooks/useCaseWorkspace', () => ({
 }));
 
 describe('FieldsTab', () => {
-  beforeEach(() => { granted = []; extraField = null; });
+  beforeEach(() => { granted = []; extraField = null; noApplicable = false; });
 
   it('doc:view only -> disabled inputs, no Save', () => {
     granted = ['doc:view'];
@@ -36,6 +37,14 @@ describe('FieldsTab', () => {
     expect(screen.getByLabelText(/Title/)).toBeDisabled();
     expect(screen.getByLabelText(/Title/)).toHaveValue('hello');
     expect(screen.queryByText('Secret')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  });
+
+  it('no applicable fields -> prompt, no Save', () => {
+    granted = ['doc:view', 'doc:edit'];
+    noApplicable = true;
+    render(<FieldsTab caseId="c1" />);
+    expect(screen.getByText(/No fields on this case type yet/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
   });
 

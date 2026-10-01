@@ -50,7 +50,7 @@ export function CaseTypeBuilder() {
         data={data}
         rowKey="id"
         isLoading={isLoading}
-        emptyMessage="No case types yet"
+        emptyMessage="No case types yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage || canPublish ? (c) => (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             {canManage && <button type="button" onClick={() => setModal({ open: true, caseType: c })}>Edit</button>}
