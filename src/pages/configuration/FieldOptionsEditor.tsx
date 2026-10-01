@@ -67,7 +67,7 @@ export function FieldOptionsEditor({ fieldId, disabled }: Props) {
               </td>
               <td>
                 {canManage && (
-                  <button type="button" onClick={() => archiveOpt.mutate({ fieldId, optionId: o.id })}>Archive</button>
+                  <button className="btn btn-ghost" type="button" onClick={() => archiveOpt.mutate({ fieldId, optionId: o.id })}>Archive</button>
                 )}
               </td>
             </tr>
@@ -77,7 +77,7 @@ export function FieldOptionsEditor({ fieldId, disabled }: Props) {
               <td><input className="input" placeholder="key" value={draft.key} onChange={(e) => setDraft({ ...draft, key: e.target.value })} aria-label="New option key" /></td>
               <td><input className="input" placeholder="label" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} aria-label="New option label" /></td>
               <td><input className="input" type="number" style={{ width: 70 }} value={draft.displayOrder} onChange={(e) => setDraft({ ...draft, displayOrder: e.target.value })} aria-label="New option order" /></td>
-              <td><button type="button" onClick={add} disabled={createOpt.isPending}>Add</button></td>
+              <td><button className="btn btn-ghost" type="button" onClick={add} disabled={createOpt.isPending}>Add</button></td>
             </tr>
           )}
         </tbody>

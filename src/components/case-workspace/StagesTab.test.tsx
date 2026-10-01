@@ -68,7 +68,7 @@ describe('StagesTab', () => {
   it('loading: neither hint nor Create timeline, shows Loading', () => {
     noStages = true; loading = true; granted = ['case-timeline:manage'];
     render(<StagesTab caseId="c1" caseTypeId="t1" />);
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
     expect(screen.queryByText(/no stage templates yet/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Create timeline' })).toBeNull();
   });

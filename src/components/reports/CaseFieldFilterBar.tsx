@@ -46,53 +46,53 @@ export const CaseFieldFilterBar: React.FC<Props> = ({ value, onChange }) => {
   };
 
   const nameOf = (id: string) => allFields.find((f) => f.id === id)?.name ?? id;
-  const cls = 'rounded border border-slate-300 px-2 py-1 text-sm';
+  const cls = 'input';
+  const sty = { width: 'auto', minWidth: 140 } as const;
 
   let input: React.ReactNode = null;
   if (field && needsValue) {
     if (multi) {
       input = (
-        <select aria-label="Filter values" multiple className={cls} value={rawMulti}
+        <select aria-label="Filter values" multiple className={cls} style={{ ...sty, height: "auto" }} value={rawMulti}
           onChange={(e) => setRawMulti(Array.from(e.target.selectedOptions, (o) => o.value))}>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       );
     } else if (conditionUsesOption(field.type)) {
       input = (
-        <select aria-label="Filter value" className={cls} value={raw} onChange={(e) => setRaw(e.target.value)}>
+        <select aria-label="Filter value" className={cls} style={sty} value={raw} onChange={(e) => setRaw(e.target.value)}>
           <option value="">Select...</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       );
     } else if (field.type === 'BOOLEAN') {
       input = (
-        <select aria-label="Filter value" className={cls} value={raw} onChange={(e) => setRaw(e.target.value)}>
+        <select aria-label="Filter value" className={cls} style={sty} value={raw} onChange={(e) => setRaw(e.target.value)}>
           <option value="">Select...</option><option value="true">Yes</option><option value="false">No</option>
         </select>
       );
     } else {
       const t = NUMERIC.includes(field.type) ? 'number' : field.type === 'DATE' ? 'date' : field.type === 'DATETIME' ? 'datetime-local' : field.type === 'TIME' ? 'time' : 'text';
-      input = <input aria-label="Filter value" type={t} className={cls} value={raw} onChange={(e) => setRaw(e.target.value)} />;
+      input = <input aria-label="Filter value" type={t} className={cls} style={sty} value={raw} onChange={(e) => setRaw(e.target.value)} />;
     }
   }
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <select aria-label="Filter field" className={cls} value={fieldId} onChange={(e) => pickField(e.target.value)}>
+        <select aria-label="Filter field" className={cls} style={sty} value={fieldId} onChange={(e) => pickField(e.target.value)}>
           <option value="">Field...</option>
           {fields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
         </select>
         {field && (
-          <select aria-label="Filter operator" className={cls} value={operator}
+          <select aria-label="Filter operator" className={cls} style={sty} value={operator}
             onChange={(e) => setOperator(e.target.value as CaseFieldFilter['operator'])}>
             {operatorsForType(field.type).map((op) => <option key={op} value={op}>{op}</option>)}
           </select>
         )}
         {input}
-        <button type="button" onClick={add} disabled={!canAdd}
-          title={value.length >= MAX_FILTERS ? `Maximum ${MAX_FILTERS} filters` : undefined}
-          className="inline-flex items-center gap-1 rounded bg-slate-900 px-3 py-1 text-sm text-white disabled:opacity-40">
+        <button className="btn btn-primary" type="button" onClick={add} disabled={!canAdd}
+          title={value.length >= MAX_FILTERS ? `Maximum ${MAX_FILTERS} filters` : undefined}>
           <Plus size={14} /> Add filter
         </button>
       </div>
@@ -101,7 +101,7 @@ export const CaseFieldFilterBar: React.FC<Props> = ({ value, onChange }) => {
           {value.map((f, i) => (
             <li key={i} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">
               {nameOf(f.fieldId)} {f.operator}{f.value !== undefined ? ` ${JSON.stringify(f.value)}` : ''}
-              <button type="button" aria-label={`Remove filter ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>
+              <button className="btn btn-icon" type="button" style={{ width: 18, height: 18 }} aria-label={`Remove filter ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>
                 <X size={12} />
               </button>
             </li>

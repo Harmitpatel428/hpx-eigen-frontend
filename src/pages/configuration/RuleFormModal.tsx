@@ -98,68 +98,71 @@ export function RuleFormModal({ isOpen, onClose, rule }: Props) {
             {formError}
           </div>
         )}
-        <div style={row}>
-          <label className="type-ui" htmlFor="rf-name">Name</label>
-          <input id="rf-name" className="input" {...register('name')} />
-          {errors.name && <span style={err}>{errors.name.message}</span>}
-        </div>
-        <div style={row}>
-          <label className="type-ui" htmlFor="rf-priority">Priority</label>
-          <input id="rf-priority" className="input" type="number" {...register('priority')} />
-          {errors.priority && <span style={err}>{errors.priority.message}</span>}
-        </div>
-        {isEdit && <label style={row}><span><input type="checkbox" {...register('isActive')} /> Active</span></label>}
-
-        {fieldSelect('conditionFieldId', 'When field')}
-        <div style={row}>
-          <label className="type-ui" htmlFor="rf-op">Operator</label>
-          <select id="rf-op" className="input" disabled={!condType} {...register('conditionOperator')}>
-            {operators.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </div>
-        {condType && operatorNeedsValue(op) && (
-          <div style={row}>
-            <label className="type-ui" htmlFor="rf-cval">Value</label>
-            {conditionUsesOption(condType) ? (
-              <select id="rf-cval" className="input" {...register('conditionOptionId')}>
-                <option value="">Select option…</option>
-                {condOptions.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-            ) : scalarInput(condType, 'rf-cval', register('conditionValue'))}
-            {errors.conditionValue && <span style={err}>{errors.conditionValue.message}</span>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          <div style={row} className="sm:col-span-2">
+            <label className="type-ui" htmlFor="rf-name">Name</label>
+            <input id="rf-name" className="input" {...register('name')} />
+            {errors.name && <span style={err}>{errors.name.message}</span>}
           </div>
-        )}
-
-        <div style={row}>
-          <label className="type-ui" htmlFor="rf-effect">Effect</label>
-          <select id="rf-effect" className="input" {...register('effectType')}>
-            {EFFECT_TYPES.map((e) => <option key={e} value={e}>{e}</option>)}
-          </select>
-        </div>
-        {fieldSelect('targetFieldId', 'Target field')}
-        {effect === 'SET_DEFAULT' && targetType && (
-          <div style={row}>
-            <label className="type-ui" htmlFor="rf-default">Default</label>
-            {kind === 'option' && (
-              <select id="rf-default" className="input" {...register('defaultOptionId')}>
-                <option value="">Select option…</option>
-                {targetOptions.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-            )}
-            {kind === 'options' && (
-              <select id="rf-default" className="input" multiple {...register('defaultOptionIds')} value={defaultOptionIds}
-                onChange={(e) => register('defaultOptionIds').onChange({ target: { name: 'defaultOptionIds', value: Array.from(e.target.selectedOptions, (o) => o.value) }, type: 'change' })}>
-                {targetOptions.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-            )}
-            {kind === 'value' && scalarInput(targetType, 'rf-default', register('defaultValue'))}
-            {errors.defaultValue && <span style={err}>{errors.defaultValue.message}</span>}
+          <div style={row} className={!isEdit ? 'sm:col-span-2' : undefined}>
+            <label className="type-ui" htmlFor="rf-priority">Priority</label>
+            <input id="rf-priority" className="input" type="number" {...register('priority')} />
+            {errors.priority && <span style={err}>{errors.priority.message}</span>}
           </div>
-        )}
+          {isEdit && <label style={{ ...row, justifyContent: 'flex-end' }}><span><input type="checkbox" {...register('isActive')} /> Active</span></label>}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" disabled={create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
+          {fieldSelect('conditionFieldId', 'When field')}
+          <div style={row}>
+            <label className="type-ui" htmlFor="rf-op">Operator</label>
+            <select id="rf-op" className="input" disabled={!condType} {...register('conditionOperator')}>
+              {operators.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+          {condType && operatorNeedsValue(op) && (
+            <div style={row} className="sm:col-span-2">
+              <label className="type-ui" htmlFor="rf-cval">Value</label>
+              {conditionUsesOption(condType) ? (
+                <select id="rf-cval" className="input" {...register('conditionOptionId')}>
+                  <option value="">Select option…</option>
+                  {condOptions.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              ) : scalarInput(condType, 'rf-cval', register('conditionValue'))}
+              {errors.conditionValue && <span style={err}>{errors.conditionValue.message}</span>}
+            </div>
+          )}
+
+          <div style={row}>
+            <label className="type-ui" htmlFor="rf-effect">Effect</label>
+            <select id="rf-effect" className="input" {...register('effectType')}>
+              {EFFECT_TYPES.map((e) => <option key={e} value={e}>{e}</option>)}
+            </select>
+          </div>
+          {fieldSelect('targetFieldId', 'Target field')}
+          {effect === 'SET_DEFAULT' && targetType && (
+            <div style={row} className="sm:col-span-2">
+              <label className="type-ui" htmlFor="rf-default">Default</label>
+              {kind === 'option' && (
+                <select id="rf-default" className="input" {...register('defaultOptionId')}>
+                  <option value="">Select option…</option>
+                  {targetOptions.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              )}
+              {kind === 'options' && (
+                <select id="rf-default" className="input" multiple {...register('defaultOptionIds')} value={defaultOptionIds}
+                  onChange={(e) => register('defaultOptionIds').onChange({ target: { name: 'defaultOptionIds', value: Array.from(e.target.selectedOptions, (o) => o.value) }, type: 'change' })}>
+                  {targetOptions.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              )}
+              {kind === 'value' && scalarInput(targetType, 'rf-default', register('defaultValue'))}
+              {errors.defaultValue && <span style={err}>{errors.defaultValue.message}</span>}
+            </div>
+          )}
+
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-medium)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+          <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" type="submit" disabled={create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
         </div>
       </form>
     </Modal>

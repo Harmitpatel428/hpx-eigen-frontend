@@ -43,19 +43,20 @@ export function CaseTypeBuilder() {
         <label className="type-ui">
           <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} /> Show archived
         </label>
-        {canManage && <button type="button" onClick={() => setModal({ open: true, caseType: null })}>New case type</button>}
+        {canManage && <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, caseType: null })}>New case type</button>}
       </div>
       <DataTable<CaseType>
         columns={columns}
         data={data}
         rowKey="id"
         isLoading={isLoading}
+        emptyTitle="No case types yet"
         emptyMessage="No case types yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage || canPublish ? (c) => (
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            {canManage && <button type="button" onClick={() => setModal({ open: true, caseType: c })}>Edit</button>}
-            {canPublish && c.status === 'DRAFT' && <button type="button" onClick={() => window.confirm(`Publish "${c.name}"? This cannot be undone from the UI.`) && publish.mutate(c.id)}>Publish</button>}
-            {canManage && c.status !== 'ARCHIVED' && <button type="button" onClick={() => window.confirm(`Archive "${c.name}"? This cannot be undone from the UI.`) && archive.mutate(c.id)}>Archive</button>}
+          <div className="whitespace-nowrap" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {canManage && <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, caseType: c })}>Edit</button>}
+            {canPublish && c.status === 'DRAFT' && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Publish "${c.name}"? This cannot be undone from the UI.`) && publish.mutate(c.id)}>Publish</button>}
+            {canManage && c.status !== 'ARCHIVED' && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Archive "${c.name}"? This cannot be undone from the UI.`) && archive.mutate(c.id)}>Archive</button>}
           </div>
         ) : undefined}
       />

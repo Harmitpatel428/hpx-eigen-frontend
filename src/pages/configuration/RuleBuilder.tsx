@@ -45,18 +45,19 @@ export function RuleBuilder() {
         <label className="type-ui">
           <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} /> Show archived
         </label>
-        {canManage && <button type="button" onClick={() => setModal({ open: true, rule: null })}>New rule</button>}
+        {canManage && <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, rule: null })}>New rule</button>}
       </div>
       <DataTable<CaseFieldRule>
         columns={columns}
         data={data}
         rowKey="id"
         isLoading={isLoading}
+        emptyTitle="No rules yet"
         emptyMessage="No rules yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage ? (r) => (
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => setModal({ open: true, rule: r })}>Edit</button>
-            {!r.deletedAt && <button type="button" onClick={() => window.confirm(`Archive rule "${r.name}"?`) && archive.mutate(r.id)}>Archive</button>}
+          <div className="whitespace-nowrap" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, rule: r })}>Edit</button>
+            {!r.deletedAt && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Archive rule "${r.name}"?`) && archive.mutate(r.id)}>Archive</button>}
           </div>
         ) : undefined}
       />

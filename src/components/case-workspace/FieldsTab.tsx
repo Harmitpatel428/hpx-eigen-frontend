@@ -6,6 +6,7 @@ import { extractApiError } from '../../utils/extractApiError';
 import type { CaseFieldWithRuntime, StoredFieldValue } from '../../types/caseConfig';
 import { buildPatchEntry, readStoredValue } from './fieldValueHelpers';
 import { FieldRenderer } from './FieldRenderer';
+import { EmptyState, LoadingRows } from '../EmptyState';
 
 // Stored -> form value. Dates become input-friendly strings; MULTI_SELECT becomes string[].
 function toForm(field: CaseFieldWithRuntime, stored?: StoredFieldValue): unknown {
@@ -38,7 +39,7 @@ export function FieldsTab({ caseId }: { caseId: string }) {
   const patch = usePatchFieldValues(caseId);
   const [edits, setEdits] = useState<Record<string, unknown>>({});
 
-  if (isLoading || !data) return <div>Loading fields…</div>;
+  if (isLoading || !data) return <LoadingRows />;
 
   const fields = data.fields.filter((f) => f.isApplicable && !f.isHidden);
   const stored = new Map(data.values.map((v) => [v.fieldId, v]));
@@ -59,7 +60,7 @@ export function FieldsTab({ caseId }: { caseId: string }) {
     });
   };
 
-  if (fields.length === 0) return <div className="case-fields-tab">No fields on this case type yet — place fields on the case type in Configuration.</div>;
+  if (fields.length === 0) return <div className="case-fields-tab"><EmptyState title="No fields to show">No fields on this case type yet — place fields on the case type in Configuration.</EmptyState></div>;
 
   return (
     <div className="case-fields-tab">
@@ -73,7 +74,7 @@ export function FieldsTab({ caseId }: { caseId: string }) {
         />
       ))}
       {canEdit && (
-        <button type="button" onClick={save} disabled={dirty.length === 0 || patch.isPending}>Save</button>
+        <button className="btn btn-primary" type="button" onClick={save} disabled={dirty.length === 0 || patch.isPending}>Save</button>
       )}
     </div>
   );

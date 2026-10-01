@@ -45,12 +45,15 @@ export function ConfigurationPage() {
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: 1280 }}>
       <div style={{ width: 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
-        <h1 className="type-title" style={{ marginBottom: 'var(--space-8)' }}>Configuration</h1>
+        <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Configuration</h1>
+        <p className="type-body" style={{ marginBottom: 'var(--space-8)', color: 'var(--text-secondary)' }}>
+          Define the custom fields, case types, and rules for the Case Operations Engine.
+        </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
           {TABS.map(t => (
             <button
               key={t}
-              className="type-ui"
+              className={`type-ui transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${tab === t ? '' : 'hover:bg-[var(--bg-subtle)]'}`}
               aria-current={tab === t ? 'page' : undefined}
               onClick={() => setTab(t)}
               style={tab === t
@@ -63,10 +66,12 @@ export function ConfigurationPage() {
         </div>
         {canManage && (
           <button
-            className="type-ui"
+            className="btn btn-ghost"
             disabled={setEnabled.isPending}
-            onClick={() => setEnabled.mutate(false)}
-            style={{ marginTop: 'var(--space-8)', color: 'var(--text-tertiary)' }}
+            onClick={() => {
+              if (window.confirm('Turn off the Case Operations Engine for your whole organization?')) setEnabled.mutate(false);
+            }}
+            style={{ marginTop: 'var(--space-8)', color: 'var(--color-danger)' }}
           >
             Turn off Case Operations Engine
           </button>

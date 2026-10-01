@@ -63,6 +63,7 @@ export function StageTemplateFormModal({ isOpen, onClose, caseTypeId, template }
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit stage' : 'New stage'} size="lg" closeOnEsc={false}>
       <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <div style={row}>
           <label className="type-ui" htmlFor="st-key">Key</label>
           <input id="st-key" className="input" readOnly={isEdit} disabled={isEdit} {...register('key')} />
@@ -83,13 +84,16 @@ export function StageTemplateFormModal({ isOpen, onClose, caseTypeId, template }
         {num('bufferDays', 'Buffer days')}
         {num('atRiskPercent', 'At-risk percent')}
         {num('warnDaysRemaining', 'Warn days remaining')}
+        <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         {check('externalWaiting', 'External waiting')}
         {check('dependsOnPrevious', 'Depends on previous')}
         {check('enforceRequiredOnComplete', 'Enforce required fields on complete')}
         {check('hardBlock', 'Hard block')}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" disabled={!isValid || create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
+        </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-medium)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+          <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" type="submit" disabled={!isValid || create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
         </div>
       </form>
     </Modal>

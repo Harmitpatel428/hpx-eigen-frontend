@@ -39,8 +39,9 @@ export function CaseTypeFormModal({ isOpen, onClose, caseType }: Props) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit case type' : 'New case type'} size="lg">
       <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         {archived && (
-          <div role="alert" style={{ ...row, background: 'rgba(245,158,11,0.1)', padding: 8, borderRadius: 6 }}>
+          <div role="alert" className="sm:col-span-2" style={{ ...row, background: 'rgba(245,158,11,0.1)', padding: 8, borderRadius: 6 }}>
             This case type is archived and cannot be edited.
           </div>
         )}
@@ -54,21 +55,22 @@ export function CaseTypeFormModal({ isOpen, onClose, caseType }: Props) {
           <input id="ct-name" className="input" disabled={archived} {...register('name')} />
           {errors.name && <span style={err}>{errors.name.message}</span>}
         </div>
-        <div style={row}>
+        <div style={row} className="sm:col-span-2">
           <label className="type-ui" htmlFor="ct-description">Description</label>
           <textarea id="ct-description" className="input" disabled={archived} {...register('description')} />
           {errors.description && <span style={err}>{errors.description.message}</span>}
         </div>
 
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 12 }} className="sm:col-span-2">
           {isEdit
             ? <PlacementEditor caseTypeId={caseType!.id} disabled={archived} />
             : <div className="type-ui">Save the case type first, then place fields.</div>}
         </div>
+        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" disabled={archived || create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-medium)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+          <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" type="submit" disabled={archived || create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
         </div>
       </form>
       {/* outside the <form>: the stage modal has its own form and Modal does not portal */}

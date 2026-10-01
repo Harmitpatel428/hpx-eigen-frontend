@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
+import { EmptyState } from './EmptyState';
 
 export interface Column<T> {
   key: keyof T | string;
@@ -20,6 +21,7 @@ interface DataTableProps<T> {
   sortOrder?: 'asc' | 'desc';
   isLoading?: boolean;
   emptyMessage?: string;
+  emptyTitle?: string;
   rowActions?: (row: T) => ReactNode;
 }
 
@@ -33,6 +35,7 @@ export const DataTable = React.memo(<T,>({
   sortOrder = 'asc',
   isLoading,
   emptyMessage = 'No data',
+  emptyTitle = 'Nothing here yet',
   rowActions,
 }: DataTableProps<T>) => {
   if (isLoading) {
@@ -45,8 +48,8 @@ export const DataTable = React.memo(<T,>({
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-500 text-sm bg-white">
-        {emptyMessage}
+      <div className="bg-white">
+        <EmptyState title={emptyTitle}>{emptyMessage}</EmptyState>
       </div>
     );
   }
@@ -84,7 +87,7 @@ export const DataTable = React.memo(<T,>({
           {data.map((row) => (
             <tr
               key={getRowKey(row)}
-              className={`transition-colors hover:bg-slate-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+              className={`transition-colors hover:bg-[var(--bg-subtle)] ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick?.(row)}
             >
               {columns.map((col) => {

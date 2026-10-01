@@ -11,6 +11,7 @@ import {
 import type { CaseStage } from '../../types/caseConfig';
 import { useStageTemplates } from '../../hooks/useCaseTypes';
 import { SlaBadge } from './SlaBadge';
+import { EmptyState, LoadingRows } from '../EmptyState';
 
 const fmt = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '-');
 
@@ -92,16 +93,16 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
   const submitDisabled =
     dlg?.kind === 'target' ? !date : !reason.trim() || (dlg?.kind === 'duration' && !daysValid);
 
-  if (tlLoading || tplLoading) return <div>Loading…</div>;
+  if (tlLoading || tplLoading) return <LoadingRows />;
   if (!timeline && stages.length === 0) {
     return templates.length > 0 ? (
       permissions.can('case-timeline:manage') ? (
-        <button type="button" disabled={createTimeline.isPending} onClick={() => createTimeline.mutate()}>Create timeline</button>
+        <EmptyState title="No timeline yet." action={<button className="btn btn-primary" type="button" disabled={createTimeline.isPending} onClick={() => createTimeline.mutate()}>Create timeline</button>} />
       ) : (
-        <div>No timeline yet.</div>
+        <EmptyState title="No timeline yet." />
       )
     ) : (
-      <div>This case type has no stage templates yet</div>
+      <EmptyState title="No stage templates">This case type has no stage templates yet</EmptyState>
     );
   }
 
@@ -114,10 +115,10 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
         )}
         {timeline?.exceptionApproved && <span>Exception approved</span>}
         {permissions.can('case-timeline:manage') && (
-          <button onClick={() => setDlg({ kind: 'target' })}>Set target</button>
+          <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'target' })}>Set target</button>
         )}
         {timeline?.feasible === false && !timeline.exceptionApproved && permissions.can('case-exception:approve') && (
-          <button onClick={() => setDlg({ kind: 'exception' })}>Approve exception</button>
+          <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'exception' })}>Approve exception</button>
         )}
       </section>
 
@@ -142,29 +143,29 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
                 Planned {fmt(s.plannedStart)} to {fmt(s.plannedFinish)} · Latest finish {fmt(s.latestFinish)}
               </span>
               {s.status === 'READY' && permissions.can('case-stage:start') && (
-                <button disabled={isBlocked} onClick={() => start.mutate(s.id)}>Start</button>
+                <button className="btn btn-ghost" disabled={isBlocked} onClick={() => start.mutate(s.id)}>Start</button>
               )}
               {s.status === 'IN_PROGRESS' && permissions.can('case-stage:complete') && (
-                <button disabled={isBlocked} onClick={() => onComplete(s.id)}>Complete</button>
+                <button className="btn btn-ghost" disabled={isBlocked} onClick={() => onComplete(s.id)}>Complete</button>
               )}
               {/* ponytail: backend is authoritative on the stage machine; it 422s illegal transitions (hooks toast the error). */}
               {!isBlocked && s.status === 'IN_PROGRESS' && permissions.can('case-stage:pause') && (
-                <button onClick={() => pause.mutate({ stageId: s.id })}>Pause</button>
+                <button className="btn btn-ghost" onClick={() => pause.mutate({ stageId: s.id })}>Pause</button>
               )}
               {!isBlocked && s.status === 'WAITING_EXTERNAL' && permissions.can('case-stage:resume') && (
-                <button onClick={() => resume.mutate({ stageId: s.id })}>Resume</button>
+                <button className="btn btn-ghost" onClick={() => resume.mutate({ stageId: s.id })}>Resume</button>
               )}
               {!isBlocked && LIVE.includes(s.status) && permissions.can('case-stage:skip') && (
-                <button onClick={() => setDlg({ kind: 'skip', stageId: s.id })}>Skip</button>
+                <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'skip', stageId: s.id })}>Skip</button>
               )}
               {!isBlocked && (s.status === 'COMPLETED' || s.status === 'SKIPPED') && permissions.can('case-stage:reopen') && (
-                <button onClick={() => reopen.mutate({ stageId: s.id })}>Reopen</button>
+                <button className="btn btn-ghost" onClick={() => reopen.mutate({ stageId: s.id })}>Reopen</button>
               )}
               {!isBlocked && LIVE.includes(s.status) && canOverride && (
-                <button onClick={() => setDlg({ kind: 'duration', stageId: s.id })}>Override duration</button>
+                <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'duration', stageId: s.id })}>Override duration</button>
               )}
               {isBlocked && permissions.can('sla:unlock') && (
-                <button onClick={() => setDlg({ kind: 'unlock', stageId: s.id })}>Unlock</button>
+                <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'unlock', stageId: s.id })}>Unlock</button>
               )}
             </div>
             {isBlocked && (
@@ -176,7 +177,7 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
               <div role="alert" style={{ color: '#991b1b', marginTop: 6 }}>
                 Cannot complete: {blocked.missing} required field(s) missing.
                 {canOverride && (
-                  <button style={{ marginLeft: 8 }} onClick={() => setDlg({ kind: 'override', stageId: s.id })}>
+                  <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={() => setDlg({ kind: 'override', stageId: s.id })}>
                     Override &amp; complete
                   </button>
                 )}
@@ -207,9 +208,9 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
           </>
         )}
         <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-          <button onClick={close}>Cancel</button>
-          {dlg?.kind === 'target' && <button onClick={clearTarget}>Clear</button>}
-          <button disabled={submitDisabled} onClick={submit}>Confirm</button>
+          <button className="btn btn-secondary" onClick={close}>Cancel</button>
+          {dlg?.kind === 'target' && <button className="btn btn-ghost" onClick={clearTarget}>Clear</button>}
+          <button className="btn btn-primary" disabled={submitDisabled} onClick={submit}>Confirm</button>
         </div>
       </Modal>
     </div>

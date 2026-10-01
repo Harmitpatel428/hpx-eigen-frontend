@@ -250,13 +250,13 @@ ul, ol { list-style: none; }
   height: 40px;
   padding: 0 var(--space-4);
   background-color: var(--bg-subtle);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-sm);
   transition: all var(--transition-fast);
 }
-.input:focus { background-color: var(--bg-app); border-color: var(--border-medium); }
+.input:focus { background-color: var(--bg-app); border-color: var(--color-accent); outline: none; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08); }
 .input::placeholder { color: var(--text-tertiary); }
 .case-id-input { font-family: monospace; font-weight: 600; letter-spacing: 0.04em; }
 .case-id-input::placeholder { font-family: var(--font-sans); font-weight: var(--font-normal); letter-spacing: normal; }

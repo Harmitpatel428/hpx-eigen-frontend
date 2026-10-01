@@ -39,16 +39,16 @@ export function StageTemplateEditor({ caseTypeId, disabled = false }: Props) {
               </span>
             </span>
             {canEdit && (<>
-              <button type="button" aria-label={`Move ${t.label} up`} disabled={reorder.isPending || i === 0} onClick={() => move(i, i - 1)}>Up</button>
-              <button type="button" aria-label={`Move ${t.label} down`} disabled={reorder.isPending || i === sorted.length - 1} onClick={() => move(i, i + 1)}>Down</button>
-              <button type="button" aria-label={`Edit ${t.label}`} onClick={() => show(t)}>Edit</button>
-              <button type="button" aria-label={`Archive ${t.label}`}
+              <button className="btn btn-ghost" type="button" aria-label={`Move ${t.label} up`} disabled={reorder.isPending || i === 0} onClick={() => move(i, i - 1)}>Up</button>
+              <button className="btn btn-ghost" type="button" aria-label={`Move ${t.label} down`} disabled={reorder.isPending || i === sorted.length - 1} onClick={() => move(i, i + 1)}>Down</button>
+              <button className="btn btn-ghost" type="button" aria-label={`Edit ${t.label}`} onClick={() => show(t)}>Edit</button>
+              <button className="btn btn-ghost" type="button" aria-label={`Archive ${t.label}`}
                 onClick={() => window.confirm(`Archive stage "${t.label}"?`) && archive.mutate({ caseTypeId, templateId: t.id })}>Archive</button>
             </>)}
           </li>
         ))}
       </ul>
-      {canEdit && <button type="button" style={{ marginTop: 8 }} onClick={() => show(null)}>New stage</button>}
+      {canEdit && <button className="btn btn-ghost" type="button" style={{ marginTop: 8 }} onClick={() => show(null)}>New stage</button>}
       <StageTemplateFormModal isOpen={open} onClose={() => setOpen(false)} caseTypeId={caseTypeId} template={editing} />
     </div>
   );

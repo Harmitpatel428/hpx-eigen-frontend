@@ -40,9 +40,9 @@ export function PlacementEditor({ caseTypeId, disabled = false }: Props) {
           <li key={p.fieldId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
             <span style={{ flex: 1 }}>{nameOf(p.fieldId)}</span>
             {canEdit && (<>
-              <button type="button" aria-label={`Move ${nameOf(p.fieldId)} up`} disabled={i === 0} onClick={() => swap(i, i - 1)}>Up</button>
-              <button type="button" aria-label={`Move ${nameOf(p.fieldId)} down`} disabled={i === sorted.length - 1} onClick={() => swap(i, i + 1)}>Down</button>
-              <button type="button" aria-label={`Remove ${nameOf(p.fieldId)}`} onClick={() => remove.mutate({ caseTypeId, fieldId: p.fieldId })}>Remove</button>
+              <button className="btn btn-ghost" type="button" aria-label={`Move ${nameOf(p.fieldId)} up`} disabled={i === 0} onClick={() => swap(i, i - 1)}>Up</button>
+              <button className="btn btn-ghost" type="button" aria-label={`Move ${nameOf(p.fieldId)} down`} disabled={i === sorted.length - 1} onClick={() => swap(i, i + 1)}>Down</button>
+              <button className="btn btn-ghost" type="button" aria-label={`Remove ${nameOf(p.fieldId)}`} onClick={() => remove.mutate({ caseTypeId, fieldId: p.fieldId })}>Remove</button>
             </>)}
           </li>
         ))}
@@ -53,7 +53,7 @@ export function PlacementEditor({ caseTypeId, disabled = false }: Props) {
             <option value="">Select a field…</option>
             {available.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
-          <button type="button" disabled={!pick} onClick={() => add.mutate({ caseTypeId, payload: { fieldId: pick, displayOrder: nextOrder } }, { onSuccess: () => setPick('') })}>Add</button>
+          <button className="btn btn-ghost" type="button" disabled={!pick} onClick={() => add.mutate({ caseTypeId, payload: { fieldId: pick, displayOrder: nextOrder } }, { onSuccess: () => setPick('') })}>Add</button>
         </div>
       )}
     </div>

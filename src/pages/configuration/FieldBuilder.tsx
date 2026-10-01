@@ -14,9 +14,7 @@ const STATUS_STYLE: Record<CaseFieldStatus, { bg: string; fg: string }> = {
   ARCHIVED: { bg: 'rgba(220,38,38,0.1)', fg: '#dc2626' },
 };
 
-const dot = (on: boolean, label: string) => (
-  <span title={`${label}: ${on ? 'yes' : 'no'}`} role="img" aria-label={`${label}: ${on ? 'yes' : 'no'}`} style={{ marginRight: 6, color: on ? '#16a34a' : '#cbd5e1' }}>●</span>
-);
+const FLAGS = [['reportable', 'Reportable'], ['filterable', 'Filterable'], ['sortable', 'Sortable']] as const;
 
 // Mount as <FieldBuilder /> (named export, no props).
 export function FieldBuilder() {
@@ -42,7 +40,12 @@ export function FieldBuilder() {
         }}>{s}</span>
       ),
     },
-    { key: 'flags', label: 'Flags', render: (_v, r) => <>{dot(r.reportable, 'Reportable')}{dot(r.filterable, 'Filterable')}</> },
+    { key: 'flags', label: 'Flags', render: (_v, r) => {
+      const on = FLAGS.filter(([k]) => (r as unknown as Record<string, unknown>)[k]);
+      return on.length
+        ? <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>{on.map(([k, l]) => <span key={k} className="chip">{l}</span>)}</span>
+        : <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
+    } },
   ];
 
   return (
@@ -51,20 +54,21 @@ export function FieldBuilder() {
         <label className="type-ui">
           <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} /> Show archived
         </label>
-        {canManage && <button type="button" onClick={() => setModal({ open: true, field: null })}>New field</button>}
+        {canManage && <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, field: null })}>New field</button>}
       </div>
       <DataTable<CaseFieldDefinition>
         columns={columns}
         data={data}
         rowKey="id"
         isLoading={isLoading}
+        emptyTitle="No fields yet"
         emptyMessage="No fields yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage ? (f) => (
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => setModal({ open: true, field: f })}>Edit</button>
-            {f.status === 'DRAFT' && <button type="button" onClick={() => activate.mutate(f.id)}>Activate</button>}
-            {f.status === 'ACTIVE' && <button type="button" onClick={() => window.confirm(`Set "${f.name}" to read-only? This cannot be undone from the UI.`) && setReadOnly.mutate(f.id)}>Set read-only</button>}
-            {f.status !== 'ARCHIVED' && <button type="button" onClick={() => window.confirm(`Archive "${f.name}"? This cannot be undone from the UI.`) && archive.mutate(f.id)}>Archive</button>}
+          <div className="whitespace-nowrap" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, field: f })}>Edit</button>
+            {f.status === 'DRAFT' && <button className="btn btn-ghost" type="button" onClick={() => activate.mutate(f.id)}>Activate</button>}
+            {f.status === 'ACTIVE' && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Set "${f.name}" to read-only? This cannot be undone from the UI.`) && setReadOnly.mutate(f.id)}>Set read-only</button>}
+            {f.status !== 'ARCHIVED' && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Archive "${f.name}"? This cannot be undone from the UI.`) && archive.mutate(f.id)}>Archive</button>}
           </div>
         ) : undefined}
       />

@@ -1229,7 +1229,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   This enables the case workspace (fields and stages) for this case. It cannot be cleared afterwards.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button type="button" className="btn btn-ghost" onClick={() => setShowAssignDialog(false)}>Cancel</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowAssignDialog(false)}>Cancel</button>
                   <button type="button" className="btn btn-primary" disabled={assignTypeMutation.isPending}
                     onClick={() => assignTypeMutation.mutate(assignTypeId, { onSuccess: () => { setShowAssignDialog(false); setAssignTypeId(''); } })}>
                     {assignTypeMutation.isPending ? 'Assigning…' : 'Confirm'}
