@@ -1471,7 +1471,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
         {engineEnabled && (
           <>
             <div role="tabpanel" id="case-panel-fields" aria-labelledby="case-tab-fields" tabIndex={0} hidden={tab !== 'fields'}>
-              {tab === 'fields' && <FieldsTab caseId={docCase.id} caseTypeName={caseTypes.find(ct => ct.id === docCase.caseTypeId)?.name} />}
+              {tab === 'fields' && <FieldsTab caseId={docCase.id} />}
             </div>
             <div role="tabpanel" id="case-panel-stages" aria-labelledby="case-tab-stages" tabIndex={0} hidden={tab !== 'stages'}>
               {tab === 'stages' && <StagesTab caseId={docCase.id} caseTypeId={docCase.caseTypeId ?? null} />}
