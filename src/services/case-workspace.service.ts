@@ -1,10 +1,22 @@
 import { api } from './api';
 import type {
   CaseTimelineResponse,
+  CaseTypeComponent,
   FieldValuesResponse,
   ForecastResponse,
   PatchValueEntry,
 } from '../types/caseConfig';
+
+export interface PolicyAssignmentInput {
+  caseTypeId: string;
+  componentIds?: string[];
+  proposalDate?: string | null;
+  actualDate?: string | null;
+}
+export interface AssignPoliciesPayload {
+  policies: PolicyAssignmentInput[];
+  primaryCaseTypeId?: string | null;
+}
 
 async function unwrap<T>(promise: Promise<{ data: unknown }>): Promise<T> {
   const { data } = await promise;
@@ -65,5 +77,11 @@ export const caseWorkspaceService = {
   },
   assignCaseType(caseId: string, caseTypeId: string): Promise<unknown> {
     return unwrap(api.patch(`${caseBase(caseId)}/case-type`, { caseTypeId }));
+  },
+  assignPolicies(caseId: string, payload: AssignPoliciesPayload): Promise<unknown> {
+    return unwrap(api.patch(`${caseBase(caseId)}/case-type`, payload));
+  },
+  listCaseTypeComponents(caseTypeId: string, includeInactive = false): Promise<CaseTypeComponent[]> {
+    return unwrap(api.get(`/api/v1/case-types/${caseTypeId}/components?includeInactive=${includeInactive}`));
   },
 };

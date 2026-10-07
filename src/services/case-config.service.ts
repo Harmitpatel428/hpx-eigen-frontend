@@ -5,6 +5,12 @@ import type {
   CaseFieldOptionPayload,
   CaseFieldRule,
   CaseType,
+  CaseTypeComponent,
+  CaseTypeComponentDocument,
+  CreateComponentPayload,
+  UpdateComponentPayload,
+  CreateComponentDocumentPayload,
+  UpdateComponentDocumentPayload,
   CaseStageTemplate,
   CaseTypeFieldPlacement,
   CreateStageTemplatePayload,
@@ -100,6 +106,24 @@ export const caseConfigService = {
   },
   removePlacement(caseTypeId: string, fieldId: string): Promise<unknown> {
     return unwrap(api.delete(`${typesBase}/${caseTypeId}/fields/${fieldId}`));
+  },
+  listComponents(caseTypeId: string, includeInactive = false): Promise<CaseTypeComponent[]> {
+    return unwrap(api.get(`${typesBase}/${caseTypeId}/components?includeInactive=${includeInactive}`));
+  },
+  createComponent(caseTypeId: string, payload: CreateComponentPayload): Promise<CaseTypeComponent> {
+    return unwrap(api.post(`${typesBase}/${caseTypeId}/components`, payload));
+  },
+  updateComponent(caseTypeId: string, componentId: string, payload: UpdateComponentPayload): Promise<CaseTypeComponent> {
+    return unwrap(api.patch(`${typesBase}/${caseTypeId}/components/${componentId}`, payload));
+  },
+  listComponentDocuments(caseTypeId: string, componentId: string, includeInactive = false): Promise<CaseTypeComponentDocument[]> {
+    return unwrap(api.get(`${typesBase}/${caseTypeId}/components/${componentId}/documents?includeInactive=${includeInactive}`));
+  },
+  createComponentDocument(caseTypeId: string, componentId: string, payload: CreateComponentDocumentPayload): Promise<CaseTypeComponentDocument> {
+    return unwrap(api.post(`${typesBase}/${caseTypeId}/components/${componentId}/documents`, payload));
+  },
+  updateComponentDocument(caseTypeId: string, componentId: string, componentDocumentId: string, payload: UpdateComponentDocumentPayload): Promise<CaseTypeComponentDocument> {
+    return unwrap(api.patch(`${typesBase}/${caseTypeId}/components/${componentId}/documents/${componentDocumentId}`, payload));
   },
   listRules(includeArchived = false): Promise<CaseFieldRule[]> {
     return unwrap(api.get(`${rulesBase}?includeArchived=${includeArchived}`));

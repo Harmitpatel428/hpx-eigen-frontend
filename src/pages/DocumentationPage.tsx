@@ -9,7 +9,7 @@ import { FieldsTab } from '../components/case-workspace/FieldsTab';
 import { StagesTab } from '../components/case-workspace/StagesTab';
 import { useCaseEngineSettings } from '../hooks/useCaseFields';
 import { useCaseTypes } from '../hooks/useCaseTypes';
-import { useAssignCaseType } from '../hooks/useCaseWorkspace';
+import { PolicyAssignmentDialog } from '../components/case-workspace/PolicyAssignmentDialog';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -322,6 +322,12 @@ function DocumentRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const nextStatuses = VALID_NEXT[doc.status];
+  // Which components require this requirement. A component can contribute more
+  // than one source row, so the COMMON badge counts distinct components while
+  // the label lists distinct names. Optional-guarded: older payloads omit it.
+  const sources = doc.componentSources ?? [];
+  const sourceComponentNames = [...new Set(sources.map(s => s.componentName))];
+  const isCommonRequirement = new Set(sources.map(s => s.componentId)).size > 1;
 
   return (
     <div style={{
@@ -345,9 +351,19 @@ function DocumentRow({
                 BLOCKING
               </span>
             )}
+            {isCommonRequirement && (
+              <span style={{ fontSize: 10, background: 'var(--bg-subtle)', color: 'var(--text-secondary)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                COMMON
+              </span>
+            )}
           </div>
           {doc.description && (
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{doc.description}</div>
+          )}
+          {sourceComponentNames.length > 0 && (
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
+              Required by: {sourceComponentNames.join(', ')}
+            </div>
           )}
         </div>
 
@@ -867,8 +883,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const qc = useQueryClient();
   const { permissions } = useAuth();
   const [tab, setTab]   = useState<'overview' | 'fields' | 'stages' | 'contacts' | 'documents' | 'timeline' | 'notes'>('overview');
-  const [assignTypeId, setAssignTypeId] = useState('');
-  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
@@ -917,9 +932,10 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   });
 
   const engineFlag = useCaseEngineSettings().data?.caseOperationsEngineEnabled ?? false;
-  const canAssignType = engineFlag && !!docCase && !docCase.caseTypeId && permissions.can('doc:edit');
+  const POLICY_TERMINAL_STATUSES = ['CLOSED', 'CANCELLED', 'CLOSED_NO_DOCS', 'TRANSFERRED_TO_PROCESS'];
+  const canConfigurePolicies = engineFlag && !!docCase && permissions.can('doc:edit') && !POLICY_TERMINAL_STATUSES.includes(docCase.status);
   const { data: caseTypes = [] } = useCaseTypes(false);
-  const assignTypeMutation = useAssignCaseType(caseId);
+  const policyAssignments = docCase?.policyAssignments ?? [];
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['doc-case', caseId] });
@@ -1108,43 +1124,41 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <LeadSectionStyles />
       {/* Header — persistent across tabs */}
-      <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <div title={companyName} style={{ fontWeight: 700, fontSize: 18, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <Building2 size={16} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{companyName}</span>
-            </div>
-            {personName && (
-              <div title={personName} style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {personName}
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <span
-              title={docCase.status === 'CLOSED_NO_DOCS' && docCase.closedAt
-                ? `Closed ${new Date(docCase.closedAt).toLocaleDateString()}${docCase.closedReason ? ` · ${CLOSE_REASON_LABELS[docCase.closedReason as CloseReason] ?? docCase.closedReason}` : ''}`
-                : undefined}
-              style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
-              borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600,
-              background: sm.bg, color: sm.color,
-            }}>{sm.label}</span>
-            <button onClick={onClose} aria-label="Close panel" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-              <X size={18} style={{ color: 'var(--text-tertiary)' }} />
-            </button>
-          </div>
+      <div style={{ padding: 'var(--space-6) var(--space-6) 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
+          <Building2 size={20} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+          {/* Spec named .type-title, but that is the 56px page hero (--text-3xl); in a 1040px drawer header it dwarfs
+              the status badge and tab rail. .type-h1 (--text-xl 28px) is the drawer-level step — approved deviation. */}
+          <h2 title={companyName} className="type-h1" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            {companyName}
+          </h2>
+          <span
+            title={docCase.status === 'CLOSED_NO_DOCS' && docCase.closedAt
+              ? `Closed ${new Date(docCase.closedAt).toLocaleDateString()}${docCase.closedReason ? ` · ${CLOSE_REASON_LABELS[docCase.closedReason as CloseReason] ?? docCase.closedReason}` : ''}`
+              : undefined}
+            style={{
+            display: 'inline-flex', alignItems: 'center', flexShrink: 0, padding: '2px 10px',
+            borderRadius: 'var(--radius-full)', fontSize: 'var(--text-micro)', fontWeight: 600,
+            background: sm.bg, color: sm.color,
+          }}>{sm.label}</span>
+          <button onClick={onClose} aria-label="Close panel" className="btn-icon" style={{ marginLeft: 'auto', flexShrink: 0, width: 32, height: 32 }}>
+            <X size={18} />
+          </button>
         </div>
+        {personName && (
+          <div title={personName} style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-1)', paddingLeft: 'var(--space-8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {personName}
+          </div>
+        )}
 
         {/* Case ID */}
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginTop: 'var(--space-1)', paddingLeft: 'var(--space-8)', marginBottom: 'var(--space-4)' }}>
           {docCase.caseNumber ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 'var(--text-micro)', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-tertiary)' }}>
                 {docCase.caseNumber}
               </span>
-              <button type="button" className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11 }}
+              <button type="button" className="btn btn-ghost" style={{ height: 22, paddingInline: 'var(--space-2)', fontSize: 'var(--text-micro)' }}
                 onClick={() => { navigator.clipboard.writeText(docCase.caseNumber!); toast.success('Case ID copied'); }}>
                 Copy
               </button>
@@ -1174,7 +1188,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               tabIndex={tab === t ? 0 : -1}
               onClick={() => setTab(t)}
               style={{
-                padding: '8px 14px', fontSize: 12, fontWeight: tab === t ? 600 : 400,
+                padding: 'var(--space-3) var(--space-3)', fontSize: 'var(--text-xs)', fontWeight: tab === t ? 600 : 450,
                 color: tab === t ? 'var(--text-primary)' : 'var(--text-tertiary)',
                 background: 'none', border: 'none', cursor: 'pointer',
                 borderBottom: tab === t ? '2px solid var(--text-primary)' : '2px solid transparent',
@@ -1187,55 +1201,98 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-6)' }}>
         {/* ── Overview ── */}
         <div role="tabpanel" id="case-panel-overview" aria-labelledby="case-tab-overview" tabIndex={0} hidden={tab !== 'overview'}>
           {tab === 'overview' && (
             <div>
-              <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
+              <h3 className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--space-3)' }}>Case details</h3>
+              <div className="surface" style={{ padding: 'var(--space-4) var(--space-6)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }}>
                 {infoRow(<Building2 size={14} />, 'Company', companyName)}
                 {personName && infoRow(<User size={14} />, 'Contact', personName)}
                 {infoRow(<MapPin size={14} />, 'Address', addressStr || (fullLead ? <span style={{ color: 'var(--text-tertiary)' }}>Address not added</span> : <span style={{ color: 'var(--text-tertiary)' }}>Loading…</span>))}
                 {resolvedContact.phone && infoRow(<Phone size={14} />, 'Phone', <a href={`tel:${resolvedContact.phone}`} style={{ color: 'var(--text-primary)' }}>{resolvedContact.phone}</a>)}
                 {resolvedContact.email && infoRow(<Mail size={14} />, 'Email', <a href={`mailto:${resolvedContact.email}`} style={{ color: 'var(--text-primary)' }}>{resolvedContact.email}</a>)}
-                <div style={{ height: 1, background: 'var(--border-light)', margin: '8px 0' }} />
-                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border-light)' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', fontSize: 'var(--text-micro)', color: 'var(--text-tertiary)' }}>
                   <div><span style={{ fontWeight: 600 }}>Preset</span> {docCase.preset?.name ?? '—'}</div>
                   <div><span style={{ fontWeight: 600 }}>Priority</span> {priorityLabel}</div>
                   {docCase.dueDate && <div><span style={{ fontWeight: 600 }}>Due</span> {new Date(docCase.dueDate).toLocaleDateString()}</div>}
                   <div><span style={{ fontWeight: 600 }}>Created</span> {new Date(docCase.createdAt).toLocaleDateString()}</div>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {canTransfer && (
+                  <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
+                    onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
+                    disabled={transferMutation.isPending}
+                  >
+                    <ArrowRight size={14} />
+                    {transferMutation.isPending ? 'Transferring…' : 'Transfer to Process'}
+                  </button>
+                )}
+                {!docCase.isReady && docCase.status === 'ACTIVE' && (
+                  <button className="btn" style={{ fontSize: 12, border: '1px solid var(--border-medium)', background: 'none', color: 'var(--text-secondary)', gap: 6, display: 'flex', alignItems: 'center' }}
+                    onClick={() => {
+                      const reason = window.prompt('Manager override reason (required):');
+                      if (reason?.trim()) overrideMutation.mutate(reason.trim());
+                    }}
+                    disabled={overrideMutation.isPending}
+                  >
+                    <Shield size={14} />
+                    Manager Override
+                  </button>
+                )}
+                {['ACTIVE', 'DOCUMENTATION_READY'].includes(docCase.status)
+                  && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
+                  && docCase.handoffState === 'ACCEPTED' && (
+                  <button className="btn" style={{
+                    fontSize: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.04)',
+                    color: '#dc2626', gap: 6, display: 'flex', alignItems: 'center', cursor: 'pointer',
+                  }}
+                    onClick={() => setShowReturn(true)}
+                  >
+                    <RefreshCw size={14} />
+                    Return to Sales
+                  </button>
+                )}
+                {['INCOMING', 'ACTIVE'].includes(docCase.status) && permissions.can('cases:close') && (
+                  <button className="btn btn-secondary" style={{ fontSize: 12, color: 'var(--color-danger)', borderColor: 'rgba(220,38,38,0.3)' }}
+                    onClick={() => setShowCloseDialog(true)}>
+                    Close Without Docs
+                  </button>
+                )}
+                {docCase.status === 'CLOSED_NO_DOCS' && permissions.can('cases:reopen') && (
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                    onClick={() => setShowReopenDialog(true)}>
+                    Reopen Case
+                  </button>
+                )}
+                </div>
+                </div>
               </div>
 
-              {canAssignType && (
+              {canConfigurePolicies && (
                 <div className="surface" style={{ padding: 12, borderRadius: 'var(--radius-md)', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <label htmlFor="assign-case-type" style={{ fontSize: 12, fontWeight: 600 }}>Assign case type</label>
-                  <select id="assign-case-type" value={assignTypeId} onChange={e => setAssignTypeId(e.target.value)}
-                    style={{ fontSize: 12, padding: '4px 8px' }}>
-                    <option value="">Select…</option>
-                    {caseTypes.filter(ct => ct.status === 'ACTIVE').map(ct => (
-                      <option key={ct.id} value={ct.id}>{ct.name}</option>
-                    ))}
-                  </select>
                   <button type="button" className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12 }}
-                    disabled={!assignTypeId} onClick={() => setShowAssignDialog(true)}>
-                    Assign
+                    onClick={() => setShowPolicyDialog(true)}>
+                    {policyAssignments.length > 0 ? 'Edit policies' : 'Configure policies'}
                   </button>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Assign a case type to enable custom fields and stages</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {policyAssignments.length > 0
+                      ? `${policyAssignments.length} ${policyAssignments.length === 1 ? 'policy' : 'policies'} assigned — configure components and dates`
+                      : 'Assign policies to populate the documents list'}
+                  </span>
                 </div>
               )}
-              <Modal isOpen={showAssignDialog} onClose={() => setShowAssignDialog(false)} title="Assign case type?" size="sm">
-                <p style={{ fontSize: 13, marginBottom: 16 }}>
-                  This enables the case workspace (fields and stages) for this case. It cannot be cleared afterwards.
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowAssignDialog(false)}>Cancel</button>
-                  <button type="button" className="btn btn-primary" disabled={assignTypeMutation.isPending}
-                    onClick={() => assignTypeMutation.mutate(assignTypeId, { onSuccess: () => { setShowAssignDialog(false); setAssignTypeId(''); } })}>
-                    {assignTypeMutation.isPending ? 'Assigning…' : 'Confirm'}
-                  </button>
-                </div>
-              </Modal>
+              {docCase && (
+                <PolicyAssignmentDialog
+                  caseId={caseId}
+                  isOpen={showPolicyDialog}
+                  onClose={() => setShowPolicyDialog(false)}
+                  caseTypes={caseTypes}
+                  existing={policyAssignments}
+                />
+              )}
 
               {/* Missing / Rejected alert */}
               {(missingMandatory.length > 0 || rejected.length > 0) && (
@@ -1279,59 +1336,6 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   Case overdue — due {new Date(docCase.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </div>
               )}
-
-              {/* Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                {canTransfer && (
-                  <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
-                    onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
-                    disabled={transferMutation.isPending}
-                  >
-                    <ArrowRight size={14} />
-                    {transferMutation.isPending ? 'Transferring…' : 'Transfer to Process'}
-                  </button>
-                )}
-                {!docCase.isReady && docCase.status === 'ACTIVE' && (
-                  <button className="btn" style={{ fontSize: 12, border: '1px solid var(--border-medium)', background: 'none', color: 'var(--text-secondary)', gap: 6, display: 'flex', alignItems: 'center' }}
-                    onClick={() => {
-                      const reason = window.prompt('Manager override reason (required):');
-                      if (reason?.trim()) overrideMutation.mutate(reason.trim());
-                    }}
-                    disabled={overrideMutation.isPending}
-                  >
-                    <Shield size={14} />
-                    Manager Override
-                  </button>
-                )}
-                {['ACTIVE', 'DOCUMENTATION_READY'].includes(docCase.status)
-                  && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
-                  && docCase.handoffState === 'ACCEPTED' && (
-                  <button className="btn" style={{
-                    fontSize: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.04)',
-                    color: '#dc2626', gap: 6, display: 'flex', alignItems: 'center', cursor: 'pointer',
-                  }}
-                    onClick={() => setShowReturn(true)}
-                  >
-                    <RefreshCw size={14} />
-                    Return to Sales
-                  </button>
-                )}
-                {['INCOMING', 'ACTIVE'].includes(docCase.status) && permissions.can('cases:close') && (
-                  <button className="btn" style={{
-                    fontSize: 12, background: 'var(--color-danger)', color: 'var(--text-inverse)',
-                    border: 'none', cursor: 'pointer',
-                  }}
-                    onClick={() => setShowCloseDialog(true)}>
-                    Close Without Docs
-                  </button>
-                )}
-                {docCase.status === 'CLOSED_NO_DOCS' && permissions.can('cases:reopen') && (
-                  <button className="btn btn-ghost" style={{ fontSize: 12 }}
-                    onClick={() => setShowReopenDialog(true)}>
-                    Reopen Case
-                  </button>
-                )}
-              </div>
 
               {/* Mandate lifecycle */}
               <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} autoOpenSend={autoOpenMandateSend} />
@@ -1467,7 +1471,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
         {engineEnabled && (
           <>
             <div role="tabpanel" id="case-panel-fields" aria-labelledby="case-tab-fields" tabIndex={0} hidden={tab !== 'fields'}>
-              {tab === 'fields' && <FieldsTab caseId={docCase.id} />}
+              {tab === 'fields' && <FieldsTab caseId={docCase.id} caseTypeName={caseTypes.find(ct => ct.id === docCase.caseTypeId)?.name} />}
             </div>
             <div role="tabpanel" id="case-panel-stages" aria-labelledby="case-tab-stages" tabIndex={0} hidden={tab !== 'stages'}>
               {tab === 'stages' && <StagesTab caseId={docCase.id} caseTypeId={docCase.caseTypeId ?? null} />}
@@ -1479,11 +1483,12 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
         <div role="tabpanel" id="case-panel-timeline" aria-labelledby="case-tab-timeline" tabIndex={0} hidden={tab !== 'timeline'}>
           {tab === 'timeline' && (
             <div>
+              <h3 className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--space-3)' }}>History</h3>
               {(docCase.events ?? []).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>No events yet</div>
+                <div className="surface" style={{ textAlign: 'center', padding: 'var(--space-8) 0', borderRadius: 'var(--radius-md)', color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>No events yet</div>
               ) : (
-                <div style={{ position: 'relative', paddingLeft: 20 }}>
-                  <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 1, background: 'var(--border-medium)' }} />
+                <div className="surface" style={{ position: 'relative', padding: 'var(--space-4) var(--space-6) var(--space-4) calc(var(--space-6) + 20px)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ position: 'absolute', left: 'calc(var(--space-6) + 10.5px)' /* dot centre = padLeft(space-6 + 20px) − 13px + 4px; minus half the 1px line */, top: 'calc(var(--space-4) + 8px)', bottom: 'calc(var(--space-4) + 8px)', width: 1, background: 'var(--border-medium)' }} />
                   {(docCase.events ?? []).map(ev => (
                     <div key={ev.id} style={{ position: 'relative', marginBottom: 16 }}>
                       <div style={{

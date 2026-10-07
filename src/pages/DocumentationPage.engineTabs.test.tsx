@@ -32,6 +32,7 @@ vi.mock('../hooks/useCaseTypes', () => ({
 }));
 vi.mock('../hooks/useCaseWorkspace', () => ({
   useAssignCaseType: () => ({ mutate: vi.fn(), isPending: false }),
+  useAssignPolicies: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null }),
 }));
 vi.mock('../components/case-workspace/FieldsTab', () => ({ FieldsTab: () => <div /> }));
 vi.mock('../components/case-workspace/StagesTab', () => ({ StagesTab: () => <div /> }));
@@ -74,21 +75,22 @@ function setup(caseTypeId: string | null) {
 describe('CaseDetailPanel engine tabs', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('legacy case (no caseTypeId): no Fields/Stages tabs, shows Assign case type', async () => {
+  it('legacy case (no caseTypeId): no Fields/Stages tabs, shows policy configuration control', async () => {
     setup(null);
     await screen.findByRole('tab', { name: 'History' });
     expect(screen.queryByRole('tab', { name: 'Fields' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Stages' })).toBeNull();
-    expect(screen.getByLabelText('Assign case type')).toBeTruthy();
-    expect(screen.getByText('Assign a case type to enable custom fields and stages')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Configure policies' })).toBeTruthy();
+    expect(screen.getByText('Assign policies to populate the documents list')).toBeTruthy();
   });
 
-  it('typed case: shows Fields + Stages tabs and History label, no assign control', async () => {
+  it('typed case: shows Fields + Stages tabs and History label, plus policy control', async () => {
     setup('ct-1');
     expect(await screen.findByRole('tab', { name: 'Fields' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Stages' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'History' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Timeline' })).toBeNull();
-    expect(screen.queryByLabelText('Assign case type')).toBeNull();
+    // The policy configuration control is always available (gated by engine + doc:edit), not hidden once typed.
+    expect(screen.getByRole('button', { name: /Configure policies|Edit policies/ })).toBeTruthy();
   });
 });

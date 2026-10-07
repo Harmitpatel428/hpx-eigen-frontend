@@ -93,6 +93,64 @@ export interface CaseType {
   deletedAt: string | null;
 }
 
+export interface CaseTypeComponent {
+  id: string;
+  tenantId: string;
+  caseTypeId: string;
+  name: string;
+  description: string | null;
+  isMandatory: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+export interface CreateComponentPayload {
+  name: string;
+  description?: string | null;
+  isMandatory?: boolean;
+  displayOrder?: number;
+}
+export interface UpdateComponentPayload {
+  name?: string;
+  description?: string | null;
+  isMandatory?: boolean;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+/** A document preset line under a component. dedupeKey is server-owned and immutable. */
+export interface CaseTypeComponentDocument {
+  id: string;
+  tenantId: string;
+  caseTypeId: string;
+  componentId: string;
+  name: string;
+  dedupeKey: string;
+  description: string | null;
+  isMandatory: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+export interface CreateComponentDocumentPayload {
+  name: string;
+  description?: string | null;
+  isMandatory?: boolean;
+  displayOrder?: number;
+}
+// dedupeKey is deliberately absent: the API rejects attempts to change it.
+export interface UpdateComponentDocumentPayload {
+  name?: string;
+  description?: string | null;
+  isMandatory?: boolean;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
 export interface CaseTypeFieldPlacement {
   id: string;
   tenantId: string;

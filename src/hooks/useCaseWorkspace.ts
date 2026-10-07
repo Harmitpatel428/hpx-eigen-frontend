@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { caseWorkspaceService } from '../services/case-workspace.service';
+import { caseWorkspaceService, type AssignPoliciesPayload } from '../services/case-workspace.service';
 import { extractApiError } from '../utils/extractApiError';
 import type { PatchValueEntry } from '../types/caseConfig';
 
@@ -94,3 +94,25 @@ export const useCreateTimeline = (caseId: string) =>
 
 export const useAssignCaseType = (caseId: string) =>
   useEngineMutation(caseId, (caseTypeId: string) => caseWorkspaceService.assignCaseType(caseId, caseTypeId), ['doc-case']);
+
+// Multi-policy save. Invalidates exactly the four case/list/handoff/dashboard keys.
+// No onError toast: the policy dialog surfaces 400/409/422 messages inline and stays open.
+export const useAssignPolicies = (caseId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AssignPoliciesPayload) => caseWorkspaceService.assignPolicies(caseId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['doc-case', caseId] });
+      qc.invalidateQueries({ queryKey: ['doc-cases'] });
+      qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+  });
+};
+
+export const useCaseTypeComponents = (caseTypeId: string | undefined, includeInactive = false, enabled = true) =>
+  useQuery({
+    queryKey: ['case-types', caseTypeId, 'components', { includeInactive }],
+    queryFn: () => caseWorkspaceService.listCaseTypeComponents(caseTypeId as string, includeInactive),
+    enabled: enabled && !!caseTypeId,
+  });

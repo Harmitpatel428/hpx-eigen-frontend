@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { caseConfigService } from '../services/case-config.service';
 import { extractApiError } from '../utils/extractApiError';
-import type { CreateCaseTypePayload, CreateStageTemplatePayload, PlacementPayload, UpdateStageTemplatePayload, UpdateCaseTypePayload } from '../types/caseConfig';
+import type { CreateCaseTypePayload, CreateComponentPayload, CreateComponentDocumentPayload, CreateStageTemplatePayload, PlacementPayload, UpdateComponentPayload, UpdateComponentDocumentPayload, UpdateStageTemplatePayload, UpdateCaseTypePayload } from '../types/caseConfig';
 
 const KEY = ['case-types'];
 
@@ -68,6 +68,44 @@ export const useRemovePlacement = () =>
   useCaseTypeMutation(
     (v: { caseTypeId: string; fieldId: string }) => caseConfigService.removePlacement(v.caseTypeId, v.fieldId),
     'Field removed', placementsKey);
+
+const componentsKey = (v: { caseTypeId: string }) => ['case-types', v.caseTypeId, 'components'];
+export function useCaseTypeComponentList(caseTypeId: string | null, includeInactive = false) {
+  return useQuery({
+    queryKey: ['case-types', caseTypeId, 'components', { includeInactive }],
+    queryFn: () => caseConfigService.listComponents(caseTypeId as string, includeInactive),
+    enabled: !!caseTypeId,
+  });
+}
+export const useCreateComponent = () =>
+  useCaseTypeMutation(
+    (v: { caseTypeId: string; payload: CreateComponentPayload }) => caseConfigService.createComponent(v.caseTypeId, v.payload),
+    'Component created', componentsKey);
+export const useUpdateComponent = () =>
+  useCaseTypeMutation(
+    (v: { caseTypeId: string; componentId: string; payload: UpdateComponentPayload }) => caseConfigService.updateComponent(v.caseTypeId, v.componentId, v.payload),
+    'Component updated', componentsKey);
+
+// Prefix without the { includeInactive } segment, so both list variants invalidate.
+const componentDocsKey = (v: { caseTypeId: string; componentId: string }) =>
+  ['case-types', v.caseTypeId, 'components', v.componentId, 'documents'];
+export function useComponentDocumentList(caseTypeId: string | null, componentId: string | null, includeInactive = false) {
+  return useQuery({
+    queryKey: ['case-types', caseTypeId, 'components', componentId, 'documents', { includeInactive }],
+    queryFn: () => caseConfigService.listComponentDocuments(caseTypeId as string, componentId as string, includeInactive),
+    enabled: !!caseTypeId && !!componentId,
+  });
+}
+export const useCreateComponentDocument = () =>
+  useCaseTypeMutation(
+    (v: { caseTypeId: string; componentId: string; payload: CreateComponentDocumentPayload }) =>
+      caseConfigService.createComponentDocument(v.caseTypeId, v.componentId, v.payload),
+    'Document added', componentDocsKey);
+export const useUpdateComponentDocument = () =>
+  useCaseTypeMutation(
+    (v: { caseTypeId: string; componentId: string; componentDocumentId: string; payload: UpdateComponentDocumentPayload }) =>
+      caseConfigService.updateComponentDocument(v.caseTypeId, v.componentId, v.componentDocumentId, v.payload),
+    'Document updated', componentDocsKey);
 
 const stagesKey = (v: { caseTypeId: string }) => ['case-types', v.caseTypeId, 'stages'];
 export const useCreateStageTemplate = () =>

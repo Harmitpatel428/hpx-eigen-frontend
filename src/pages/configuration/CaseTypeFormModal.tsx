@@ -9,6 +9,7 @@ import {
 } from './caseTypeSchema';
 import { PlacementEditor } from './PlacementEditor';
 import { StageTemplateEditor } from './StageTemplateEditor';
+import { ComponentsEditor } from './ComponentsEditor';
 
 interface Props { isOpen: boolean; onClose: () => void; caseType?: CaseType | null }
 
@@ -75,6 +76,7 @@ export function CaseTypeFormModal({ isOpen, onClose, caseType }: Props) {
       </form>
       {/* outside the <form>: the stage modal has its own form and Modal does not portal */}
       {isEdit && <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-medium)' }}><StageTemplateEditor caseTypeId={caseType!.id} disabled={archived} /></div>}
+      {isEdit && <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-medium)' }}><ComponentsEditor caseType={caseType!} disabled={archived} /></div>}
     </Modal>
   );
 }

@@ -574,6 +574,25 @@ export interface DocCaseDocument {
   createdAt: string;
   updatedAt: string;
   storageRefs: DocStorageRef[];
+  // Component-document provenance. Optional: older payloads (and test fixtures
+  // built from partial literals) omit them entirely.
+  requirementDedupeKey?: string | null;
+  isComponentMerged?: boolean;
+  componentSources?: DocCaseDocumentComponentSource[];
+}
+
+/** One component that requires a (possibly shared) case document requirement. */
+export interface DocCaseDocumentComponentSource {
+  id: string;
+  componentId: string;
+  componentName: string;
+  componentDocumentId: string | null;
+  componentDocumentName: string | null;
+  policyAssignmentId: string;
+  policyComponentId: string;
+  isMandatoryAtLink: boolean;
+  displayOrderAtLink: number;
+  componentDocument: { isActive: boolean; deletedAt: string | null } | null;
 }
 
 export interface DocCaseEvent {
@@ -610,6 +629,41 @@ export interface DocManagerOverride {
   reason: string;
   allowedAt: string;
   expiresAt: string | null;
+}
+
+// ─── Multi-policy assignment read model (from getCaseById) ──────────────────
+export interface PolicyComponentSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  isMandatory: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  deletedAt: string | null;
+}
+export interface SelectedPolicyComponent {
+  selectionId: string;
+  componentId: string;
+  displayOrder: number;
+  component: PolicyComponentSummary;
+}
+export interface PolicyCaseTypeSummary {
+  id: string;
+  name: string;
+  key: string;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  deletedAt: string | null;
+}
+export interface DocCasePolicyAssignment {
+  id: string;            // real id, or `legacy:<caseTypeId>` for a derived entry
+  caseTypeId: string;
+  proposalDate: string | null;
+  actualDate: string | null;
+  displayOrder: number;
+  isPrimary: boolean;
+  derived: boolean;
+  caseType: PolicyCaseTypeSummary;
+  components: SelectedPolicyComponent[];
 }
 
 export interface DocCase {
@@ -673,6 +727,7 @@ export interface DocCase {
   events?: DocCaseEvent[];
   caseNotes?: DocCaseNote[];
   overrides?: DocManagerOverride[];
+  policyAssignments?: DocCasePolicyAssignment[];
   _count?: { documents: number };
   latestMandateStatus?: 'PENDING_UPLOAD' | 'UPLOADED' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED' | null;
 }

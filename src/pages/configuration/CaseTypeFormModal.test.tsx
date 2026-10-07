@@ -9,8 +9,12 @@ vi.mock('../../hooks/useCaseTypes', () => {
   return {
     usePlacements: () => ({ data: [] }),
     useStageTemplates: () => ({ data: [] }),
+    useCaseTypeComponentList: () => ({ data: [], isLoading: false }),
+    useComponentDocumentList: () => ({ data: [], isLoading: false }),
     useCreateCaseType: mut, useUpdateCaseType: mut, useAddPlacement: mut, useUpdatePlacement: mut, useRemovePlacement: mut,
     useCreateStageTemplate: mut, useUpdateStageTemplate: mut, useArchiveStageTemplate: mut, useReorderStageTemplates: mut,
+    useCreateComponent: mut, useUpdateComponent: mut,
+    useCreateComponentDocument: mut, useUpdateComponentDocument: mut,
   };
 });
 
