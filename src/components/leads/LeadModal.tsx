@@ -148,6 +148,7 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
   const [phone, setPhone]         = useState(initial?.phone ?? '');
   const [title, setTitle]         = useState(initial?.title ?? '');
   const [role, setRole]           = useState(initial?.role ?? '');
+  const [company, setCompany]     = useState(initial?.company ?? '');
   const [isMain, setIsMain]       = useState(initial?.isMain ?? isFirst);
   const [touched, setTouched]     = useState(false);
   const nameError = touched && (!firstName.trim() || !lastName.trim());
@@ -175,6 +176,9 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
           {CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
+      <div style={{ marginBottom: 8 }}>
+        <input style={inp} placeholder="Company" value={company} onChange={e => setCompany(e.target.value)} />
+      </div>
       {nameError && <div style={{ fontSize: 11, color: '#dc2626', marginBottom: 4 }}>First and last name are required.</div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
@@ -186,7 +190,8 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
           <button type="button" disabled={isPending} onClick={() => {
             setTouched(true);
             if (!firstName.trim() || !lastName.trim()) return;
-            onSave({ firstName: firstName.trim(), lastName: lastName.trim(), email: email || undefined, phone: phone || undefined, title: title || undefined, role: role || undefined, isMain });
+            // company is sent verbatim (even '') so clearing it propagates to the Lead; the other optionals omit when blank.
+            onSave({ firstName: firstName.trim(), lastName: lastName.trim(), email: email || undefined, phone: phone || undefined, title: title || undefined, role: role || undefined, company: company.trim(), isMain });
           }} style={{ padding: '4px 10px', borderRadius: '0.375rem', border: 'none', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 600, cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.7 : 1 }}>
             {isPending ? 'Saving…' : 'Save'}
           </button>
@@ -202,13 +207,14 @@ export function ContactForm({ initial, onSave, onCancel, isFirst, isPending }: C
 
 interface ContactsManagerProps {
   leadId: string;
-  // Fired after a mutation that may change the main contact (setMain / remove).
-  // The parent re-reads the authoritative lead and refreshes the form so a later
-  // save cannot push stale person fields onto the new main contact.
-  onMainChanged?: () => void;
+  // Fired after ANY contact mutation (add / update / remove / setMain). The parent
+  // re-reads the authoritative lead and refreshes both the form and the open detail
+  // panel so edited contact name/phone surface immediately, and a later save cannot
+  // push stale person fields onto the new main contact.
+  onContactsChanged?: () => void;
 }
 
-function ContactsManager({ leadId, onMainChanged }: ContactsManagerProps) {
+function ContactsManager({ leadId, onContactsChanged }: ContactsManagerProps) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -222,36 +228,38 @@ function ContactsManager({ leadId, onMainChanged }: ContactsManagerProps) {
   const setContacts = (contacts: LeadContact[]) =>
     queryClient.setQueryData(['lead-contacts', leadId], contacts);
 
+  // Every contact mutation re-reads the authoritative contacts list (not just the
+  // mutation's returned payload) so the detail panel's ['lead-contacts', id] query
+  // repaints, and fires onContactsChanged so the parent refreshes the lead itself.
+  const afterContactMutation = (contacts: LeadContact[]) => {
+    setContacts(contacts);
+    queryClient.invalidateQueries({ queryKey: ['leads'] });
+    queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+    onContactsChanged?.();
+  };
+
   const addMutation = useMutation({
     mutationFn: (payload: UpsertContactPayload) => leadContactsService.add(leadId, payload),
-    onSuccess: (contacts) => { setContacts(contacts); setAdding(false); queryClient.invalidateQueries({ queryKey: ['leads'] }); },
+    onSuccess: (contacts) => { setAdding(false); afterContactMutation(contacts); },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to add contact.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<UpsertContactPayload> }) =>
       leadContactsService.update(leadId, id, payload),
-    onSuccess: (contacts) => { setContacts(contacts); setEditingId(null); queryClient.invalidateQueries({ queryKey: ['leads'] }); },
+    onSuccess: (contacts) => { setEditingId(null); afterContactMutation(contacts); },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update contact.'),
   });
 
   const removeMutation = useMutation({
     mutationFn: (id: string) => leadContactsService.remove(leadId, id),
-    onSuccess: (contacts) => {
-      setContacts(contacts);
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      onMainChanged?.();
-    },
+    onSuccess: (contacts) => afterContactMutation(contacts),
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to remove contact.'),
   });
 
   const setMainMutation = useMutation({
     mutationFn: (id: string) => leadContactsService.update(leadId, id, { isMain: true }),
-    onSuccess: (contacts) => {
-      setContacts(contacts);
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      onMainChanged?.();
-    },
+    onSuccess: (contacts) => afterContactMutation(contacts),
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to set main contact.'),
   });
 
@@ -267,7 +275,7 @@ function ContactsManager({ leadId, onMainChanged }: ContactsManagerProps) {
         <div key={c.id}>
           {editingId === c.id ? (
             <ContactForm
-              initial={{ firstName: c.firstName, lastName: c.lastName, email: c.email ?? '', phone: c.phone ?? '', title: c.title ?? '', role: c.role ?? '', isMain: c.isMain }}
+              initial={{ firstName: c.firstName, lastName: c.lastName, email: c.email ?? '', phone: c.phone ?? '', title: c.title ?? '', role: c.role ?? '', company: c.company ?? '', isMain: c.isMain }}
               onSave={(payload) => updateMutation.mutate({ id: c.id, payload })}
               onCancel={() => setEditingId(null)}
               isFirst={false}
@@ -347,9 +355,12 @@ interface LeadModalProps {
   onClose: () => void;
   /** Receives the saved lead (null if the form had no lead to save) */
   onSuccess: (lead: Lead | null) => void;
+  /** Fired when a contact mutation refreshes the authoritative lead, WITHOUT
+   *  closing the modal — lets the open detail panel re-sync immediately. */
+  onLeadChanged?: (lead: Lead) => void;
 }
 
-export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSuccess }: LeadModalProps) {
+export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSuccess, onLeadChanged }: LeadModalProps) {
   const [priority, setPriority] = useState<LeadPriority>(lead?.priority ?? 'MEDIUM');
   const [duplicates, setDuplicates] = useState<DuplicateLead[]>([]);
   const [duplicatesDismissed, setDuplicatesDismissed] = useState(false);
@@ -656,10 +667,13 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   Individual people at this company — each with their own direct line and role.
                 </p>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <ContactsManager leadId={lead.id} onMainChanged={async () => {
-                    // Re-read the authoritative lead (backend guards email against the
+                  <ContactsManager leadId={lead.id} onContactsChanged={async () => {
+                    // Re-read the authoritative lead (backend reverse-syncs main-contact
+                    // name/email/company onto the lead row, and guards email against the
                     // Lead(tenantId,email) unique constraint) and refresh the form so a
                     // later save can't overwrite the new main with stale person fields.
+                    // Also propagate `fresh` to the parent so the open detail panel's
+                    // Contact Info repaints immediately, without closing this modal.
                     try {
                       const fresh = await leadService.findById(lead.id);
                       setValue('firstName', fresh.firstName);
@@ -667,6 +681,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                       setValue('email', fresh.email ?? '');
                       setValue('phone', fresh.phone ?? '');
                       setValue('company', fresh.company ?? '');
+                      onLeadChanged?.(fresh);
                     } catch { /* form keeps current values; list already invalidated */ }
                   }} />
                 </div>

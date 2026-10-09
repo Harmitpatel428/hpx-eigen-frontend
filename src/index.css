@@ -244,6 +244,24 @@ ul, ol { list-style: none; }
 .btn-icon { padding: 0; width: 36px; height: 36px; color: var(--text-secondary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); }
 .btn-icon:hover { background-color: var(--bg-subtle); color: var(--text-primary); }
 
+/* Compact dense-row status chip (Leads list "Work Completed" badge / "Mark Waiting"
+   opener). Button-sized for a dense row: fixed height so it never stretches a row,
+   max-width + ellipsis so it never widens the Stage column. */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 0 8px; height: 20px; max-width: 150px;
+  border: 1px solid transparent; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: var(--font-medium); font-family: inherit;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; transition: all var(--transition-fast);
+}
+.status-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.status-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+.status-chip-waiting { background: rgba(168, 85, 247, 0.1); color: #7c3aed; }
+.status-chip-waiting:hover { background: rgba(168, 85, 247, 0.18); }
+.status-chip-mark { background: transparent; color: var(--text-secondary); border-color: var(--border-medium); }
+.status-chip-mark:hover { background: var(--bg-subtle); color: var(--text-primary); }
+
 /* ─── INPUTS ─── */
 .input {
   width: 100%;

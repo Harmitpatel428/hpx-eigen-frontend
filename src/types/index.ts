@@ -182,6 +182,8 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null; // set while the lead sits in the Recycle Bin
+  // Manual, user-toggled flag shown read-only on the Leads list row.
+  waitingHigherAuthority: boolean;
   // Case ID & handoff fields
   caseId: string | null;
   handoffState: HandoffState;

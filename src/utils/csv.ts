@@ -186,7 +186,7 @@ export const IMPORTABLE_FIELDS: { key: string; label: string }[] = [
   { key: 'notes', label: 'Notes' },
   { key: 'followUpDate', label: 'Follow-Up Date' },
   { key: 'expectedCloseDate', label: 'Expected Close Date' },
-  { key: 'ownerId', label: 'Owner (email)' },
+  { key: 'ownerId', label: 'Owner (User ID)' },
   { key: 'score', label: 'Score' },
   { key: 'expectedValue', label: 'Expected Value' },
   { key: 'tagNames', label: 'Tags' },

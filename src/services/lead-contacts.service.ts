@@ -22,6 +22,7 @@ export interface UpsertContactPayload {
   phone?: string;
   title?: string;
   role?: string;
+  company?: string;
   isMain?: boolean;
 }
 

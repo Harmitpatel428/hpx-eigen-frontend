@@ -26,6 +26,7 @@ import { LeadImportWizard } from '../components/leads/LeadImportWizard';
 import { LeadAssignModal } from '../components/leads/LeadAssignModal';
 import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { StageFilterPills, STAGE_COLORS } from '../components/leads/StageFilterPills';
+import { WaitingAuthorityBadge } from '../components/leads/WaitingAuthorityBadge';
 import { exportCSV } from '../utils/csv';
 import { mergeLeadOwner } from '../utils/crm';
 import { loadColourfulFilters, loadStageFilter, saveStageFilter } from '../utils/salesDashboardPrefs';
@@ -148,6 +149,15 @@ export function LeadsPage() {
 
   const { permissions } = useAuth();
   const canAssign = permissions.can('lead:assign');
+  const canEdit = permissions.can('lead:edit');
+
+  // Manual "waiting for higher authority" toggle (idempotent). Repaints the row
+  // via the ['leads'] invalidation; no optimistic state needed.
+  const waitingMutation = useMutation({
+    mutationFn: ({ id, value }: { id: string; value: boolean }) => leadService.setWaitingHigherAuthority(id, value),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] }),
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update flag.'),
+  });
   const { data: assignmentSummary } = useQuery<AssignmentSummary>({
     queryKey: ['lead-assignment-summary'],
     queryFn: () => leadService.assignmentSummary(),
@@ -318,6 +328,10 @@ export function LeadsPage() {
           'Notes Count': (l as any).notesCount ?? 0,
           'Created Date': fmtExportDate(l.createdAt),
           'Updated Date': fmtExportDate(l.updatedAt),
+          // Every associated number except the primary (which stays in `Phone`).
+          // Export-only column — deliberately NOT a csv.ts import alias, so a
+          // round-trip import auto-skips it. Kept as the final column.
+          'Additional Numbers': Array.isArray((l as any).allPhones) ? (l as any).allPhones.join('; ') : '',
         };
         fieldDefs.forEach(f => {
           const v = stored.find(sv => sv.fieldId === f.id);
@@ -325,7 +339,9 @@ export function LeadsPage() {
         });
         return row;
       });
-      exportCSV(filename, [...STATIC_HEADERS, ...cfHeaders], rows);
+      // `Additional Numbers` is appended AFTER the custom-field headers so every
+      // existing column keeps its exact position (import-compat preserved).
+      exportCSV(filename, [...STATIC_HEADERS, ...cfHeaders, 'Additional Numbers'], rows);
       toast.success(`Exported ${rows.length} lead${rows.length !== 1 ? 's' : ''}`);
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message ?? 'Export failed.');
@@ -687,7 +703,7 @@ export function LeadsPage() {
                           </span>
                         )
                       ) : (
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Unassigned</span>
                       )}
                     </div>
 
@@ -714,6 +730,21 @@ export function LeadsPage() {
                             return d > 0 ? ` · ${d}d` : '';
                           })()}
                         </span>
+                      )}
+                      <WaitingAuthorityBadge
+                        waiting={lead.waitingHigherAuthority}
+                        onClick={canEdit ? () => waitingMutation.mutate({ id: lead.id, value: false }) : undefined}
+                      />
+                      {!lead.waitingHigherAuthority && canEdit && (
+                        <button
+                          type="button"
+                          className="status-chip status-chip-mark"
+                          title="Mark work completed — waiting for higher authority"
+                          disabled={waitingMutation.isPending}
+                          onClick={(e) => { e.stopPropagation(); waitingMutation.mutate({ id: lead.id, value: true }); }}
+                        >
+                          Mark Waiting
+                        </button>
                       )}
                     </div>
 
@@ -778,8 +809,10 @@ export function LeadsPage() {
           lead={modal.lead}
           onClose={() => setModal(null)}
           onSuccess={handleModalSuccess}
+          onLeadChanged={(fresh) => setSelectedLead(prev => prev ? mergeLeadOwner(prev, fresh) : prev)}
         />
       )}
+
 
       {/* DELETE CONFIRM */}
       {deleteTarget && (

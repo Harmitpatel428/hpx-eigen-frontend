@@ -89,12 +89,24 @@ const MAIN_CONTACT: Pick<Contact, 'firstName' | 'lastName' | 'phone' | 'email' |
 describe('resolveDisplayContact', () => {
   it('[1] contacts empty -> lead name/phone/email, source lead', () => {
     const r = resolveDisplayContact(LEAD, []);
-    expect(r).toEqual({ name: 'Basant Gupta', phone: '9876543210', email: 'basant@test.com', source: 'lead' });
+    expect(r).toEqual({ name: 'Basant Gupta', phone: '9876543210', email: 'basant@test.com', company: null, source: 'lead' });
   });
 
   it('[2] main contact present -> contact name/phone/email, source contact', () => {
     const r = resolveDisplayContact(LEAD, [MAIN_CONTACT]);
-    expect(r).toEqual({ name: 'Rakhesh Sharma', phone: '1234567890', email: 'rakhesh@test.com', source: 'contact' });
+    expect(r).toEqual({ name: 'Rakhesh Sharma', phone: '1234567890', email: 'rakhesh@test.com', company: null, source: 'contact' });
+  });
+
+  it('[C1] company follows the primary contact, falling back to the lead', () => {
+    // primary contact's company wins
+    expect(resolveDisplayContact({ ...LEAD, company: 'Lead Co' },
+      [{ ...MAIN_CONTACT, company: 'Contact Co' }]).company).toBe('Contact Co');
+    // blank/absent contact company -> lead company
+    expect(resolveDisplayContact({ ...LEAD, company: 'Lead Co' },
+      [{ ...MAIN_CONTACT, company: '  ' }]).company).toBe('Lead Co');
+    expect(resolveDisplayContact({ ...LEAD, company: 'Lead Co' }, []).company).toBe('Lead Co');
+    // nothing anywhere -> null
+    expect(resolveDisplayContact(LEAD, []).company).toBeNull();
   });
 
   it('[3] main contact with empty email -> email falls back to lead.email', () => {

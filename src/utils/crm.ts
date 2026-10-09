@@ -13,12 +13,13 @@ export interface DisplayContact {
   name: string;
   phone: string | null;
   email: string | null;
+  company: string | null;
   source: 'contact' | 'lead';
 }
 
 export function resolveDisplayContact(
   lead: Pick<Lead, 'firstName' | 'lastName' | 'phone' | 'email'> & { company?: string | null },
-  contacts: (Pick<Contact, 'firstName' | 'lastName' | 'phone' | 'email' | 'isMain'> & { createdAt?: string })[],
+  contacts: (Pick<Contact, 'firstName' | 'lastName' | 'phone' | 'email' | 'isMain'> & { createdAt?: string; company?: string | null })[],
 ): DisplayContact {
   const main = contacts.find(c => c.isMain)
     ?? contacts.filter(c => c.createdAt).sort((a, b) => a.createdAt!.localeCompare(b.createdAt!))[0]
@@ -31,6 +32,9 @@ export function resolveDisplayContact(
     name: contactName || leadName || lead.company?.trim() || 'Unknown',
     phone: (main?.phone || lead.phone) ?? null,
     email: (main?.email || lead.email) ?? null,
+    // Company follows the primary-contact relationship, falling back to the
+    // lead's cached company (and never an empty string).
+    company: (main?.company?.trim() || lead.company?.trim()) ?? null,
     source: usedContact ? 'contact' : 'lead',
   };
 }

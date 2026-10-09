@@ -1151,6 +1151,11 @@ export function ActivitiesPage() {
             }
             setEditModal(null);
           }}
+          onLeadChanged={(fresh) => {
+            // Contact edit refreshed the authoritative lead — repaint the open
+            // detail panel (keyed ['lead', selectedLeadId]) without closing the modal.
+            qc.setQueryData(['lead', fresh.id], fresh);
+          }}
         />
       )}
 

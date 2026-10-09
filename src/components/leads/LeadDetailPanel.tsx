@@ -660,9 +660,6 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   const [localPriority, setLocalPriority] = useState<LeadPriority>(lead.priority ?? 'MEDIUM');
   useEffect(() => { setLocalPriority(lead.priority ?? 'MEDIUM'); }, [lead.priority]);
 
-  const [localCaseId, setLocalCaseId] = useState<string | null>(lead.caseId ?? null);
-  useEffect(() => { setLocalCaseId(lead.caseId ?? null); }, [lead.caseId]);
-  const localLead = { ...lead, caseId: localCaseId };
 
   const handleStageChange = async (stage: LeadStage, followUpDate?: string) => {
     const sameStage = stage === localStage;
@@ -764,7 +761,7 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
   // displayOverride takes precedence over org-level setting
   const headerPref = displayOverride ?? crmSettings?.leadHeaderPreference ?? null;
   const headerIdentity = headerPref === 'company'
-    ? (lead.company || fullName)
+    ? (resolved.company || fullName)
     : fullName;
 
   const storedCustomValues: Array<{ fieldId: string; value: string | null }> =
@@ -813,15 +810,20 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                 }}>
                   {fullName}
                 </div>
-              ) : lead.company ? (
+              ) : null}
+              {/* Company name for this lead, sourced from the current primary contact
+                  (falls back to the lead's cached company). Under the company-first
+                  header preference the title above is already the company, so this line
+                  only renders for the name-first preference. Owner text never shows here. */}
+              {headerPref !== 'company' && resolved.company ? (
                 <div style={{
-                  fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 450,
                   marginTop: 2,
+                  fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 450,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center', gap: 4,
+                  display: 'flex', alignItems: 'center', gap: 4, maxWidth: '100%',
                 }}>
                   <Building2 size={11} style={{ flexShrink: 0 }} />
-                  {lead.company}
+                  {resolved.company}
                 </div>
               ) : null}
             </div>
