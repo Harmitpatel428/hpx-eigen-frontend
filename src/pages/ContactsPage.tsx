@@ -1,30 +1,41 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { Search, Plus, ListFilter, ArrowDownToLine, ArrowUpFromLine, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Contact } from '../types';
-import { contactService } from '../services/contact.service';
+import { contactService, type ContactListResult } from '../services/contact.service';
 import { ContextPanel } from '../components/layout/ContextPanel';
+
+const PAGE_SIZE = 50;
 
 export function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
-  const { data: contacts = [], isLoading } = useQuery<Contact[]>({
-    queryKey: ['contacts'],
-    queryFn: () => contactService.findAll(),
+  // Debounce the search box, then search SERVER-SIDE (whole tenant, scope-filtered)
+  // instead of filtering only the current page in the browser.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const { data, isLoading } = useQuery<ContactListResult>({
+    queryKey: ['contacts', { search: debouncedSearch, page }],
+    queryFn: () => contactService.list({ search: debouncedSearch || undefined, page, pageSize: PAGE_SIZE }),
+    placeholderData: keepPreviousData,
   });
 
-  const filtered = contacts.filter(c => {
-    const q = searchQuery.toLowerCase();
-    return !q || `${c.firstName} ${c.lastName} ${c.company ?? ''} ${c.email ?? ''}`.toLowerCase().includes(q);
-  });
+  const filtered = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex flex-col gap-1">
           <h1 className="type-title">Contacts</h1>
-          <p className="type-body">{filtered.length} People</p>
+          <p className="type-body">{total} {total === 1 ? 'Person' : 'People'}</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -182,6 +193,21 @@ export function ContactsPage() {
           </div>
         )}
       </div>
+
+      {/* ─── PAGINATION (server-side) ────────────────────────────────────────── */}
+      {!isLoading && total > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, padding: '10px 2px', fontSize: 13, color: 'var(--text-secondary)' }}>
+          <span>Page {page} of {totalPages} · {total} total</span>
+          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', opacity: page <= 1 ? 0.4 : 1 }}
+            disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} aria-label="Previous page">
+            <ChevronLeft size={14} />
+          </button>
+          <button className="btn-ghost" style={{ height: 28, padding: '0 8px', opacity: page >= totalPages ? 0.4 : 1 }}
+            disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} aria-label="Next page">
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* ─── CONTEXT PANEL ───────────────────────────────────────────────────── */}
       <ContextPanel isOpen={!!selectedContact} onClose={() => setSelectedContact(null)} width={600}>
