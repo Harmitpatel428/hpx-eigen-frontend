@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../auth/public';
@@ -9,9 +9,11 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { InvoicePdfDocument } from '../components/pdf/InvoicePdfDocument';
-import { Plus, X, ChevronDown, FileText, User, Building, Phone, Mail, IndianRupee, Download } from 'lucide-react';
+import { Plus, X, ChevronDown, FileText, User, Building, Phone, Mail, IndianRupee } from 'lucide-react';
+
+// @react-pdf/renderer is ~470 KB gzipped; load it as its own chunk only when an
+// invoice row's download control renders, not as part of the InvoicesPage chunk.
+const InvoiceDownloadLink = React.lazy(() => import('../components/pdf/InvoiceDownloadLink'));
 
 const invoiceSchema = z.object({
   opportunityId: z.string().min(1, 'Opportunity required'),
@@ -141,24 +143,13 @@ export function InvoicesPage() {
             isLoading={isLoading}
             rowKey="id"
             rowActions={(invoice) => (
-              <PDFDownloadLink
-                document={<InvoicePdfDocument invoice={invoice} />}
-                fileName={`Invoice-${invoice.invoiceNumber || invoice.id.slice(0, 8)}.pdf`}
-              >
-                {({ loading }) => (
-                  <button
-                    className="inline-flex items-center justify-center p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    disabled={loading}
-                    title={loading ? 'Preparing PDF...' : 'Download Invoice PDF'}
-                  >
-                    {loading ? (
-                      <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                    ) : (
-                      <Download size={15} />
-                    )}
-                  </button>
-                )}
-              </PDFDownloadLink>
+              <Suspense fallback={
+                <span className="inline-flex items-center justify-center p-1.5">
+                  <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                </span>
+              }>
+                <InvoiceDownloadLink invoice={invoice} />
+              </Suspense>
             )}
           />
         </div>
