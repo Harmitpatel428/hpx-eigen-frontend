@@ -149,15 +149,6 @@ export function LeadsPage() {
 
   const { permissions } = useAuth();
   const canAssign = permissions.can('lead:assign');
-  const canEdit = permissions.can('lead:edit');
-
-  // Manual "waiting for higher authority" toggle (idempotent). Repaints the row
-  // via the ['leads'] invalidation; no optimistic state needed.
-  const waitingMutation = useMutation({
-    mutationFn: ({ id, value }: { id: string; value: boolean }) => leadService.setWaitingHigherAuthority(id, value),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] }),
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update flag.'),
-  });
   const { data: assignmentSummary } = useQuery<AssignmentSummary>({
     queryKey: ['lead-assignment-summary'],
     queryFn: () => leadService.assignmentSummary(),
@@ -731,21 +722,8 @@ export function LeadsPage() {
                           })()}
                         </span>
                       )}
-                      <WaitingAuthorityBadge
-                        waiting={lead.waitingHigherAuthority}
-                        onClick={canEdit ? () => waitingMutation.mutate({ id: lead.id, value: false }) : undefined}
-                      />
-                      {!lead.waitingHigherAuthority && canEdit && (
-                        <button
-                          type="button"
-                          className="status-chip status-chip-mark"
-                          title="Mark work completed — waiting for higher authority"
-                          disabled={waitingMutation.isPending}
-                          onClick={(e) => { e.stopPropagation(); waitingMutation.mutate({ id: lead.id, value: true }); }}
-                        >
-                          Mark Waiting
-                        </button>
-                      )}
+                      {/* Read-only: marked leads show the badge; no UI path to mark/clear. */}
+                      <WaitingAuthorityBadge waiting={lead.waitingHigherAuthority} />
                     </div>
 
                   </div>

@@ -258,9 +258,6 @@ ul, ol { list-style: none; }
 .status-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .status-chip:disabled { opacity: 0.4; cursor: not-allowed; }
 .status-chip-waiting { background: rgba(168, 85, 247, 0.1); color: #7c3aed; }
-.status-chip-waiting:hover { background: rgba(168, 85, 247, 0.18); }
-.status-chip-mark { background: transparent; color: var(--text-secondary); border-color: var(--border-medium); }
-.status-chip-mark:hover { background: var(--bg-subtle); color: var(--text-primary); }
 
 /* ─── INPUTS ─── */
 .input {

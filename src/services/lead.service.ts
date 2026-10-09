@@ -212,11 +212,6 @@ export const leadService = {
     await api.post(`/api/v1/leads/${id}/restore`);
   },
 
-  /** Toggle the manual "waiting for higher authority" flag (idempotent). */
-  async setWaitingHigherAuthority(id: string, value: boolean): Promise<void> {
-    await api.post(`/api/v1/leads/${id}/waiting-higher-authority`, { value });
-  },
-
   async bulkRestore(ids: string[]): Promise<{ count: number }> {
     const { data } = await api.post<any>('/api/v1/leads/bulk-restore', { ids });
     return data?.data || data;
