@@ -35,11 +35,15 @@ export function SettingsPage() {
     'general',
     ...(permissions.can('user:view') ? ['members'] : []),
     ...(permissions.can('role:manage') ? ['org-management'] : []),
+    'billing',
+    'client-portal',
+  ];
+
+  // "Document" group — the relocated controls, each behind its original gate.
+  const documentTabs = [
     ...(canReminder ? ['documentation-setting'] : []),
     ...(canReports ? ['reports'] : []),
     ...(canConfig ? ['configuration'] : []),
-    'billing',
-    'client-portal',
   ];
 
   const wideTab = ['org-management', 'configuration', 'reports'].includes(activeTab);
@@ -95,12 +99,34 @@ export function SettingsPage() {
               {tab === 'org-management' && <Users size={16} />}
               {tab === 'billing' && <CreditCard size={16} />}
               {tab === 'client-portal' && <Lock size={16} />}
+              {tab === 'org-management' ? 'Organization Management' :
+               tab === 'client-portal' ? 'Client Portal' :
+               tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+
+          {documentTabs.length > 0 && (
+            <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Document</div>
+          )}
+          {documentTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="type-ui"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
+                backgroundColor: activeTab === tab ? 'var(--bg-app)' : 'transparent',
+                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontWeight: activeTab === tab ? 500 : 400,
+                boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
+                transition: 'all var(--transition-fast)'
+              }}
+            >
               {tab === 'documentation-setting' && <FileText size={16} />}
               {tab === 'reports' && <BarChart3 size={16} />}
               {tab === 'configuration' && <SlidersHorizontal size={16} />}
-              {tab === 'org-management' ? 'Organization Management' :
-               tab === 'client-portal' ? 'Client Portal' :
-               tab === 'documentation-setting' ? 'Documentation Setting' :
+              {tab === 'documentation-setting' ? 'Documentation Setting' :
                tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
