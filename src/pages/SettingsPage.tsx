@@ -147,15 +147,22 @@ function WorkspaceShortcuts() {
 
   if (!canReminder && !canReports && !canConfig) return null;
 
-  const btnStyle = { width: 195, height: 42, justifyContent: 'flex-start' } as const;
+  // Uniform fixed-size buttons: 42px tall, single-line labels, left-aligned
+  // icon+label, matching the existing HPX .btn-secondary idiom.
+  const btnStyle = {
+    height: 42, minWidth: 195, whiteSpace: 'nowrap',
+    justifyContent: 'flex-start', padding: '0 16px', gap: 8,
+  } as const;
 
   return (
-    <section>
-      <h2 className="type-h1" style={{ marginBottom: 'var(--space-2)' }}>Documentation &amp; Tools</h2>
-      <p className="type-body" style={{ marginBottom: 'var(--space-6)', color: 'var(--text-secondary)' }}>
+    <section style={{ maxWidth: 560 }}>
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+        Documentation &amp; Tools
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
         Configure the documentation reminder template and open workspace tools.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '240px', gap: 12 }}>
         {canReminder && (
           <button className="btn btn-secondary" style={btnStyle} onClick={() => setReminderOpen(true)}>
             <FileText size={16} /> Documentation Setting
