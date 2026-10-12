@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal } from 'lucide-react';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
@@ -7,6 +6,10 @@ import { MembersSettings } from './settings/MembersSettings';
 import { OrgManagement } from './settings/OrgManagement';
 import { ClientPortalSettings } from './settings/ClientPortalSettings';
 import { ReminderSettingsModal } from '../components/documentation/ReminderSettingsModal';
+// Relocated into Settings tabs; lazy-loaded (ProtectedApp idiom) so the heavy
+// Configuration builders don't bloat the Settings chunk.
+const ReportsPage = lazy(() => import('./ReportsPage').then(m => ({ default: m.ReportsPage })));
+const ConfigurationPage = lazy(() => import('./ConfigurationPage').then(m => ({ default: m.ConfigurationPage })));
 import { useAuth } from '../auth/public';
 import { useCaseEngineSettings } from '../hooks/useCaseFields';
 import { api } from '../services/api';
@@ -18,17 +21,31 @@ import { toast } from 'sonner';
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const { user, permissions, refreshUser } = useAuth();
+  const { data: engineSettings } = useCaseEngineSettings();
+
+  // Same gates that previously controlled these controls (sidebar + buttons) —
+  // relocation grants no new access.
+  const canReminder = permissions.can('role:manage');
+  const canReports = permissions.can('doc:view') && !!engineSettings?.caseOperationsEngineEnabled;
+  const canConfig =
+    permissions.can('case-engine:manage') ||
+    (!!engineSettings?.caseOperationsEngineEnabled && permissions.canAny(['case-field:view', 'case-type:view']));
 
   const workspaceTabs = [
     'general',
     ...(permissions.can('user:view') ? ['members'] : []),
     ...(permissions.can('role:manage') ? ['org-management'] : []),
+    ...(canReminder ? ['documentation-setting'] : []),
+    ...(canReports ? ['reports'] : []),
+    ...(canConfig ? ['configuration'] : []),
     'billing',
     'client-portal',
   ];
 
+  const wideTab = ['org-management', 'configuration', 'reports'].includes(activeTab);
+
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: activeTab === 'org-management' ? 1280 : 1000 }}>
+    <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: wideTab ? 1280 : 1000 }}>
       {/* Sidebar */}
       <div style={{ width: 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
         <h1 className="type-title" style={{ marginBottom: 'var(--space-8)' }}>Settings</h1>
@@ -78,8 +95,12 @@ export function SettingsPage() {
               {tab === 'org-management' && <Users size={16} />}
               {tab === 'billing' && <CreditCard size={16} />}
               {tab === 'client-portal' && <Lock size={16} />}
+              {tab === 'documentation-setting' && <FileText size={16} />}
+              {tab === 'reports' && <BarChart3 size={16} />}
+              {tab === 'configuration' && <SlidersHorizontal size={16} />}
               {tab === 'org-management' ? 'Organization Management' :
                tab === 'client-portal' ? 'Client Portal' :
+               tab === 'documentation-setting' ? 'Documentation Setting' :
                tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -105,7 +126,6 @@ export function SettingsPage() {
             </section>
             <LeadIdentitySettings />
             <AdminAccountAccessSettings />
-            <WorkspaceShortcuts />
           </div>
         )}
 
@@ -115,7 +135,17 @@ export function SettingsPage() {
 
         {activeTab === 'client-portal' && <ClientPortalSettings />}
 
-        {!['profile', 'general', 'members', 'org-management', 'security', 'client-portal'].includes(activeTab) && (
+        {activeTab === 'documentation-setting' && <DocumentationSettingTab onDone={() => setActiveTab('general')} />}
+
+        {activeTab === 'reports' && (
+          <Suspense fallback={<Loader2 className="animate-spin" size={20} />}><ReportsPage /></Suspense>
+        )}
+
+        {activeTab === 'configuration' && (
+          <Suspense fallback={<Loader2 className="animate-spin" size={20} />}><ConfigurationPage /></Suspense>
+        )}
+
+        {!['profile', 'general', 'members', 'org-management', 'security', 'client-portal', 'documentation-setting', 'reports', 'configuration'].includes(activeTab) && (
           <div style={{ padding: 'var(--space-24) 0', textAlign: 'center' }}>
             <h2 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Coming Soon</h2>
             <p className="type-body" style={{ color: 'var(--text-tertiary)' }}>This settings panel is being rebuilt.</p>
@@ -126,69 +156,21 @@ export function SettingsPage() {
   );
 }
 
-// ─── Workspace Shortcuts (relocated config controls) ──────────────
-// Documentation Setting (reminder template), Reports, and Configuration moved
-// here from the daily screens / sidebar. Each keeps its original access gate —
-// relocation grants no new permissions, and the routes still enforce their own.
+// ─── Documentation Setting tab (reminder template) ────────────────
+// Reuses the existing ReminderSettingsModal as-is; closing or saving returns
+// to the General tab. Gated by role:manage via the sidebar item.
 
-function WorkspaceShortcuts() {
-  const navigate = useNavigate();
-  const { permissions } = useAuth();
+function DocumentationSettingTab({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: engineSettings } = useCaseEngineSettings();
   const { data: crm } = useQuery({ queryKey: ['crm-settings'], queryFn: () => crmSettingsService.get() });
-  const [reminderOpen, setReminderOpen] = useState(false);
-
-  const canReminder = permissions.can('role:manage');
-  const canReports = permissions.can('doc:view') && !!engineSettings?.caseOperationsEngineEnabled;
-  const canConfig =
-    permissions.can('case-engine:manage') ||
-    (!!engineSettings?.caseOperationsEngineEnabled && permissions.canAny(['case-field:view', 'case-type:view']));
-
-  if (!canReminder && !canReports && !canConfig) return null;
-
-  // Uniform fixed-size buttons: 42px tall, single-line labels, left-aligned
-  // icon+label, matching the existing HPX .btn-secondary idiom.
-  const btnStyle = {
-    height: 42, minWidth: 195, whiteSpace: 'nowrap',
-    justifyContent: 'flex-start', padding: '0 16px', gap: 8,
-  } as const;
-
   return (
-    <section style={{ maxWidth: 560 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-        Documentation &amp; Tools
-      </h2>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
-        Configure the documentation reminder template and open workspace tools.
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '240px', gap: 12 }}>
-        {canReminder && (
-          <button className="btn btn-secondary" style={btnStyle} onClick={() => setReminderOpen(true)}>
-            <FileText size={16} /> Documentation Setting
-          </button>
-        )}
-        {canReports && (
-          <button className="btn btn-secondary" style={btnStyle} onClick={() => navigate('/reports')}>
-            <BarChart3 size={16} /> Reports
-          </button>
-        )}
-        {canConfig && (
-          <button className="btn btn-secondary" style={btnStyle} onClick={() => navigate('/configuration')}>
-            <SlidersHorizontal size={16} /> Configuration
-          </button>
-        )}
-      </div>
-      {reminderOpen && (
-        <ReminderSettingsModal
-          initialTemplate={crm?.pendingReminderTemplate ?? DEFAULT_TEMPLATE}
-          initialOrgName={crm?.pendingReminderOrgName ?? DEFAULT_ORG_NAME}
-          pendingNames={[]}
-          onClose={() => setReminderOpen(false)}
-          onSaved={() => { qc.invalidateQueries({ queryKey: ['crm-settings'] }); setReminderOpen(false); }}
-        />
-      )}
-    </section>
+    <ReminderSettingsModal
+      initialTemplate={crm?.pendingReminderTemplate ?? DEFAULT_TEMPLATE}
+      initialOrgName={crm?.pendingReminderOrgName ?? DEFAULT_ORG_NAME}
+      pendingNames={[]}
+      onClose={onDone}
+      onSaved={() => { qc.invalidateQueries({ queryKey: ['crm-settings'] }); onDone(); }}
+    />
   );
 }
 
