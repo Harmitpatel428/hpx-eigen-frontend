@@ -40,7 +40,7 @@ export function RuleBuilder() {
   ];
 
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <label className="type-ui">
           <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} /> Show archived

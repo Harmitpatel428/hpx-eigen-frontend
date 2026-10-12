@@ -36,7 +36,7 @@ export function FieldBuilder() {
       render: (s: CaseFieldStatus) => (
         <span style={{
           display: 'inline-block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-          background: STATUS_STYLE[s].bg, color: STATUS_STYLE[s].fg, padding: '3px 8px', borderRadius: 6,
+          background: STATUS_STYLE[s].bg, color: STATUS_STYLE[s].fg, padding: '3px 8px', borderRadius: 'var(--radius-sm)',
         }}>{s}</span>
       ),
     },
@@ -49,12 +49,12 @@ export function FieldBuilder() {
   ];
 
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <label className="type-ui">
           <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} /> Show archived
         </label>
-        {canManage && <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, field: null })}>New field</button>}
+        {canManage && <button className="btn btn-primary" type="button" onClick={() => setModal({ open: true, field: null })}>New field</button>}
       </div>
       <DataTable<CaseFieldDefinition>
         columns={columns}
@@ -64,11 +64,11 @@ export function FieldBuilder() {
         emptyTitle="No fields yet"
         emptyMessage="No fields yet. Create field → Activate → place on a case type → Publish → assign to a case"
         rowActions={canManage ? (f) => (
-          <div className="whitespace-nowrap" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button className="btn btn-ghost" type="button" onClick={() => setModal({ open: true, field: f })}>Edit</button>
-            {f.status === 'DRAFT' && <button className="btn btn-ghost" type="button" onClick={() => activate.mutate(f.id)}>Activate</button>}
-            {f.status === 'ACTIVE' && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Set "${f.name}" to read-only? This cannot be undone from the UI.`) && setReadOnly.mutate(f.id)}>Set read-only</button>}
-            {f.status !== 'ARCHIVED' && <button className="btn btn-ghost" type="button" onClick={() => window.confirm(`Archive "${f.name}"? This cannot be undone from the UI.`) && archive.mutate(f.id)}>Archive</button>}
+          <div className="whitespace-nowrap" style={{ display: 'flex', gap: 8, justifyContent: 'flex-start' }}>
+            <button className="btn btn-secondary" type="button" onClick={() => setModal({ open: true, field: f })}>Edit</button>
+            {f.status === 'DRAFT' && <button className="btn btn-secondary" type="button" onClick={() => activate.mutate(f.id)}>Activate</button>}
+            {f.status === 'ACTIVE' && <button className="btn btn-secondary" type="button" onClick={() => window.confirm(`Set "${f.name}" to read-only? This cannot be undone from the UI.`) && setReadOnly.mutate(f.id)}>Set read-only</button>}
+            {f.status !== 'ARCHIVED' && <button className="btn btn-secondary" type="button" onClick={() => window.confirm(`Archive "${f.name}"? This cannot be undone from the UI.`) && archive.mutate(f.id)}>Archive</button>}
           </div>
         ) : undefined}
       />

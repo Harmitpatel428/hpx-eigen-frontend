@@ -97,28 +97,13 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: maxW }}>
-      {/* Sidebar — collapsible to a 64px icon rail to free working space */}
-      <div className="nav-collapsible" style={{ width: navCollapsed ? 64 : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
-        {navCollapsed ? (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
-            <button className="btn-icon" onClick={() => setNavCollapsed(false)}
-              aria-expanded={false} aria-controls="settings-nav"
-              aria-label="Expand settings navigation" title="Expand navigation">
-              <PanelLeftOpen size={18} />
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-8)' }}>
-            <h1 className="type-title">Settings</h1>
-            <button className="btn-icon" onClick={() => setNavCollapsed(true)}
-              aria-expanded aria-controls="settings-nav"
-              aria-label="Collapse settings navigation" title="Collapse navigation">
-              <PanelLeftClose size={18} />
-            </button>
-          </div>
+      {/* Sidebar — collapsible 64px icon rail; nav scrolls, toggle pinned in a bottom footer */}
+      <div className="nav-collapsible" style={{ width: navCollapsed ? 64 : 240, flexShrink: 0, position: 'sticky', top: 0, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {!navCollapsed && (
+          <h1 className="type-h1" style={{ flexShrink: 0, marginBottom: 'var(--space-6)' }}>Settings</h1>
         )}
 
-        <div id="settings-nav" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+        <nav id="settings-nav" style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
           {navCollapsed ? (
             // Flat icon rail: every tab (incl. the Documentation group's items) as an
             // icon + tooltip; headings/chevron omitted. Nav + active highlight preserved.
@@ -170,6 +155,21 @@ export function SettingsPage() {
               )}
             </>
           )}
+        </nav>
+
+        {/* Footer — pinned collapse/expand toggle */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-medium)', padding: '12px' }}>
+          <button
+            onClick={() => setNavCollapsed(!navCollapsed)}
+            aria-expanded={!navCollapsed}
+            aria-controls="settings-nav"
+            aria-label={navCollapsed ? 'Expand settings navigation' : 'Collapse settings navigation'}
+            title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            className="btn btn-ghost"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {navCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
       </div>
 

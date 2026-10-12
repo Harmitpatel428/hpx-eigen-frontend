@@ -1,18 +1,11 @@
 import { useAuth } from '../auth/public';
 import { useCaseEngineSettings, useSetCaseEngineEnabled } from '../hooks/useCaseFields';
-import { useCollapsed } from '../hooks/useCollapsed';
-import { useState } from 'react';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { useState, useRef, type KeyboardEvent } from 'react';
 import { FieldBuilder } from './configuration/FieldBuilder';
 import { CaseTypeBuilder } from './configuration/CaseTypeBuilder';
 import { RuleBuilder } from './configuration/RuleBuilder';
 
 const TABS = ['Fields', 'Case Types', 'Rules'] as const;
-
-const tabBase = {
-  display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-  padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-} as const;
 
 export function ConfigurationPage() {
   const { permissions } = useAuth();
@@ -21,15 +14,15 @@ export function ConfigurationPage() {
   const canManage = permissions.can('case-engine:manage');
   const enabled = data?.caseOperationsEngineEnabled;
   const [tab, setTab] = useState<(typeof TABS)[number]>('Fields');
-  const [subnavCollapsed, setSubnavCollapsed] = useCollapsed('hpx:ui:v1:configNavCollapsed');
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   if (isLoading) return null;
 
   if (enabled === false) {
     return (
       <div style={{ maxWidth: 560, paddingTop: 'var(--space-12)' }}>
-        <h1 className="type-title" style={{ marginBottom: 'var(--space-4)' }}>Configuration</h1>
-        <p className="type-body" style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-8)' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Configuration</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 'var(--space-8)', lineHeight: 1.6 }}>
           The Case Operations Engine is off for this organization.
         </p>
         {canManage && (
@@ -45,72 +38,91 @@ export function ConfigurationPage() {
     );
   }
 
+  // WAI-ARIA Tabs — automatic activation: Arrow keys move focus AND select.
+  const onTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = TABS.indexOf(tab);
+    let next = i;
+    if (e.key === 'ArrowRight') next = (i + 1) % TABS.length;
+    else if (e.key === 'ArrowLeft') next = (i - 1 + TABS.length) % TABS.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = TABS.length - 1;
+    else return;
+    e.preventDefault();
+    setTab(TABS[next]);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
-    <div style={{ maxWidth: 1280 }}>
+    <div style={{ maxWidth: 1280, width: '100%', minWidth: 0 }}>
       <header style={{ marginBottom: 'var(--space-4)' }}>
-        <h1 className="type-title" style={{ marginBottom: 'var(--space-2)' }}>Configuration</h1>
-        <p className="type-body" style={{ color: 'var(--text-secondary)' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Configuration</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 0, lineHeight: 1.6 }}>
           Define the custom fields, case types, and rules for the Case Operations Engine.
         </p>
       </header>
 
-      <div style={{ display: 'flex', gap: 'var(--space-16)', alignItems: 'flex-start' }}>
-        <div className="nav-collapsible" style={{ width: subnavCollapsed ? 48 : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
-          {subnavCollapsed ? (
-            <button className="btn-icon" onClick={() => setSubnavCollapsed(false)}
-              aria-expanded={false} aria-controls="config-subnav"
-              aria-label="Expand configuration navigation" title="Expand navigation">
-              <PanelLeftOpen size={18} />
-            </button>
-          ) : (
-          <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-2)' }}>
-            <button className="btn-icon" onClick={() => setSubnavCollapsed(true)}
-              aria-expanded aria-controls="config-subnav"
-              aria-label="Collapse configuration navigation" title="Collapse navigation">
-              <PanelLeftClose size={18} />
-            </button>
-          </div>
-          <nav id="config-subnav" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-            {TABS.map(t => (
-              <button
-                key={t}
-                className={`type-ui transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${tab === t ? '' : 'hover:bg-[var(--bg-subtle)]'}`}
-                aria-current={tab === t ? 'page' : undefined}
-                onClick={() => setTab(t)}
-                style={tab === t
-                  ? { ...tabBase, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', fontWeight: 500 }
-                  : { ...tabBase, color: 'var(--text-secondary)', backgroundColor: 'transparent' }}
-              >
-                {t}
-              </button>
-            ))}
-          </nav>
-          {canManage && (
-            <div role="group" aria-label="Danger zone" style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border-light)' }}>
-              <p className="type-micro" style={{ marginBottom: 'var(--space-2)', color: 'var(--color-danger)' }}>Danger zone</p>
-              <button
-                className="type-ui transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-                disabled={setEnabled.isPending}
-                onClick={() => {
-                  if (window.confirm('Turn off the Case Operations Engine for your whole organization?')) setEnabled.mutate(false);
-                }}
-                style={{ ...tabBase, width: '100%', justifyContent: 'flex-start', color: 'var(--color-danger)' }}
-              >
-                Turn off Case Operations Engine
-              </button>
-            </div>
-          )}
-          </>
-          )}
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0, paddingBottom: 'var(--space-24)' }}>
-          {tab === 'Fields' && <FieldBuilder />}
-          {tab === 'Case Types' && <CaseTypeBuilder />}
-          {tab === 'Rules' && <RuleBuilder />}
-        </div>
+      {/* Horizontal sub-nav (replaces the old left column) */}
+      <div role="tablist" aria-label="Configuration sections" aria-orientation="horizontal" onKeyDown={onTabKeyDown}
+        style={{ display: 'flex', borderBottom: '1px solid var(--border-medium)' }}>
+        {TABS.map((t, idx) => (
+          <button
+            key={t}
+            role="tab"
+            id={`cfg-tab-${idx}`}
+            ref={el => { tabRefs.current[idx] = el; }}
+            aria-selected={tab === t}
+            aria-controls={`cfg-panel-${idx}`}
+            tabIndex={tab === t ? 0 : -1}
+            onClick={() => setTab(t)}
+            style={{
+              padding: 'var(--space-3)', fontSize: 'var(--text-xs)', fontWeight: tab === t ? 600 : 450,
+              color: tab === t ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              borderBottom: tab === t ? '2px solid var(--text-primary)' : '2px solid transparent',
+              marginBottom: -1,
+            }}
+          >
+            {t}
+          </button>
+        ))}
       </div>
+
+      {TABS.map((t, idx) => (
+        <div
+          key={t}
+          role="tabpanel"
+          id={`cfg-panel-${idx}`}
+          aria-labelledby={`cfg-tab-${idx}`}
+          tabIndex={0}
+          hidden={tab !== t}
+          style={{ minWidth: 0, paddingTop: 'var(--space-6)', paddingBottom: 'var(--space-24)' }}
+        >
+          {t === 'Fields' && <FieldBuilder />}
+          {t === 'Case Types' && <CaseTypeBuilder />}
+          {t === 'Rules' && <RuleBuilder />}
+        </div>
+      ))}
+
+      {canManage && (
+        <div role="group" aria-label="Danger zone"
+          style={{ border: '1px solid var(--color-danger)', borderRadius: 'var(--radius-md)', padding: 24, marginTop: 32 }}>
+          <p className="type-micro" style={{ marginBottom: 'var(--space-2)', color: 'var(--color-danger)' }}>Danger zone</p>
+          <button
+            className="type-ui transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            disabled={setEnabled.isPending}
+            onClick={() => {
+              if (window.confirm('Turn off the Case Operations Engine for your whole organization?')) setEnabled.mutate(false);
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+              padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
+              justifyContent: 'flex-start', color: 'var(--color-danger)',
+            }}
+          >
+            Turn off Case Operations Engine
+          </button>
+        </div>
+      )}
     </div>
   );
 }
