@@ -55,9 +55,10 @@ export function ConfigurationPage() {
       </header>
 
       <div style={{ display: 'flex', gap: 'var(--space-16)', alignItems: 'flex-start' }}>
-        <div style={{ width: subnavCollapsed ? 'auto' : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
+        <div className="nav-collapsible" style={{ width: subnavCollapsed ? 48 : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
           {subnavCollapsed ? (
             <button className="btn-icon" onClick={() => setSubnavCollapsed(false)}
+              aria-expanded={false} aria-controls="config-subnav"
               aria-label="Expand configuration navigation" title="Expand navigation">
               <PanelLeftOpen size={18} />
             </button>
@@ -65,11 +66,12 @@ export function ConfigurationPage() {
           <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-2)' }}>
             <button className="btn-icon" onClick={() => setSubnavCollapsed(true)}
+              aria-expanded aria-controls="config-subnav"
               aria-label="Collapse configuration navigation" title="Collapse navigation">
               <PanelLeftClose size={18} />
             </button>
           </div>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+          <nav id="config-subnav" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
             {TABS.map(t => (
               <button
                 key={t}

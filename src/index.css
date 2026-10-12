@@ -556,11 +556,15 @@ ul, ol { list-style: none; }
 
 .sidebar-root {
   background-color: var(--bg-subtle);
-  border-right: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-medium);
 }
 .sidebar-logo { color: var(--text-primary); }
 .sidebar-section-label { color: var(--text-tertiary); }
 .sidebar-bottom-border { border-top: 1px solid var(--border-light); }
+
+/* Collapsible nav panels (Settings sidebar + Configuration sub-nav) animate width. */
+.nav-collapsible { transition: width 180ms ease; }
+@media (prefers-reduced-motion: reduce) { .nav-collapsible { transition: none; } }
 
 .sidebar-nav-item {
   color: var(--text-secondary);

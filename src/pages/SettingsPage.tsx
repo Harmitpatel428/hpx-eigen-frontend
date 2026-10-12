@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal, Folder, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal, Folder, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import { useCollapsed } from '../hooks/useCollapsed';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 import { MembersSettings } from './settings/MembersSettings';
@@ -18,6 +18,46 @@ import { crmSettingsService } from '../services/crm-settings.service';
 import { DEFAULT_TEMPLATE, DEFAULT_ORG_NAME } from '../utils/pendingReminder';
 import { loadColourfulFilters, saveColourfulFilters } from '../utils/salesDashboardPrefs';
 import { toast } from 'sonner';
+
+// Shared label + icon lookup so the expanded groups and the collapsed icon rail
+// render the same tab identically (single source — no triplicated markup).
+const TAB_LABELS: Record<string, string> = {
+  profile: 'Profile', notifications: 'Notifications', security: 'Security',
+  general: 'General', members: 'Members', 'org-management': 'Organization Management',
+  billing: 'Billing', 'client-portal': 'Client Portal',
+  'documentation-setting': 'Documentation Setting', reports: 'Reports', configuration: 'Configuration',
+};
+const TAB_ICONS: Record<string, LucideIcon> = {
+  profile: User, notifications: Bell, security: Shield,
+  general: Building2, members: Key, 'org-management': Users, billing: CreditCard, 'client-portal': Lock,
+  'documentation-setting': FileText, reports: BarChart3, configuration: SlidersHorizontal,
+};
+
+function SettingsTabButton({ tab, active, collapsed, onClick }: { tab: string; active: boolean; collapsed: boolean; onClick: () => void }) {
+  const Icon = TAB_ICONS[tab];
+  const label = TAB_LABELS[tab] ?? tab;
+  return (
+    <button
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      title={collapsed ? label : undefined}
+      className="type-ui"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        padding: collapsed ? '10px 0' : '8px var(--space-3)', borderRadius: 'var(--radius-md)',
+        backgroundColor: active ? 'var(--bg-app)' : 'transparent',
+        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        fontWeight: active ? 500 : 400,
+        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
+        transition: 'all var(--transition-fast)',
+      }}
+    >
+      {Icon && <Icon size={16} />}
+      {!collapsed && <span>{label}</span>}
+    </button>
+  );
+}
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
@@ -57,128 +97,80 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: maxW }}>
-      {/* Sidebar — collapsible to free working space for embedded pages */}
-      <div style={{ width: navCollapsed ? 'auto' : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
+      {/* Sidebar — collapsible to a 64px icon rail to free working space */}
+      <div className="nav-collapsible" style={{ width: navCollapsed ? 64 : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
         {navCollapsed ? (
-          <button className="btn-icon" onClick={() => setNavCollapsed(false)}
-            aria-label="Expand settings navigation" title="Expand navigation">
-            <PanelLeftOpen size={18} />
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
+            <button className="btn-icon" onClick={() => setNavCollapsed(false)}
+              aria-expanded={false} aria-controls="settings-nav"
+              aria-label="Expand settings navigation" title="Expand navigation">
+              <PanelLeftOpen size={18} />
+            </button>
+          </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-8)' }}>
             <h1 className="type-title">Settings</h1>
             <button className="btn-icon" onClick={() => setNavCollapsed(true)}
+              aria-expanded aria-controls="settings-nav"
               aria-label="Collapse settings navigation" title="Collapse navigation">
               <PanelLeftClose size={18} />
             </button>
           </div>
         )}
 
-        {!navCollapsed && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-          <div className="type-micro" style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-2)' }}>Personal</div>
-          {['profile', 'notifications', 'security'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="type-ui"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-                backgroundColor: activeTab === tab ? 'var(--bg-app)' : 'transparent',
-                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontWeight: activeTab === tab ? 500 : 400,
-                boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              {tab === 'profile' && <User size={16} />}
-              {tab === 'notifications' && <Bell size={16} />}
-              {tab === 'security' && <Shield size={16} />}
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-
-          <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Workspace</div>
-          {workspaceTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="type-ui"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-                backgroundColor: activeTab === tab ? 'var(--bg-app)' : 'transparent',
-                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontWeight: activeTab === tab ? 500 : 400,
-                boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              {tab === 'general' && <Building2 size={16} />}
-              {tab === 'members' && <Key size={16} />}
-              {tab === 'org-management' && <Users size={16} />}
-              {tab === 'billing' && <CreditCard size={16} />}
-              {tab === 'client-portal' && <Lock size={16} />}
-              {tab === 'org-management' ? 'Organization Management' :
-               tab === 'client-portal' ? 'Client Portal' :
-               tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-
-          {documentTabs.length > 0 && (
+        <div id="settings-nav" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+          {navCollapsed ? (
+            // Flat icon rail: every tab (incl. the Documentation group's items) as an
+            // icon + tooltip; headings/chevron omitted. Nav + active highlight preserved.
+            ['profile', 'notifications', 'security', ...workspaceTabs, ...documentTabs].map(tab => (
+              <SettingsTabButton key={tab} tab={tab} active={activeTab === tab} collapsed onClick={() => setActiveTab(tab)} />
+            ))
+          ) : (
             <>
-              {/* Collapsible "Documentation" group — mirrors the main sidebar's
-                  Departments idiom (parent button + chevron, children on open). */}
-              <button
-                onClick={() => setDocOpen(o => !o)}
-                aria-expanded={docOpen}
-                className="type-ui"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                  marginTop: 'var(--space-6)',
-                  padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-                  backgroundColor: documentTabs.includes(activeTab) ? 'var(--bg-app)' : 'transparent',
-                  color: documentTabs.includes(activeTab) ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  fontWeight: documentTabs.includes(activeTab) ? 500 : 400,
-                  boxShadow: documentTabs.includes(activeTab) ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                <Folder size={16} />
-                <span style={{ flex: 1, textAlign: 'left' }}>Documentation</span>
-                {docOpen ? <ChevronDown size={14} style={{ opacity: 0.5 }} /> : <ChevronRight size={14} style={{ opacity: 0.5 }} />}
-              </button>
-              {docOpen && (
-                <div style={{ paddingLeft: 16 }}>
-                  {documentTabs.map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className="type-ui"
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%',
-                        padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-                        backgroundColor: activeTab === tab ? 'var(--bg-app)' : 'transparent',
-                        color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: activeTab === tab ? 500 : 400,
-                        boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
-                        transition: 'all var(--transition-fast)'
-                      }}
-                    >
-                      {tab === 'documentation-setting' && <FileText size={16} />}
-                      {tab === 'reports' && <BarChart3 size={16} />}
-                      {tab === 'configuration' && <SlidersHorizontal size={16} />}
-                      {tab === 'documentation-setting' ? 'Documentation Setting' :
-                       tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    </button>
-                  ))}
-                </div>
+              <div className="type-micro" style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-2)' }}>Personal</div>
+              {['profile', 'notifications', 'security'].map(tab => (
+                <SettingsTabButton key={tab} tab={tab} active={activeTab === tab} collapsed={false} onClick={() => setActiveTab(tab)} />
+              ))}
+
+              <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Workspace</div>
+              {workspaceTabs.map(tab => (
+                <SettingsTabButton key={tab} tab={tab} active={activeTab === tab} collapsed={false} onClick={() => setActiveTab(tab)} />
+              ))}
+
+              {documentTabs.length > 0 && (
+                <>
+                  {/* Collapsible "Documentation" group — Departments idiom. */}
+                  <button
+                    onClick={() => setDocOpen(o => !o)}
+                    aria-expanded={docOpen}
+                    className="type-ui"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                      marginTop: 'var(--space-6)',
+                      padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
+                      backgroundColor: documentTabs.includes(activeTab) ? 'var(--bg-app)' : 'transparent',
+                      color: documentTabs.includes(activeTab) ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      fontWeight: documentTabs.includes(activeTab) ? 500 : 400,
+                      boxShadow: documentTabs.includes(activeTab) ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    <Folder size={16} />
+                    <span style={{ flex: 1, textAlign: 'left' }}>Documentation</span>
+                    {docOpen ? <ChevronDown size={14} style={{ opacity: 0.5 }} /> : <ChevronRight size={14} style={{ opacity: 0.5 }} />}
+                  </button>
+                  {docOpen && (
+                    <div style={{ paddingLeft: 16 }}>
+                      {documentTabs.map(tab => (
+                        <SettingsTabButton key={tab} tab={tab} active={activeTab === tab} collapsed={false} onClick={() => setActiveTab(tab)} />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
         </div>
-        )}
       </div>
 
       {/* Content */}
