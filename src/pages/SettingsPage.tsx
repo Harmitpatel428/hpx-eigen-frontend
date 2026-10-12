@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal } from 'lucide-react';
+import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal, Folder, ChevronDown, ChevronRight } from 'lucide-react';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 import { MembersSettings } from './settings/MembersSettings';
 import { OrgManagement } from './settings/OrgManagement';
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
+  const [docOpen, setDocOpen] = useState(false);
   const { user, permissions, refreshUser } = useAuth();
   const { data: engineSettings } = useCaseEngineSettings();
 
@@ -46,10 +47,14 @@ export function SettingsPage() {
     ...(canConfig ? ['configuration'] : []),
   ];
 
-  const wideTab = ['org-management', 'configuration', 'reports'].includes(activeTab);
+  // Embedded full pages (Configuration/Reports) render their own 240px sub-nav,
+  // so they need the full width or they get squeezed. Keep org-management at 1280.
+  const maxW = (activeTab === 'configuration' || activeTab === 'reports')
+    ? 'none'
+    : (activeTab === 'org-management' ? 1280 : 1000);
 
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: wideTab ? 1280 : 1000 }}>
+    <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: maxW }}>
       {/* Sidebar */}
       <div style={{ width: 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
         <h1 className="type-title" style={{ marginBottom: 'var(--space-8)' }}>Settings</h1>
@@ -106,30 +111,56 @@ export function SettingsPage() {
           ))}
 
           {documentTabs.length > 0 && (
-            <div className="type-micro" style={{ padding: '0 var(--space-3)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>Document</div>
+            <>
+              {/* Collapsible "Documentation" group — mirrors the main sidebar's
+                  Departments idiom (parent button + chevron, children on open). */}
+              <button
+                onClick={() => setDocOpen(o => !o)}
+                aria-expanded={docOpen}
+                className="type-ui"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                  marginTop: 'var(--space-6)',
+                  padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
+                  backgroundColor: documentTabs.includes(activeTab) ? 'var(--bg-app)' : 'transparent',
+                  color: documentTabs.includes(activeTab) ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: documentTabs.includes(activeTab) ? 500 : 400,
+                  boxShadow: documentTabs.includes(activeTab) ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                <Folder size={16} />
+                <span style={{ flex: 1, textAlign: 'left' }}>Documentation</span>
+                {docOpen ? <ChevronDown size={14} style={{ opacity: 0.5 }} /> : <ChevronRight size={14} style={{ opacity: 0.5 }} />}
+              </button>
+              {docOpen && (
+                <div style={{ paddingLeft: 16 }}>
+                  {documentTabs.map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className="type-ui"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%',
+                        padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
+                        backgroundColor: activeTab === tab ? 'var(--bg-app)' : 'transparent',
+                        color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        fontWeight: activeTab === tab ? 500 : 400,
+                        boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      {tab === 'documentation-setting' && <FileText size={16} />}
+                      {tab === 'reports' && <BarChart3 size={16} />}
+                      {tab === 'configuration' && <SlidersHorizontal size={16} />}
+                      {tab === 'documentation-setting' ? 'Documentation Setting' :
+                       tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
-          {documentTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="type-ui"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                padding: '8px var(--space-3)', borderRadius: 'var(--radius-md)',
-                backgroundColor: activeTab === tab ? 'var(--bg-app)' : 'transparent',
-                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontWeight: activeTab === tab ? 500 : 400,
-                boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.02)' : 'none',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              {tab === 'documentation-setting' && <FileText size={16} />}
-              {tab === 'reports' && <BarChart3 size={16} />}
-              {tab === 'configuration' && <SlidersHorizontal size={16} />}
-              {tab === 'documentation-setting' ? 'Documentation Setting' :
-               tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
         </div>
       </div>
 
