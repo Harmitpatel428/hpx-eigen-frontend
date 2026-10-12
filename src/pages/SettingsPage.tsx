@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal, Folder, ChevronDown, ChevronRight } from 'lucide-react';
+import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal, Folder, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { useCollapsed } from '../hooks/useCollapsed';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 import { MembersSettings } from './settings/MembersSettings';
 import { OrgManagement } from './settings/OrgManagement';
@@ -21,6 +22,7 @@ import { toast } from 'sonner';
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [docOpen, setDocOpen] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useCollapsed('hpx:ui:v1:settingsNavCollapsed');
   const { user, permissions, refreshUser } = useAuth();
   const { data: engineSettings } = useCaseEngineSettings();
 
@@ -55,10 +57,24 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: maxW }}>
-      {/* Sidebar */}
-      <div style={{ width: 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
-        <h1 className="type-title" style={{ marginBottom: 'var(--space-8)' }}>Settings</h1>
+      {/* Sidebar — collapsible to free working space for embedded pages */}
+      <div style={{ width: navCollapsed ? 'auto' : 240, flexShrink: 0, position: 'sticky', top: 'var(--space-12)' }}>
+        {navCollapsed ? (
+          <button className="btn-icon" onClick={() => setNavCollapsed(false)}
+            aria-label="Expand settings navigation" title="Expand navigation">
+            <PanelLeftOpen size={18} />
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-8)' }}>
+            <h1 className="type-title">Settings</h1>
+            <button className="btn-icon" onClick={() => setNavCollapsed(true)}
+              aria-label="Collapse settings navigation" title="Collapse navigation">
+              <PanelLeftClose size={18} />
+            </button>
+          </div>
+        )}
 
+        {!navCollapsed && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
           <div className="type-micro" style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-2)' }}>Personal</div>
           {['profile', 'notifications', 'security'].map(tab => (
@@ -162,10 +178,11 @@ export function SettingsPage() {
             </>
           )}
         </div>
+        )}
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, paddingBottom: 'var(--space-24)', marginTop: 72 }}>
+      <div style={{ flex: 1, minWidth: 0, paddingBottom: 'var(--space-24)', marginTop: 72 }}>
         {activeTab === 'profile' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
             <ProfileTab user={user} onSaved={refreshUser} />
