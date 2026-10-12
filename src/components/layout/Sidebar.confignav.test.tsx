@@ -1,64 +1,29 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 
-let granted: string[] = [];
-let flag = false;
-
-vi.mock('../../auth/public', () => ({
-  useAuth: () => ({
-    permissions: {
-      can: (s: string) => granted.includes(s),
-      canAny: (s: string[]) => s.some(x => granted.includes(x)),
-    },
-  }),
-}));
-vi.mock('../../hooks/useCaseFields', () => ({
-  useCaseEngineSettings: () => ({ data: { caseOperationsEngineEnabled: flag } }),
-}));
+// Reports & Configuration were relocated to the Settings page. The sidebar must
+// no longer render them, so no duplicate navigation entries exist.
 vi.mock('../../context/DepartmentContext', () => ({
   useDepartment: () => ({ activeDepartment: null }),
 }));
 
-const renderSidebar = () =>
-  render(<MemoryRouter><Sidebar /></MemoryRouter>);
+const renderSidebar = () => render(<MemoryRouter><Sidebar /></MemoryRouter>);
 
-describe('Sidebar Configuration link', () => {
-  beforeEach(() => { granted = []; flag = false; });
-
-  it('shows for case-engine:manage even with flag off', () => {
-    granted = ['case-engine:manage'];
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Configuration' }).getAttribute('href')).toBe('/configuration');
-  });
-
-  it('shows when flag on + case-field:view', () => {
-    granted = ['case-field:view']; flag = true;
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Configuration' })).toBeTruthy();
-  });
-
-  it('shows Reports only with doc:view and engine enabled', () => {
-    granted = ['doc:view']; flag = true;
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Reports' }).getAttribute('href')).toBe('/reports');
-  });
-
-  it('hides Reports without doc:view or with engine off', () => {
-    flag = true; renderSidebar();
-    expect(screen.queryByRole('link', { name: 'Reports' })).toBeNull();
-  });
-
-  it('hides Reports when engine disabled', () => {
-    granted = ['doc:view'];
+describe('Sidebar — relocated config nav', () => {
+  it('does not render a Reports link', () => {
     renderSidebar();
     expect(screen.queryByRole('link', { name: 'Reports' })).toBeNull();
   });
 
-  it('is absent when flag off + only case-field:view', () => {
-    granted = ['case-field:view'];
+  it('does not render a Configuration link', () => {
     renderSidebar();
     expect(screen.queryByRole('link', { name: 'Configuration' })).toBeNull();
+  });
+
+  it('still renders Settings', () => {
+    renderSidebar();
+    expect(screen.getByRole('link', { name: 'Settings' }).getAttribute('href')).toBe('/settings');
   });
 });

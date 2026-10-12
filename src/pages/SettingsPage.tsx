@@ -1,13 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock } from 'lucide-react';
+import { User, Building2, Bell, Shield, Key, CreditCard, Users, Loader2, Check, Lock, FileText, BarChart3, SlidersHorizontal } from 'lucide-react';
 import { LeadIdentitySettings } from './settings/LeadIdentitySettings';
 import { MembersSettings } from './settings/MembersSettings';
 import { OrgManagement } from './settings/OrgManagement';
 import { ClientPortalSettings } from './settings/ClientPortalSettings';
+import { ReminderSettingsModal } from '../components/documentation/ReminderSettingsModal';
 import { useAuth } from '../auth/public';
+import { useCaseEngineSettings } from '../hooks/useCaseFields';
 import { api } from '../services/api';
 import { crmSettingsService } from '../services/crm-settings.service';
+import { DEFAULT_TEMPLATE, DEFAULT_ORG_NAME } from '../utils/pendingReminder';
 import { loadColourfulFilters, saveColourfulFilters } from '../utils/salesDashboardPrefs';
 import { toast } from 'sonner';
 
@@ -101,6 +105,7 @@ export function SettingsPage() {
             </section>
             <LeadIdentitySettings />
             <AdminAccountAccessSettings />
+            <WorkspaceShortcuts />
           </div>
         )}
 
@@ -118,6 +123,65 @@ export function SettingsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Workspace Shortcuts (relocated config controls) ──────────────
+// Documentation Setting (reminder template), Reports, and Configuration moved
+// here from the daily screens / sidebar. Each keeps its original access gate —
+// relocation grants no new permissions, and the routes still enforce their own.
+
+function WorkspaceShortcuts() {
+  const navigate = useNavigate();
+  const { permissions } = useAuth();
+  const qc = useQueryClient();
+  const { data: engineSettings } = useCaseEngineSettings();
+  const { data: crm } = useQuery({ queryKey: ['crm-settings'], queryFn: () => crmSettingsService.get() });
+  const [reminderOpen, setReminderOpen] = useState(false);
+
+  const canReminder = permissions.can('role:manage');
+  const canReports = permissions.can('doc:view') && !!engineSettings?.caseOperationsEngineEnabled;
+  const canConfig =
+    permissions.can('case-engine:manage') ||
+    (!!engineSettings?.caseOperationsEngineEnabled && permissions.canAny(['case-field:view', 'case-type:view']));
+
+  if (!canReminder && !canReports && !canConfig) return null;
+
+  const btnStyle = { width: 195, height: 42, justifyContent: 'flex-start' } as const;
+
+  return (
+    <section>
+      <h2 className="type-h1" style={{ marginBottom: 'var(--space-2)' }}>Documentation &amp; Tools</h2>
+      <p className="type-body" style={{ marginBottom: 'var(--space-6)', color: 'var(--text-secondary)' }}>
+        Configure the documentation reminder template and open workspace tools.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+        {canReminder && (
+          <button className="btn btn-secondary" style={btnStyle} onClick={() => setReminderOpen(true)}>
+            <FileText size={16} /> Documentation Setting
+          </button>
+        )}
+        {canReports && (
+          <button className="btn btn-secondary" style={btnStyle} onClick={() => navigate('/reports')}>
+            <BarChart3 size={16} /> Reports
+          </button>
+        )}
+        {canConfig && (
+          <button className="btn btn-secondary" style={btnStyle} onClick={() => navigate('/configuration')}>
+            <SlidersHorizontal size={16} /> Configuration
+          </button>
+        )}
+      </div>
+      {reminderOpen && (
+        <ReminderSettingsModal
+          initialTemplate={crm?.pendingReminderTemplate ?? DEFAULT_TEMPLATE}
+          initialOrgName={crm?.pendingReminderOrgName ?? DEFAULT_ORG_NAME}
+          pendingNames={[]}
+          onClose={() => setReminderOpen(false)}
+          onSaved={() => { qc.invalidateQueries({ queryKey: ['crm-settings'] }); setReminderOpen(false); }}
+        />
+      )}
+    </section>
   );
 }
 

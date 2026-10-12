@@ -13,11 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
-  SlidersHorizontal,
-  BarChart3,
 } from 'lucide-react';
-import { useAuth } from '../../auth/public';
-import { useCaseEngineSettings } from '../../hooks/useCaseFields';
 
 const baseNavigation = [
   { name: 'Overview',   href: '/overview',   icon: LayoutDashboard },
@@ -42,16 +38,9 @@ const bottomNavigation = [
 export const Sidebar: React.FC = () => {
   const { activeDepartment } = useDepartment();
   const location = useLocation();
-  const { permissions } = useAuth();
-  const { data: engineSettings } = useCaseEngineSettings();
-  const showConfig =
-    permissions.can('case-engine:manage') ||
-    (!!engineSettings?.caseOperationsEngineEnabled && permissions.canAny(['case-field:view', 'case-type:view']));
-  const extra = [
-    ...(permissions.can('doc:view') && !!engineSettings?.caseOperationsEngineEnabled ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
-    ...(showConfig ? [{ name: 'Configuration', href: '/configuration', icon: SlidersHorizontal }] : []),
-  ];
-  const bottomItems = [bottomNavigation[0], ...extra, ...bottomNavigation.slice(1)];
+  // Reports & Configuration were relocated to the Settings page; the sidebar no
+  // longer links them (routes keep their own ProtectedRoute permission guards).
+  const bottomItems = bottomNavigation;
   const [deptOpen, setDeptOpen] = React.useState(
     departmentItems.some(d => location.pathname === d.href)
   );

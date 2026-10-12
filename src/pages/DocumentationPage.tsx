@@ -1442,7 +1442,6 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   <PendingReminderButton
                     documents={docCase.documents}
                     customerName={docCase.lead.company || personName}
-                    canManageSettings={permissions.can('role:manage')}
                   />
                   {canUploadDoc && (
                     <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
