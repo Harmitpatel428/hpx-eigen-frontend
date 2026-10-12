@@ -86,16 +86,6 @@ export default function PendingReminderButton({ documents, customerName, canMana
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <span
-        style={{
-          fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-          color: pendingCount > 0 ? '#d97706' : '#059669',
-          background: pendingCount > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(5,150,105,0.1)',
-        }}
-      >
-        {pendingCount > 0 ? `${pendingCount} Pending` : 'All documents received'}
-      </span>
-
       <button
         className="btn btn-ghost"
         style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, opacity: pendingCount === 0 ? 0.5 : 1 }}

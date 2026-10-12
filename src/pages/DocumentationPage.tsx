@@ -1425,18 +1425,32 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                <PendingReminderButton
-                  documents={docCase.documents}
-                  customerName={docCase.lead.company || personName}
-                  canManageSettings={permissions.can('role:manage')}
-                />
-                {canUploadDoc && (
-                  <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-                    onClick={() => setFileUploadTarget({ category: 'GENERAL' })}>
-                    <Upload size={13} /> Add Document
-                  </button>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                {/* Left cluster: section title + pending count chip */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Documents</span>
+                  <span style={{
+                    fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                    color: pendingCount > 0 ? '#d97706' : '#059669',
+                    background: pendingCount > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(5,150,105,0.1)',
+                  }}>
+                    {pendingCount > 0 ? `${pendingCount} Pending` : 'All documents received'}
+                  </span>
+                </div>
+                {/* Right cluster: actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                  <PendingReminderButton
+                    documents={docCase.documents}
+                    customerName={docCase.lead.company || personName}
+                    canManageSettings={permissions.can('role:manage')}
+                  />
+                  {canUploadDoc && (
+                    <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+                      onClick={() => setFileUploadTarget({ category: 'GENERAL' })}>
+                      <Upload size={13} /> Add Document
+                    </button>
+                  )}
+                </div>
               </div>
 
               {(docCase.documents ?? []).length === 0 && generalFiles.length === 0 ? (
