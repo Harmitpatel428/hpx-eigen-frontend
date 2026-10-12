@@ -565,6 +565,12 @@ ul, ol { list-style: none; }
 /* Collapsible nav panels (Settings sidebar + Configuration sub-nav) animate width. */
 .nav-collapsible { transition: width 180ms ease; }
 @media (prefers-reduced-motion: reduce) { .nav-collapsible { transition: none; } }
+@keyframes navTogglePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); background-color: transparent; }
+  50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25); background-color: var(--bg-subtle); }
+}
+.nav-toggle-pulse { animation: navTogglePulse 1.2s ease-in-out 3; }
+@media (prefers-reduced-motion: reduce) { .nav-toggle-pulse { animation: none; } }
 
 .sidebar-nav-item {
   color: var(--text-secondary);

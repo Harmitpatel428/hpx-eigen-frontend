@@ -63,6 +63,13 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [docOpen, setDocOpen] = useState(false);
   const [navCollapsed, setNavCollapsed] = useCollapsed('hpx:ui:v1:settingsNavCollapsed');
+  const [showPulse, setShowPulse] = useState<boolean>(() => {
+    try { return localStorage.getItem('hpx:ui:v1:settingsNavPulseShown') !== '1'; } catch { return false; }
+  });
+  const dismissPulse = () => {
+    setShowPulse(false);
+    try { localStorage.setItem('hpx:ui:v1:settingsNavPulseShown', '1'); } catch { /* storage unavailable */ }
+  };
   const { user, permissions, refreshUser } = useAuth();
   const { data: engineSettings } = useCaseEngineSettings();
 
@@ -97,11 +104,23 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-16)', maxWidth: maxW }}>
-      {/* Sidebar — collapsible 64px icon rail; nav scrolls, toggle pinned in a bottom footer */}
+      {/* Sidebar — collapsible 64px icon rail; nav scrolls, fixed-size toggle in the top header row */}
       <div className="nav-collapsible" style={{ width: navCollapsed ? 64 : 240, flexShrink: 0, position: 'sticky', top: 0, height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {!navCollapsed && (
-          <h1 className="type-h1" style={{ flexShrink: 0, marginBottom: 'var(--space-6)' }}>Settings</h1>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'space-between', flexShrink: 0, marginBottom: 'var(--space-6)', minHeight: 40 }}>
+          {!navCollapsed && <h1 className="type-h1" style={{ margin: 0 }}>Settings</h1>}
+          <button
+            onClick={() => { setNavCollapsed(!navCollapsed); if (showPulse) dismissPulse(); }}
+            onAnimationEnd={showPulse ? dismissPulse : undefined}
+            aria-expanded={!navCollapsed}
+            aria-controls="settings-nav"
+            aria-label={navCollapsed ? 'Expand Navigation' : 'Collapse Navigation'}
+            title={navCollapsed ? 'Expand Navigation' : 'Collapse Navigation'}
+            className={`btn btn-ghost${showPulse ? ' nav-toggle-pulse' : ''}`}
+            style={{ width: 40, height: 40, minWidth: 40, minHeight: 40, flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {navCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
 
         <nav id="settings-nav" style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
           {navCollapsed ? (
@@ -156,21 +175,6 @@ export function SettingsPage() {
             </>
           )}
         </nav>
-
-        {/* Footer — pinned collapse/expand toggle */}
-        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-medium)', padding: '12px' }}>
-          <button
-            onClick={() => setNavCollapsed(!navCollapsed)}
-            aria-expanded={!navCollapsed}
-            aria-controls="settings-nav"
-            aria-label={navCollapsed ? 'Expand settings navigation' : 'Collapse settings navigation'}
-            title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className="btn btn-ghost"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            {navCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
-        </div>
       </div>
 
       {/* Content */}
