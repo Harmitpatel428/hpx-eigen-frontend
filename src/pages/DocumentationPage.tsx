@@ -38,6 +38,8 @@ import { leadContactsService, type LeadContact } from '../services/lead-contacts
 import { waChannelsService, type WaChannel } from '../services/wa-channels.service';
 import { resolveDisplayContact, resolveLeadIdentity, formatLeadAddress } from '../utils/crm';
 import { findDuplicateByChecksum } from '../utils/doc-duplicate';
+import { buildPendingNames } from '../utils/pendingReminder';
+import PendingReminderButton from '../components/documentation/PendingReminderButton';
 import { LeadSectionStyles, buildContactCopyText, buildLeadCopyText } from '../components/leads/sections/shared';
 import { LeadContactInformationSection } from '../components/leads/sections/LeadContactInformationSection';
 import { LeadAllContactsSection } from '../components/leads/sections/LeadAllContactsSection';
@@ -1047,6 +1049,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     d.isMandatory && !['APPROVED', 'MANAGER_APPROVED', 'WAIVED', 'NOT_APPLICABLE'].includes(d.status)
   );
   const rejected = (docCase.documents ?? []).filter(d => d.status === 'REJECTED');
+  // Client-derived "awaiting customer" count — single source of truth shared with
+  // the Copy Pending Documents reminder so the badge and message can never disagree.
+  const pendingCount = buildPendingNames(docCase.documents).length;
   const canTransfer = docCase.isReady && docCase.status !== 'TRANSFERRED_TO_PROCESS';
 
   // Group uploaded files (unified Document store) by requirement; R8: general docs AND
@@ -1396,7 +1401,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     { label: 'Received', val: docCase.receivedDocs },
                     { label: 'Approved', val: docCase.approvedDocs, color: '#059669' },
                     { label: 'Rejected', val: docCase.rejectedDocs, color: '#dc2626' },
-                    { label: 'Mandatory Pending', val: docCase.mandatoryDocs - docCase.mandatoryApproved, color: docCase.mandatoryDocs - docCase.mandatoryApproved > 0 ? '#d97706' : '#059669' },
+                    { label: 'Pending', val: pendingCount, color: pendingCount > 0 ? '#d97706' : '#059669' },
                   ].map(s => (
                     <div key={s.label}>
                       <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
@@ -1420,14 +1425,19 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               )}
 
-              {canUploadDoc && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                <PendingReminderButton
+                  documents={docCase.documents}
+                  customerName={docCase.lead.company || personName}
+                  canManageSettings={permissions.can('role:manage')}
+                />
+                {canUploadDoc && (
                   <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
                     onClick={() => setFileUploadTarget({ category: 'GENERAL' })}>
                     <Upload size={13} /> Add Document
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
               {(docCase.documents ?? []).length === 0 && generalFiles.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)' }}>
