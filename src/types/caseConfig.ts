@@ -130,6 +130,8 @@ export interface CaseTypeComponentDocument {
   dedupeKey: string;
   description: string | null;
   isMandatory: boolean;
+  requireDate: boolean;
+  requireNote: boolean;
   displayOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -140,6 +142,8 @@ export interface CreateComponentDocumentPayload {
   name: string;
   description?: string | null;
   isMandatory?: boolean;
+  requireDate?: boolean;
+  requireNote?: boolean;
   displayOrder?: number;
 }
 // dedupeKey is deliberately absent: the API rejects attempts to change it.
@@ -147,6 +151,8 @@ export interface UpdateComponentDocumentPayload {
   name?: string;
   description?: string | null;
   isMandatory?: boolean;
+  requireDate?: boolean;
+  requireNote?: boolean;
   displayOrder?: number;
   isActive?: boolean;
 }

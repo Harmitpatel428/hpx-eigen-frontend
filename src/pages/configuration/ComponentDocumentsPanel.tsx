@@ -26,13 +26,13 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
   const create = useCreateComponentDocument();
   const update = useUpdateComponentDocument();
 
-  const [draft, setDraft] = useState({ name: '', description: '', isMandatory: false, displayOrder: 0 });
-  const resetDraft = () => setDraft({ name: '', description: '', isMandatory: false, displayOrder: 0 });
+  const [draft, setDraft] = useState({ name: '', description: '', isMandatory: false, requireDate: false, requireNote: false, displayOrder: 0 });
+  const resetDraft = () => setDraft({ name: '', description: '', isMandatory: false, requireDate: false, requireNote: false, displayOrder: 0 });
 
   const addDocument = () => {
     if (!draft.name.trim()) return;
     create.mutate(
-      { caseTypeId, componentId: component.id, payload: { name: draft.name.trim(), description: draft.description.trim() || null, isMandatory: draft.isMandatory, displayOrder: draft.displayOrder } },
+      { caseTypeId, componentId: component.id, payload: { name: draft.name.trim(), description: draft.description.trim() || null, isMandatory: draft.isMandatory, requireDate: draft.requireDate, requireNote: draft.requireNote, displayOrder: draft.displayOrder } },
       { onSuccess: resetDraft },
     );
   };
@@ -58,12 +58,20 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
             <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, opacity: d.isActive ? 1 : 0.6 }}>
               <span style={{ fontWeight: 600 }}>{d.name}</span>
               {d.isMandatory && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>mandatory</span>}
+              {d.requireDate && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>date</span>}
+              {d.requireNote && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>note</span>}
               {!d.isActive && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>archived</span>}
               <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>#{d.displayOrder}</span>
               {canManage && (
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => patch(d, { isMandatory: !d.isMandatory })}>
                     {d.isMandatory ? 'Make optional' : 'Make mandatory'}
+                  </button>
+                  <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => patch(d, { requireDate: !d.requireDate })}>
+                    {d.requireDate ? 'Drop date' : 'Require date'}
+                  </button>
+                  <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => patch(d, { requireNote: !d.requireNote })}>
+                    {d.requireNote ? 'Drop note' : 'Require note'}
                   </button>
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => patch(d, { isActive: !d.isActive })}>
                     {d.isActive ? 'Archive' : 'Reactivate'}
@@ -91,6 +99,12 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
           </label>
           <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
             <input type="checkbox" checked={draft.isMandatory} onChange={(e) => setDraft({ ...draft, isMandatory: e.target.checked })} /> Mandatory
+          </label>
+          <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input type="checkbox" checked={draft.requireDate} onChange={(e) => setDraft({ ...draft, requireDate: e.target.checked })} /> Require date
+          </label>
+          <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input type="checkbox" checked={draft.requireNote} onChange={(e) => setDraft({ ...draft, requireNote: e.target.checked })} /> Require note
           </label>
           <button type="button" className="btn btn-primary" style={{ fontSize: 11 }} disabled={!draft.name.trim() || create.isPending} onClick={addDocument}>
             {create.isPending ? 'Adding…' : 'Add document'}

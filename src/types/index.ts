@@ -557,6 +557,8 @@ export interface DocCaseDocument {
   name: string;
   description: string | null;
   isMandatory: boolean;
+  requireDate: boolean;
+  requireNote: boolean;
   isBlocking: boolean;
   displayOrder: number;
   verificationRequired: boolean;
