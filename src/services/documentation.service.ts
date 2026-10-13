@@ -189,14 +189,14 @@ export const documentationService = {
   // DOCUMENTS
   updateDocumentStatus: async (docId: string, payload: {
     status: DocDocumentStatus; remarks?: string;
-    rejectionReason?: string; waivedReason?: string; expiryDate?: string;
+    rejectionReason?: string; waivedReason?: string; expiryDate?: string; documentDate?: string;
   }) => {
     const res = await api.patch(`/api/v1/documentation/documents/${docId}/status`, payload);
     return unwrap(res);
   },
 
-  verifyDocument: async (docId: string, result: 'APPROVED' | 'REJECTED', remarks?: string, rejectionReason?: string) => {
-    const res = await api.patch(`/api/v1/documentation/documents/${docId}/verify`, { result, remarks, rejectionReason });
+  verifyDocument: async (docId: string, result: 'APPROVED' | 'REJECTED', remarks?: string, rejectionReason?: string, documentDate?: string) => {
+    const res = await api.patch(`/api/v1/documentation/documents/${docId}/verify`, { result, remarks, rejectionReason, documentDate });
     return unwrap(res);
   },
 

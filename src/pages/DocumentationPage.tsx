@@ -54,7 +54,7 @@ import { LeadWaChannelsModal } from '../components/leads/LeadWaChannelsModal';
 
 const DOC_STATUS_META: Record<DocDocumentStatus, { label: string; color: string; bg: string; dot: string }> = {
   REQUESTED:          { label: 'Requested',          color: '#6366f1', bg: 'rgba(99,102,241,0.1)',  dot: '#6366f1' },
-  PENDING_COLLECTION: { label: 'Pending Collection', color: '#d97706', bg: 'rgba(245,158,11,0.1)', dot: '#d97706' },
+  PENDING_COLLECTION: { label: 'Collection Pending', color: '#d97706', bg: 'rgba(245,158,11,0.1)', dot: '#d97706' },
   RECEIVED:           { label: 'Received',           color: '#2563eb', bg: 'rgba(37,99,235,0.1)',  dot: '#2563eb' },
   UNDER_VERIFICATION: { label: 'Under Verification', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)', dot: '#7c3aed' },
   APPROVED:           { label: 'Approved',           color: '#059669', bg: 'rgba(5,150,105,0.1)',  dot: '#059669' },
@@ -90,20 +90,6 @@ const STORAGE_LABELS: Record<DocStorageType, string> = {
   EXTERNAL_PORTAL:  'External Portal',
   STORED_OFFLINE:   'Stored Offline',
   OTHER:            'Other',
-};
-
-const VALID_NEXT: Record<DocDocumentStatus, DocDocumentStatus[]> = {
-  REQUESTED:           ['PENDING_COLLECTION', 'NOT_APPLICABLE', 'WAIVED'],
-  PENDING_COLLECTION:  ['RECEIVED', 'NOT_APPLICABLE', 'WAIVED', 'EXPIRED'],
-  RECEIVED:            ['UNDER_VERIFICATION', 'PENDING_COLLECTION'],
-  UNDER_VERIFICATION:  ['APPROVED', 'REJECTED'],
-  APPROVED:            ['EXPIRED'],
-  REJECTED:            ['RE_REQUESTED', 'WAIVED', 'MANAGER_APPROVED'],
-  RE_REQUESTED:        ['PENDING_COLLECTION', 'RECEIVED'],
-  EXPIRED:             ['RE_REQUESTED'],
-  NOT_APPLICABLE:      [],
-  WAIVED:              [],
-  MANAGER_APPROVED:    [],
 };
 
 // Grid column templates — matches Leads page density
@@ -310,20 +296,37 @@ function DocumentFileRow({ file, canManageFile, onView, onDelete }: {
 
 // ─── Document row inside case panel ──────────────────────────────────────────
 function DocumentRow({
-  doc, files, canUpload, canManageFile, onStatusChange, onAddStorageRef, onUpload, onViewFile, onDeleteFile,
+  doc, files, canUpload, canManageFile, canVerify, onStatusChange, onAddStorageRef, onUpload, onViewFile, onDeleteFile,
 }: {
   doc: DocCaseDocument;
   files: CaseDocument[];
   canUpload: boolean;
   canManageFile: boolean;
-  onStatusChange: (docId: string, status: DocDocumentStatus, remarks?: string, rejectionReason?: string) => void;
+  canVerify: boolean;
+  onStatusChange: (docId: string, status: DocDocumentStatus, remarks?: string, rejectionReason?: string, documentDate?: string) => void;
   onAddStorageRef: (docId: string) => void;
   onUpload: (doc: DocCaseDocument) => void;
   onViewFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const nextStatuses = VALID_NEXT[doc.status];
+  const [note, setNote] = useState('');
+  const [docDate, setDocDate] = useState('');
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
+  const canReview = canVerify && doc.status === 'UNDER_VERIFICATION';
+  const approveReady = (!doc.requireNote || note.trim() !== '') && (!doc.requireDate || docDate !== '');
+  // Clear reviewer inputs whenever the requirement is not under verification, so a
+  // document that later re-enters UNDER_VERIFICATION never pre-fills a prior review's
+  // note/date (which could otherwise be submitted against the new review).
+  useEffect(() => {
+    if (doc.status !== 'UNDER_VERIFICATION') {
+      setNote('');
+      setDocDate('');
+      setRejectNote('');
+      setRejectOpen(false);
+    }
+  }, [doc.status]);
   // Which components require this requirement. A component can contribute more
   // than one source row, so the COMMON badge counts distinct components while
   // the label lists distinct names. Optional-guarded: older payloads omit it.
@@ -428,25 +431,28 @@ function DocumentRow({
           )}
 
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {nextStatuses.map(next => {
-              const m = DOC_STATUS_META[next];
-              return (
-                <button key={next} className="btn"
-                  style={{ fontSize: 11, padding: '4px 10px', background: m.bg, color: m.color, border: 'none', borderRadius: 'var(--radius-full)', fontWeight: 600, cursor: 'pointer' }}
-                  onClick={() => {
-                    const remarks = next === 'REJECTED'
-                      ? window.prompt('Rejection reason (optional):') ?? undefined
-                      : next === 'WAIVED'
-                      ? window.prompt('Waiver reason:') ?? undefined
-                      : undefined;
-                    const rejReason = next === 'REJECTED' ? remarks : undefined;
-                    onStatusChange(doc.id, next, next === 'WAIVED' ? remarks : undefined, rejReason);
-                  }}
-                >
-                  → {m.label}
+            {canReview && (
+              <>
+                {doc.requireDate && (
+                  <input type="date" aria-label="Document date" value={docDate} onChange={e => setDocDate(e.target.value)}
+                    style={{ fontSize: 12, padding: '3px 8px', border: '1px solid var(--border-medium)', borderRadius: 6 }} />
+                )}
+                {doc.requireNote && (
+                  <input type="text" aria-label="Approval note" placeholder="Note (required)" value={note} onChange={e => setNote(e.target.value)}
+                    style={{ fontSize: 12, padding: '3px 8px', border: '1px solid var(--border-medium)', borderRadius: 6, minWidth: 160 }} />
+                )}
+                <button className="btn btn-primary" disabled={!approveReady}
+                  style={{ fontSize: 11, padding: '4px 10px' }}
+                  onClick={() => onStatusChange(doc.id, 'APPROVED', note.trim() || undefined, undefined, docDate || undefined)}>
+                  Approve
                 </button>
-              );
-            })}
+                <button className="btn btn-ghost"
+                  style={{ fontSize: 11, padding: '4px 10px', color: '#dc2626' }}
+                  onClick={() => { setRejectNote(''); setRejectOpen(true); }}>
+                  Reject
+                </button>
+              </>
+            )}
             <button className="btn"
               style={{ fontSize: 11, padding: '4px 10px', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-full)', cursor: 'pointer', background: 'none', color: 'var(--text-secondary)' }}
               onClick={() => onAddStorageRef(doc.id)}
@@ -455,12 +461,25 @@ function DocumentRow({
             </button>
           </div>
 
+          <Modal isOpen={rejectOpen} onClose={() => setRejectOpen(false)} title={`Reject "${doc.name}"`} size="sm">
+            <textarea aria-label="Rejection note" rows={4} placeholder="Rejection note (required)" value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              style={{ width: '100%', fontSize: 13, padding: 8, border: '1px solid var(--border-medium)', borderRadius: 6, boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button className="btn btn-ghost" onClick={() => setRejectOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" disabled={rejectNote.trim() === ''}
+                onClick={() => { const n = rejectNote.trim(); setRejectOpen(false); onStatusChange(doc.id, 'REJECTED', n, n); }}>
+                Reject
+              </button>
+            </div>
+          </Modal>
+
           {/* Firm/client uploaded files (unified Document store) */}
           {(files.length > 0 || canUpload) && (
             <div style={{ marginTop: 12, borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uploaded files</span>
-                {canUpload && (
+                {canUpload && doc.status === 'PENDING_COLLECTION' && (
                   <button className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
                     onClick={() => onUpload(doc)}>
                     <Upload size={12} /> Upload
@@ -968,10 +987,11 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ docId, status, remarks, rejectionReason }: {
-      docId: string; status: DocDocumentStatus; remarks?: string; rejectionReason?: string;
-    }) => documentationService.updateDocumentStatus(docId, { status, remarks, rejectionReason }),
+    mutationFn: ({ docId, status, remarks, rejectionReason, documentDate }: {
+      docId: string; status: DocDocumentStatus; remarks?: string; rejectionReason?: string; documentDate?: string;
+    }) => documentationService.verifyDocument(docId, status as 'APPROVED' | 'REJECTED', remarks, rejectionReason, documentDate),
     onSuccess: invalidate,
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Could not update document.'),
   });
 
   const transferMutation = useMutation({
@@ -1466,8 +1486,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     files={filesByRequirement.get(doc.id) ?? []}
                     canUpload={canUploadDoc}
                     canManageFile={canManageFile}
-                    onStatusChange={(docId, status, remarks, rejectionReason) =>
-                      statusMutation.mutate({ docId, status, remarks, rejectionReason })
+                    canVerify={canVerifyDoc}
+                    onStatusChange={(docId, status, remarks, rejectionReason, documentDate) =>
+                      statusMutation.mutate({ docId, status, remarks, rejectionReason, documentDate })
                     }
                     onAddStorageRef={(docId) => setStorageDocId(docId)}
                     onUpload={(d) => setFileUploadTarget({ category: 'REQUIREMENT', requirementId: d.id, requirementName: d.name })}
