@@ -1244,8 +1244,16 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   <div><span style={{ fontWeight: 600 }}>Priority</span> {priorityLabel}</div>
                   {docCase.dueDate && <div><span style={{ fontWeight: 600 }}>Due</span> {new Date(docCase.dueDate).toLocaleDateString()}</div>}
                   <div><span style={{ fontWeight: 600 }}>Created</span> {new Date(docCase.createdAt).toLocaleDateString()}</div>
+                  {canConfigurePolicies && <div><span style={{ fontWeight: 600 }}>Policies</span> {policyAssignments.length || '—'}</div>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {canConfigurePolicies && (
+                  <button type="button" className={`btn ${policyAssignments.length > 0 ? 'btn-secondary' : 'btn-primary'}`} style={{ fontSize: 12 }}
+                    title={policyAssignments.length > 0 ? 'Configure components and dates' : 'Assign policies to populate the documents list'}
+                    onClick={() => setShowPolicyDialog(true)}>
+                    {policyAssignments.length > 0 ? 'Edit policies' : 'Configure policies'}
+                  </button>
+                )}
                 {canTransfer && (
                   <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
                     onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
@@ -1296,18 +1304,10 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               </div>
 
-              {canConfigurePolicies && (
-                <div className="surface" style={{ padding: 12, borderRadius: 'var(--radius-md)', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12 }}
-                    onClick={() => setShowPolicyDialog(true)}>
-                    {policyAssignments.length > 0 ? 'Edit policies' : 'Configure policies'}
-                  </button>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {policyAssignments.length > 0
-                      ? `${policyAssignments.length} ${policyAssignments.length === 1 ? 'policy' : 'policies'} assigned — configure components and dates`
-                      : 'Assign policies to populate the documents list'}
-                  </span>
-                </div>
+              {canConfigurePolicies && policyAssignments.length === 0 && (
+                <p style={{ margin: '0 0 var(--space-3)', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Assign policies to populate the documents list
+                </p>
               )}
               {docCase && (
                 <PolicyAssignmentDialog
