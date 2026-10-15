@@ -62,16 +62,31 @@ const PRIORITY_FILTER_OPTIONS: { value: LeadPriority; label: string }[] = [
 // MAIN PAGE
 // ============================================================================
 
+// Owns the raw search text + 400ms debounce locally so each keystroke re-renders
+// only this input, not the whole LeadsPage (and its full row list). Only the
+// debounced value is lifted to the page.
+function LeadSearchInput({ onDebouncedChange }: { onDebouncedChange: (v: string) => void }) {
+  const [value, setValue] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => onDebouncedChange(value), 400);
+    return () => clearTimeout(t);
+  }, [value, onDebouncedChange]);
+  return (
+    <input
+      className="input"
+      placeholder="Search leads…"
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      style={{ paddingLeft: 30, width: '100%', height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }}
+    />
+  );
+}
+
 export function LeadsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [caseIdInput, setCaseIdInput] = useState('');
-  const [searchQuery, setSearchQuery]   = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), 400);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [modal, setModal]               = useState<{ mode: 'create' | 'edit'; lead?: Lead } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -414,7 +429,7 @@ export function LeadsPage() {
             )}
             <div style={{ position: 'relative', width: 190 }}>
               <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-              <input className="input" placeholder="Search leads…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: 30, width: '100%', height: 28, fontSize: 13, backgroundColor: 'transparent', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }} />
+              <LeadSearchInput onDebouncedChange={setDebouncedSearch} />
             </div>
           </div>
           {selectedStage === 'QUALIFIED' && isCaseIdValid && (
@@ -618,8 +633,8 @@ export function LeadsPage() {
                     The stage-tab path is deliberately untouched to preserve the
                     intentional S-01 default-view behaviour. */}
                 <p style={{ fontSize: 13 }}>{
-                  searchQuery
-                    ? `No results for "${searchQuery}"`
+                  debouncedSearch
+                    ? `No results for "${debouncedSearch}"`
                     : (assignmentFilter !== 'all' || assigneeFilter || activeFilterCount > 0)
                     ? 'No leads match the current filters.'
                     : 'Create your first lead to get started'

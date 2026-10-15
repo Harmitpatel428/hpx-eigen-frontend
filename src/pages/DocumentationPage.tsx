@@ -1984,6 +1984,9 @@ export function DocumentationPage() {
       const res = await api.get('/api/v1/leads?pageSize=200');
       return res.data;
     },
+    // Only the create-case modal consumes this; don't fetch 200 leads on every page
+    // visit, and keep it out of the blast radius of invalidateQueries(['leads']).
+    enabled:   showCreate,
     staleTime: 60_000,
   });
   const leads = useMemo(
