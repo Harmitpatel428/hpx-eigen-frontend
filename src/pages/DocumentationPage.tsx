@@ -479,10 +479,10 @@ function DocumentRow({
             <div style={{ marginTop: 12, borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uploaded files</span>
-                {canUpload && doc.status === 'PENDING_COLLECTION' && (
+                {canUpload && (doc.status === 'PENDING_COLLECTION' || doc.status === 'REJECTED') && (
                   <button className="btn btn-ghost" style={{ height: 24, paddingInline: 8, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
                     onClick={() => onUpload(doc)}>
-                    <Upload size={12} /> Upload
+                    <Upload size={12} /> {doc.status === 'REJECTED' ? 'Re-upload' : 'Upload'}
                   </button>
                 )}
               </div>
@@ -933,7 +933,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   // sections, and the Edit modal. Keyed by the same ['lead', id] / ['lead-contacts', id]
   // as the Leads page so a contact or lead edit refreshes both consumers.
   const leadId = docCase?.lead.id;
-  const { data: fullLead } = useQuery({
+  const { data: fullLead, isError: leadIsError } = useQuery({
     queryKey: ['lead', leadId],
     queryFn:  () => leadService.findById(leadId!),
     enabled:  !!leadId,
@@ -1051,6 +1051,10 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
       setDeleteLead(false);
       qc.invalidateQueries({ queryKey: ['leads'] });
       qc.invalidateQueries({ queryKey: ['doc-cases'] });
+      // The case row can outlive its soft-deleted lead; evict the caches so reopening the
+      // case can't show the stale lead (and a Delete button that would 404).
+      qc.removeQueries({ queryKey: ['lead', leadId] });
+      qc.removeQueries({ queryKey: ['doc-case', caseId] });
       onClose();
     },
     onError: () => toast.error('Failed to delete lead'),
@@ -1397,7 +1401,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 />
               </div>
             ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Loading contact…</div>
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                {leadIsError ? 'This lead has been deleted.' : 'Loading contact…'}
+              </div>
             )
           )}
         </div>
