@@ -26,6 +26,11 @@ export function Modal({
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
+  // latest callbacks without re-running the open effect (inline onClose changes every render)
+  const onCloseRef = useRef(onClose);
+  const closeOnEscRef = useRef(closeOnEsc);
+  onCloseRef.current = onClose;
+  closeOnEscRef.current = closeOnEsc;
 
   // registered once per open (not per onClose change) so re-renders keep nesting order
   const idRef = useRef(Symbol());
@@ -48,11 +53,11 @@ export function Modal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && openStack[openStack.length - 1] !== idRef.current) return;
-      if (closeOnEsc && e.key === 'Escape') {
+      if (closeOnEscRef.current && e.key === 'Escape') {
         // Stop the ESC from also reaching an outer overlay's handler (e.g. a
         // ContextPanel window-level listener) so ESC closes only this dialog.
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === 'Tab' && dialogRef.current) {
@@ -84,7 +89,7 @@ export function Modal({
       document.removeEventListener('keydown', handleKeyDown);
       if (triggerRef.current instanceof HTMLElement) triggerRef.current.focus();
     };
-  }, [isOpen, closeOnEsc, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -112,6 +117,7 @@ export function Modal({
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <h2 id={titleId} className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
           <button
+            type="button"
             onClick={onClose}
             style={{ color: 'var(--text-tertiary)' }}
             className="hover:opacity-80 transition-colors"
