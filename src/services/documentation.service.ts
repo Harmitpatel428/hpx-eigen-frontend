@@ -20,7 +20,6 @@ export interface DocFileConfirmPayload {
   expiresAt?: string;
   receivedAt?: string;
   verify?: boolean;
-  requirementStatus?: DocDocumentStatus;
 }
 export interface DocFileReplacePayload {
   uploadId: string;
