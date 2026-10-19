@@ -8,6 +8,9 @@ import { Sidebar } from './Sidebar';
 vi.mock('../../context/DepartmentContext', () => ({
   useDepartment: () => ({ activeDepartment: null }),
 }));
+vi.mock('../../auth/context/AuthContext', () => ({
+  useAuth: () => ({ permissions: { can: () => true } }),
+}));
 
 const renderSidebar = () => render(<MemoryRouter><Sidebar /></MemoryRouter>);
 

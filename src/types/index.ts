@@ -409,7 +409,7 @@ export type DocDocumentStatus =
   | 'REQUESTED' | 'PENDING_COLLECTION' | 'RECEIVED' | 'UNDER_VERIFICATION'
   | 'APPROVED' | 'REJECTED' | 'RE_REQUESTED' | 'EXPIRED'
   | 'NOT_APPLICABLE' | 'WAIVED' | 'MANAGER_APPROVED';
-export type DocCaseStatus = 'INCOMING' | 'ACTIVE' | 'RETURNED' | 'DOCUMENTATION_READY' | 'TRANSFERRED_TO_PROCESS' | 'CLOSED' | 'CANCELLED' | 'CLOSED_NO_DOCS';
+export type DocCaseStatus = 'INCOMING' | 'ACTIVE' | 'RETURNED' | 'DOCUMENTATION_READY' | 'TRANSFERRED_TO_PROCESS' | 'CLOSED' | 'CANCELLED' | 'CLOSED_NO_DOCS' | 'PENDING_PROCESS_REVIEW' | 'RETURNED_TO_DOCUMENTATION';
 export type DocNoteType   = 'INTERNAL' | 'CUSTOMER' | 'CLIENT_VISIBLE';
 export type DocStorageType =
   | 'GOOGLE_DRIVE' | 'ONEDRIVE' | 'DROPBOX' | 'SHAREPOINT' | 'NAS_PATH'
@@ -446,6 +446,24 @@ export const HANDOFF_RETURN_REASON_LABELS: Record<HandoffReturnReason, string> =
   WRONG_PRESET: 'Wrong preset',
   INCOMPLETE_INFORMATION: 'Incomplete information',
   DUPLICATE_CASE: 'Duplicate case',
+  COMPLIANCE_ISSUE: 'Compliance issue',
+  OTHER: 'Other',
+};
+
+// Process -> Documentation return reasons (mirrors the server's checkReturnReason)
+export type ProcessReturnReason =
+  | 'MISSING_DOCUMENT'
+  | 'INCORRECT_DOCUMENT'
+  | 'DATA_MISMATCH'
+  | 'NEEDS_CLARIFICATION'
+  | 'COMPLIANCE_ISSUE'
+  | 'OTHER';
+
+export const PROCESS_RETURN_REASON_LABELS: Record<ProcessReturnReason, string> = {
+  MISSING_DOCUMENT: 'Missing document',
+  INCORRECT_DOCUMENT: 'Incorrect document',
+  DATA_MISMATCH: 'Data mismatch',
+  NEEDS_CLARIFICATION: 'Needs clarification',
   COMPLIANCE_ISSUE: 'Compliance issue',
   OTHER: 'Other',
 };
@@ -705,6 +723,13 @@ export interface DocCase {
   returnCount: number;
   returnReasonCode: HandoffReturnReason | null;
   returnReasonNote: string | null;
+  handoverRemarks?: string | null;
+  processReturnReasonCode?: ProcessReturnReason | null;
+  processReturnReasonNote?: string | null;
+  processReturnCount?: number;
+  processHandoffAt?: string | null;
+  processHandoffBy?: string | null;
+  caseType?: { id: string; name: string } | null;
   managerReviewRequired: boolean;
   autoDropAt: string | null;
   portalEnabled: boolean;
@@ -772,6 +797,8 @@ export interface DocDashboardKPIs {
   activeCases: number;
   readyCases: number;
   transferredCases: number;
+  pendingProcessReview: number;
+  returnedToDocumentation: number;
   pendingVerification: number;
   overdueDocCount: number;
   rejectedDocs: number;

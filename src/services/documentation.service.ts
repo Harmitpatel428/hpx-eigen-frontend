@@ -158,8 +158,8 @@ export const documentationService = {
     return unwrap<DocCase>(res);
   },
 
-  transferToProcess: async (caseId: string): Promise<DocCase> => {
-    const res = await api.post(`/api/v1/documentation/cases/${caseId}/transfer`, {});
+  transferToProcess: async (caseId: string, remarks?: string): Promise<DocCase> => {
+    const res = await api.post(`/api/v1/documentation/cases/${caseId}/transfer`, { remarks });
     return unwrap<DocCase>(res);
   },
 

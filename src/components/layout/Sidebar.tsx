@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useDepartment } from '../../context/DepartmentContext';
+import { useAuth } from '../../auth/context/AuthContext';
 import {
   LayoutDashboard,
   GitBranch,
@@ -23,10 +24,10 @@ const baseNavigation = [
   { name: 'Payments',   href: '/payments',    icon: CreditCard      },
 ];
 
-const departmentItems = [
+const allDepartmentItems: { name: string; href: string; permission?: string }[] = [
   { name: 'Sales',          href: '/leads'         },
   { name: 'Documentation',  href: '/documentation' },
-  { name: 'Process',        href: '/process'       },
+  { name: 'Process',        href: '/process',       permission: 'process:view' },
 ];
 
 const bottomNavigation = [
@@ -37,7 +38,9 @@ const bottomNavigation = [
 
 export const Sidebar: React.FC = () => {
   const { activeDepartment } = useDepartment();
+  const { permissions } = useAuth();
   const location = useLocation();
+  const departmentItems = allDepartmentItems.filter(d => !d.permission || permissions.can(d.permission));
   // Reports & Configuration were relocated to the Settings page; the sidebar no
   // longer links them (routes keep their own ProtectedRoute permission guards).
   const bottomItems = bottomNavigation;
