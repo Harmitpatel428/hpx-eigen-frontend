@@ -154,7 +154,7 @@ export const ProcessQueuePage: React.FC = () => {
                 <td style={td}>{c.caseType?.name ?? c.preset?.name ?? '—'}</td>
                 <td style={td}>
                   {c.processHandoffAt ? new Date(c.processHandoffAt).toLocaleDateString() : '—'}
-                  {c.processHandoffBy && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{c.processHandoffBy}</div>}
+                  {(c.processHandoffByName ?? c.processHandoffBy) && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{c.processHandoffByName ?? c.processHandoffBy}</div>}
                 </td>
                 <td style={td}>{c.handoverRemarks || ''}</td>
                 <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>

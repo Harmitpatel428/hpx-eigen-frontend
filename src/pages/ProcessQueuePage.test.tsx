@@ -30,6 +30,7 @@ const aCase = {
   preset: { id: 'p1', name: 'GST Registration' },
   processHandoffAt: '2026-10-01T10:00:00.000Z',
   processHandoffBy: 'doc-user',
+  processHandoffByName: 'Jane Advisor',
   handoverRemarks: 'All originals verified',
 };
 
@@ -54,6 +55,8 @@ describe('ProcessQueuePage', () => {
     expect(await screen.findByText('HPX-0001-0001')).toBeTruthy();
     expect(screen.getByText('GST Registration')).toBeTruthy();
     expect(screen.getByText('All originals verified')).toBeTruthy();
+    // 6a: transferred-by renders the resolved name, not the raw id.
+    expect(screen.getByText('Jane Advisor')).toBeTruthy();
     for (const [label, n] of [['Incoming', '4'], ['Processing', '7'], ['Returned', '2']]) {
       const tile = screen.getByText(label).parentElement!;
       await waitFor(() => expect(tile.textContent).toContain(n));

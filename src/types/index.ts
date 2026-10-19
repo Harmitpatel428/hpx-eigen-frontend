@@ -729,6 +729,7 @@ export interface DocCase {
   processReturnCount?: number;
   processHandoffAt?: string | null;
   processHandoffBy?: string | null;
+  processHandoffByName?: string | null;
   caseType?: { id: string; name: string } | null;
   managerReviewRequired: boolean;
   autoDropAt: string | null;
