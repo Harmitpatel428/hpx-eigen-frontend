@@ -75,10 +75,49 @@ describe('ProcessQueuePage', () => {
       expect(screen.queryByRole('button', { name: 'Return' })).toBeNull();
     });
 
+    it('maps Accept to process:accept only (Return hidden)', async () => {
+      granted = ['process:view', 'process:accept'];
+      renderPage();
+      expect(await screen.findByRole('button', { name: 'Accept' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Return' })).toBeNull();
+    });
+
+    it('maps Return to process:return only (Accept hidden)', async () => {
+      granted = ['process:view', 'process:return'];
+      renderPage();
+      expect(await screen.findByRole('button', { name: 'Return' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+    });
+
     it('Accept calls the service with the case id', async () => {
       renderPage();
       fireEvent.click(await screen.findByRole('button', { name: 'Accept' }));
       await waitFor(() => expect(processService.accept).toHaveBeenCalledWith('c1'));
+    });
+  });
+
+  describe('failure handling', () => {
+    it('shows an error state, not the empty-queue message, when the list fails to load', async () => {
+      vi.mocked(processService.listIncoming).mockRejectedValue({ response: { status: 403, data: { message: 'Forbidden' } } });
+      renderPage();
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toContain('Forbidden');
+      expect(screen.queryByText('No cases waiting for Process review.')).toBeNull();
+    });
+
+    it('refreshes the queue when Accept fails (e.g. 409, another user acted first)', async () => {
+      vi.mocked(processService.accept).mockRejectedValueOnce({ response: { status: 409, data: { message: 'Already accepted' } } });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Accept' }));
+      await waitFor(() => expect(processService.listIncoming).toHaveBeenCalledTimes(2));
+    });
+
+    it('refreshes the queue when Return fails', async () => {
+      vi.mocked(processService.returnToDocumentation).mockRejectedValueOnce({ response: { status: 409, data: { message: 'Already returned' } } });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Return' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Return to Documentation' }));
+      await waitFor(() => expect(processService.listIncoming).toHaveBeenCalledTimes(2));
     });
   });
 

@@ -81,7 +81,7 @@ export const ProcessQueuePage: React.FC = () => {
     queryFn: () => documentationService.getDashboardKPIs(),
     staleTime: 60_000,
   });
-  const { data: cases = [], isLoading } = useQuery({
+  const { data: cases = [], isLoading, isError, error } = useQuery({
     queryKey: ['process-incoming'],
     queryFn: () => processService.listIncoming(),
   });
@@ -91,17 +91,21 @@ export const ProcessQueuePage: React.FC = () => {
     qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
   };
 
+  // On failure also refresh the queue: a 409 means another Process user acted first,
+  // so the row on screen is stale.
+  const refreshQueue = () => qc.invalidateQueries({ queryKey: ['process-incoming'] });
+
   const acceptMut = useMutation({
     mutationFn: (id: string) => processService.accept(id),
     onSuccess: () => { toast.success('Case accepted'); invalidate(); },
-    onError: (err) => toast.error(extractApiError(err).message),
+    onError: (err) => { toast.error(extractApiError(err).message); refreshQueue(); },
   });
 
   const returnMut = useMutation({
     mutationFn: (v: { id: string; reasonCode: ProcessReturnReason; note: string }) =>
       processService.returnToDocumentation(v.id, v.reasonCode, v.note),
     onSuccess: () => { toast.success('Case returned to Documentation'); setReturning(null); invalidate(); },
-    onError: (err) => toast.error(extractApiError(err).message),
+    onError: (err) => { toast.error(extractApiError(err).message); refreshQueue(); },
   });
 
   const canAccept = permissions.can('process:accept');
@@ -121,6 +125,10 @@ export const ProcessQueuePage: React.FC = () => {
 
       {isLoading ? (
         <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Loading…</p>
+      ) : isError ? (
+        <p role="alert" style={{ fontSize: 13, color: '#dc2626' }}>
+          Could not load the Process queue: {extractApiError(error).message}
+        </p>
       ) : cases.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No cases waiting for Process review.</p>
       ) : (
