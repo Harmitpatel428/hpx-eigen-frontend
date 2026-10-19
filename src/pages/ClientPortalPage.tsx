@@ -329,6 +329,8 @@ const CASE_STATUS_LABELS: Partial<Record<DocCaseStatus, string>> = {
   ACTIVE: 'Application in progress',
   DOCUMENTATION_READY: 'Documentation complete — awaiting processing',
   TRANSFERRED_TO_PROCESS: 'Under processing',
+  PENDING_PROCESS_REVIEW: 'Processing',
+  RETURNED_TO_DOCUMENTATION: 'Under review',
   CLOSED: 'Case closed',
   CANCELLED: 'Case cancelled',
 };

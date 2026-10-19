@@ -30,7 +30,7 @@ import type {
   DocStorageType, DocPreset, HandoffReturnReason,
   CaseDocument, DocFileStatus, DocSourceChannel,
 } from '../types';
-import { HANDOFF_RETURN_REASON_LABELS } from '../types';
+import { HANDOFF_RETURN_REASON_LABELS, PROCESS_RETURN_REASON_LABELS } from '../types';
 import { FileDropzone } from '../components/documents/FileDropzone';
 import { mandateService, uploadToPresigned } from '../services/mandate.service';
 import { leadService } from '../services/lead.service';
@@ -72,6 +72,8 @@ const CASE_STATUS_META: Record<string, { label: string; color: string; bg: strin
   RETURNED:                { label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
   DOCUMENTATION_READY:     { label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'  },
   TRANSFERRED_TO_PROCESS:  { label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  PENDING_PROCESS_REVIEW:     { label: 'Pending Process',     color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  RETURNED_TO_DOCUMENTATION:  { label: 'Returned by Process', color: '#d97706', bg: 'rgba(217,119,6,0.1)'  },
   CLOSED:                  { label: 'Closed',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
   CANCELLED:               { label: 'Cancelled',      color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
   CLOSED_NO_DOCS:          { label: 'Closed No Docs', color: '#6b7280', bg: 'rgba(107,114,128,0.1)'},
@@ -879,6 +881,65 @@ function CloseWithoutDocsDialog({
   );
 }
 
+// ─── Transfer to Process dialog ──────────────────────────────────────────────
+const TRANSFER_REMARKS_MAX = 2000;
+
+export function TransferToProcessDialog({
+  docCase, preparedBy, onClose, onConfirm, submitting, error,
+}: {
+  docCase: DocCase;
+  preparedBy?: string | null;
+  onClose: () => void;
+  onConfirm: (remarks?: string) => void;
+  submitting: boolean;
+  error?: string | null;
+}) {
+  const [remarks, setRemarks] = useState('');
+  const person = `${docCase.lead.firstName} ${docCase.lead.lastName}`.trim();
+  const client = [docCase.lead.company, person].filter(Boolean).join(' · ') || '—';
+  const row = (label: string, value: React.ReactNode) => (
+    <div style={{ display: 'flex', gap: 8, fontSize: 13, padding: '3px 0' }}>
+      <span style={{ color: 'var(--text-tertiary)', minWidth: 120, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: 'var(--text-primary)', minWidth: 0, wordBreak: 'break-word' }}>{value}</span>
+    </div>
+  );
+  return (
+    <Modal isOpen onClose={onClose} title="Transfer to Process" size="sm">
+      <div className="surface" style={{ padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }}>
+        {row('Case ID', docCase.caseNumber ?? '—')}
+        {row('Client', client)}
+        {row('Case type / scheme', docCase.caseType?.name ?? docCase.preset?.name ?? '—')}
+        {row('Documentation', `${docCase.completionPercent}% complete${docCase.isReady ? ' · Ready' : ''}`)}
+        {row('Prepared by', preparedBy || '—')}
+      </div>
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <label htmlFor="transfer-remarks" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+          Remarks for Process <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span>
+        </label>
+        <textarea id="transfer-remarks" className="input" rows={4} style={{ width: '100%', resize: 'vertical' }}
+          value={remarks} maxLength={TRANSFER_REMARKS_MAX}
+          onChange={e => setRemarks(e.target.value)}
+          placeholder="Anything Process should know about this case…" />
+        <div aria-live="polite" style={{ textAlign: 'right', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+          {remarks.length}/{TRANSFER_REMARKS_MAX}
+        </div>
+      </div>
+      {error && (
+        <div role="alert" style={{ marginBottom: 'var(--space-4)', padding: '8px 12px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', fontSize: 12, color: '#dc2626' }}>
+          {error}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" style={{ fontSize: 13, fontWeight: 600, opacity: submitting ? 0.5 : 1 }}
+          disabled={submitting} onClick={() => onConfirm(remarks.trim() || undefined)}>
+          {submitting ? 'Transferring…' : 'Confirm Transfer'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Reopen dialog ────────────────────────────────────────────────────────────
 function ReopenCaseDialog({
   onClose, onConfirm, submitting,
@@ -902,7 +963,7 @@ function ReopenCaseDialog({
 // ─── Case detail panel (ContextPanel) ────────────────────────────────────────
 function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: string; onClose: () => void; autoOpenMandateSend?: boolean }) {
   const qc = useQueryClient();
-  const { permissions } = useAuth();
+  const { permissions, user } = useAuth();
   const [tab, setTab]   = useState<'overview' | 'fields' | 'stages' | 'contacts' | 'documents' | 'timeline' | 'notes'>('overview');
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [noteInput, setNoteInput] = useState('');
@@ -910,6 +971,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
   const [showReturn, setShowReturn] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   // Contacts-tab lead actions — reuse the Leads-page modals; the host owns them.
   const [editLead, setEditLead] = useState(false);
@@ -953,7 +1015,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   });
 
   const engineFlag = useCaseEngineSettings().data?.caseOperationsEngineEnabled ?? false;
-  const POLICY_TERMINAL_STATUSES = ['CLOSED', 'CANCELLED', 'CLOSED_NO_DOCS', 'TRANSFERRED_TO_PROCESS'];
+  const POLICY_TERMINAL_STATUSES = ['CLOSED', 'CANCELLED', 'CLOSED_NO_DOCS', 'TRANSFERRED_TO_PROCESS', 'PENDING_PROCESS_REVIEW'];
   const canConfigurePolicies = engineFlag && !!docCase && permissions.can('doc:edit') && !POLICY_TERMINAL_STATUSES.includes(docCase.status);
   const { data: caseTypes = [] } = useCaseTypes(false);
   const policyAssignments = docCase?.policyAssignments ?? [];
@@ -995,9 +1057,22 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   });
 
   const transferMutation = useMutation({
-    mutationFn: () => documentationService.transferToProcess(caseId),
-    onSuccess: invalidate,
+    mutationFn: (remarks?: string) => documentationService.transferToProcess(caseId, remarks),
+    onSuccess: () => {
+      toast.success('Case transferred to Process');
+      setShowTransfer(false);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
+    },
+    // 409/422 = the case moved or is no longer ready: keep the dialog open to show why, and refresh.
+    onError: (err: any) => {
+      const code = err?.response?.status;
+      if (code === 409 || code === 422) qc.invalidateQueries({ queryKey: ['doc-case', caseId] });
+    },
   });
+  const transferError = transferMutation.error
+    ? ((transferMutation.error as any)?.response?.data?.message || transferMutation.error.message || 'Could not transfer the case.')
+    : null;
 
   const noteMutation = useMutation({
     mutationFn: () => documentationService.addNote(caseId, noteType, noteInput),
@@ -1076,7 +1151,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   // Client-derived "awaiting customer" count — single source of truth shared with
   // the Copy Pending Documents reminder so the badge and message can never disagree.
   const pendingCount = buildPendingNames(docCase.documents).length;
-  const canTransfer = docCase.isReady && docCase.status !== 'TRANSFERRED_TO_PROCESS';
+  const canTransfer = docCase.isReady && !['TRANSFERRED_TO_PROCESS', 'PENDING_PROCESS_REVIEW'].includes(docCase.status);
 
   // Group uploaded files (unified Document store) by requirement; R8: general docs AND
   // orphans (a REQUIREMENT file whose requirement was later deleted → stale requirementId
@@ -1260,11 +1335,10 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 )}
                 {canTransfer && (
                   <button className="btn btn-primary" style={{ fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
-                    onClick={() => { if (window.confirm('Transfer this case to Process Department?')) transferMutation.mutate(); }}
-                    disabled={transferMutation.isPending}
+                    onClick={() => { transferMutation.reset(); setShowTransfer(true); }}
                   >
                     <ArrowRight size={14} />
-                    {transferMutation.isPending ? 'Transferring…' : 'Transfer to Process'}
+                    Transfer to Process
                   </button>
                 )}
                 {!docCase.isReady && docCase.status === 'ACTIVE' && (
@@ -1279,7 +1353,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     Manager Override
                   </button>
                 )}
-                {['ACTIVE', 'DOCUMENTATION_READY'].includes(docCase.status)
+                {['ACTIVE', 'DOCUMENTATION_READY', 'RETURNED_TO_DOCUMENTATION'].includes(docCase.status)
                   && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
                   && docCase.handoffState === 'ACCEPTED' && (
                   <button className="btn" style={{
@@ -1328,6 +1402,38 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(220,38,38,0.06)', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
                   {missingMandatory.length > 0 && <div><strong>{missingMandatory.length}</strong> mandatory document(s) missing</div>}
                   {rejected.length > 0 && <div><strong>{rejected.length}</strong> document(s) rejected</div>}
+                </div>
+              )}
+
+              {/* Returned by Process — actionable fix loop (reason + note), plus read-only handover remarks */}
+              {docCase.status === 'RETURNED_TO_DOCUMENTATION' && (
+                <div role="status" style={{
+                  marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                  background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', color: '#92400e',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600 }}>
+                      Returned by Process
+                      {docCase.processReturnReasonCode && ` — ${PROCESS_RETURN_REASON_LABELS[docCase.processReturnReasonCode] ?? docCase.processReturnReasonCode}`}
+                    </span>
+                    {(docCase.processReturnCount ?? 0) > 0 && (
+                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
+                        returned {docCase.processReturnCount}×
+                      </span>
+                    )}
+                  </div>
+                  {docCase.processReturnReasonNote && (
+                    <div style={{ marginTop: 4, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {docCase.processReturnReasonNote}
+                    </div>
+                  )}
+                </div>
+              )}
+              {docCase.handoverRemarks && (
+                <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 12, background: 'var(--bg-subtle)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2 }}>Handover remarks</div>
+                  <div style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{docCase.handoverRemarks}</div>
                 </div>
               )}
 
@@ -1706,6 +1812,16 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           submitting={closeMutation.isPending}
         />
       )}
+      {showTransfer && (
+        <TransferToProcessDialog
+          docCase={docCase}
+          preparedBy={(user as { name?: string } | null)?.name ?? user?.email}
+          onClose={() => { setShowTransfer(false); transferMutation.reset(); }}
+          onConfirm={(remarks) => transferMutation.mutate(remarks)}
+          submitting={transferMutation.isPending}
+          error={transferError}
+        />
+      )}
       {showReopenDialog && (
         <ReopenCaseDialog
           onClose={() => setShowReopenDialog(false)}
@@ -1916,6 +2032,8 @@ const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
   { key: 'INCOMING',               label: 'Incoming',    color: '#d97706', bg: 'rgba(245,158,11,0.1)'  },
   { key: 'DOCUMENTATION_READY',    label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'   },
   { key: 'TRANSFERRED_TO_PROCESS', label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)'  },
+  { key: 'PENDING_PROCESS_REVIEW', label: 'Pending Process', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  { key: 'RETURNED_TO_DOCUMENTATION', label: 'Returned by Process', color: '#d97706', bg: 'rgba(217,119,6,0.1)' },
   { key: 'RETURNED',               label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
   { key: 'CLOSED',                 label: 'Closed',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
   { key: 'CLOSED_NO_DOCS',        label: 'Closed No Docs', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
@@ -2031,6 +2149,8 @@ export function DocumentationPage() {
     'INCOMING':               incomingCases.length,
     'DOCUMENTATION_READY':    kpis?.readyCases       ?? 0,
     'TRANSFERRED_TO_PROCESS': kpis?.transferredCases ?? 0,
+    'PENDING_PROCESS_REVIEW': kpis?.pendingProcessReview ?? 0,
+    'RETURNED_TO_DOCUMENTATION': kpis?.returnedToDocumentation ?? 0,
     'RETURNED':               0,
     'CLOSED':                 0,
   }), [kpis, incomingCases.length]);
