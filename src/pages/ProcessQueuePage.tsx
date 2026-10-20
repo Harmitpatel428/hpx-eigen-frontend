@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/context/AuthContext';
 import { Modal } from '../components/Modal';
-import { documentationService } from '../services/documentation.service';
 import { processService } from '../services/process.service';
 import { extractApiError } from '../utils/extractApiError';
 import { PROCESS_RETURN_REASON_LABELS } from '../types';
@@ -76,19 +75,15 @@ export const ProcessQueuePage: React.FC = () => {
   const qc = useQueryClient();
   const [returning, setReturning] = useState<DocCase | null>(null);
 
-  const { data: kpis } = useQuery({
-    queryKey: ['doc-dashboard'],
-    queryFn: () => documentationService.getDashboardKPIs(),
-    staleTime: 60_000,
-  });
-  const { data: cases = [], isLoading, isError, error } = useQuery({
+  const { data: queue, isLoading, isError, error } = useQuery({
     queryKey: ['process-incoming'],
     queryFn: () => processService.listIncoming(),
   });
+  const cases = queue?.cases ?? [];
+  const counts = queue?.counts;
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['process-incoming'] });
-    qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
   };
 
   // On failure also refresh the queue: a 409 means another Process user acted first,
@@ -118,9 +113,9 @@ export const ProcessQueuePage: React.FC = () => {
       </h1>
 
       <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-        <Tile label="Incoming" value={kpis?.pendingProcessReview ?? 0} />
-        <Tile label="Processing" value={kpis?.transferredCases ?? 0} />
-        <Tile label="Returned" value={kpis?.returnedToDocumentation ?? 0} />
+        <Tile label="Incoming" value={counts?.incoming ?? 0} />
+        <Tile label="Processing" value={counts?.processing ?? 0} />
+        <Tile label="Returned" value={counts?.returned ?? 0} />
       </div>
 
       {isLoading ? (

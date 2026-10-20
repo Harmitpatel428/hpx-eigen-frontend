@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProcessQueuePage } from './ProcessQueuePage';
 import { processService } from '../services/process.service';
+import { documentationService } from '../services/documentation.service';
 
 let granted: string[] = [];
 vi.mock('../auth/context/AuthContext', () => ({
@@ -44,7 +45,9 @@ const renderPage = () =>
 beforeEach(() => {
   // Modal focuses its first control inside rAF; run it synchronously for determinism.
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 0; });
-  vi.mocked(processService.listIncoming).mockResolvedValue([aCase] as never);
+  vi.mocked(processService.listIncoming).mockResolvedValue(
+    { cases: [aCase], counts: { incoming: 4, processing: 7, returned: 2 } } as never,
+  );
   granted = ['process:view', 'process:accept', 'process:return'];
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
@@ -61,6 +64,8 @@ describe('ProcessQueuePage', () => {
       const tile = screen.getByText(label).parentElement!;
       await waitFor(() => expect(tile.textContent).toContain(n));
     }
+    // Counts come from the process:view response — the Process queue makes NO doc:view dashboard call.
+    expect(documentationService.getDashboardKPIs).not.toHaveBeenCalled();
   });
 
   describe('row actions follow permissions', () => {
