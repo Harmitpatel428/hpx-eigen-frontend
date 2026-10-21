@@ -650,7 +650,7 @@ export function LeadsPage() {
                   ? (Date.now() - new Date(lead.lastMeaningfulActivityAt).getTime()) < 86_400_000
                   : false;
                 return (
-                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 12px', minHeight: 51, borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
 
                     {/* Checkbox */}
                     <div style={{ display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
