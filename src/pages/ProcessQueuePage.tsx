@@ -60,7 +60,7 @@ export function ReturnToDocumentationDialog({
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-const Tile: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+const Tile: React.FC<{ label: string; value: number | string }> = ({ label, value }) => (
   <div className="surface-elevated" style={{ padding: 'var(--space-4)', minWidth: 140, borderRadius: 'var(--radius-xl)' }}>
     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600 }}>{label}</div>
     <div style={{ fontSize: 26, fontWeight: 800 }}>{value}</div>
@@ -113,9 +113,10 @@ export const ProcessQueuePage: React.FC = () => {
       </h1>
 
       <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-        <Tile label="Incoming" value={counts?.incoming ?? 0} />
-        <Tile label="Processing" value={counts?.processing ?? 0} />
-        <Tile label="Returned" value={counts?.returned ?? 0} />
+        {/* On the error path the counts are unknown, not zero — show '—' so stale/0 tiles don't mislead. */}
+        <Tile label="Incoming" value={isError ? '—' : counts?.incoming ?? 0} />
+        <Tile label="Processing" value={isError ? '—' : counts?.processing ?? 0} />
+        <Tile label="Returned" value={isError ? '—' : counts?.returned ?? 0} />
       </div>
 
       {isLoading ? (

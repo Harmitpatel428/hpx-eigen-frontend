@@ -38,6 +38,7 @@ import { leadContactsService, type LeadContact } from '../services/lead-contacts
 import { waChannelsService, type WaChannel } from '../services/wa-channels.service';
 import { resolveDisplayContact, resolveLeadIdentity, formatLeadAddress } from '../utils/crm';
 import { findDuplicateByChecksum } from '../utils/doc-duplicate';
+import { extractApiError } from '../utils/extractApiError';
 import { buildPendingNames } from '../utils/pendingReminder';
 import PendingReminderButton from '../components/documentation/PendingReminderButton';
 import { LeadSectionStyles, buildContactCopyText, buildLeadCopyText } from '../components/leads/sections/shared';
@@ -1071,7 +1072,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     },
   });
   const transferError = transferMutation.error
-    ? ((transferMutation.error as any)?.response?.data?.message || transferMutation.error.message || 'Could not transfer the case.')
+    ? extractApiError(transferMutation.error).message
     : null;
 
   const noteMutation = useMutation({
@@ -1354,7 +1355,6 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   </button>
                 )}
                 {['ACTIVE', 'DOCUMENTATION_READY', 'RETURNED_TO_DOCUMENTATION'].includes(docCase.status)
-                  && !['TRANSFERRED_TO_PROCESS', 'CLOSED'].includes(docCase.status)
                   && docCase.handoffState === 'ACCEPTED' && (
                   <button className="btn" style={{
                     fontSize: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.04)',
@@ -1430,7 +1430,8 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   )}
                 </div>
               )}
-              {docCase.handoverRemarks && (
+              {docCase.handoverRemarks
+                && ['PENDING_PROCESS_REVIEW', 'TRANSFERRED_TO_PROCESS', 'RETURNED_TO_DOCUMENTATION'].includes(docCase.status) && (
                 <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 12, background: 'var(--bg-subtle)', border: '1px solid var(--border-light)' }}>
                   <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2 }}>Handover remarks</div>
                   <div style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{docCase.handoverRemarks}</div>

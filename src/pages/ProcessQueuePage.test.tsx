@@ -111,6 +111,10 @@ describe('ProcessQueuePage', () => {
       const alert = await screen.findByRole('alert');
       expect(alert.textContent).toContain('Forbidden');
       expect(screen.queryByText('No cases waiting for Process review.')).toBeNull();
+      // On the error path the counts are unknown — tiles show '—', not a misleading 0.
+      for (const label of ['Incoming', 'Processing', 'Returned']) {
+        expect(screen.getByText(label).parentElement!.textContent).toContain('—');
+      }
     });
 
     it('refreshes the queue when Accept fails (e.g. 409, another user acted first)', async () => {
