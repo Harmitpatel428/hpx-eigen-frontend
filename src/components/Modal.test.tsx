@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { Modal } from './Modal';
 
 // The reject-note modal (DocumentationPage CaseDetailPanel) re-renders its parent on
@@ -66,6 +66,16 @@ describe('Modal — typing in a textarea never activates the close button', () =
     render(<RejectModalHarness onCloseSpy={onClose} />);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders footer outside the scrollable body', () => {
+    const { container } = render(
+      <Modal isOpen title="t" onClose={() => {}} footer={<button>FooterBtn</button>}><div>bodytext</div></Modal>
+    );
+    const body = container.querySelector('.overflow-y-auto') as HTMLElement;
+    expect(within(body).getByText('bodytext')).toBeTruthy();
+    expect(within(body).queryByText('FooterBtn')).toBeNull();
+    expect(screen.getByText('FooterBtn')).toBeTruthy();
   });
 
   it('clicking the X still closes the modal', () => {

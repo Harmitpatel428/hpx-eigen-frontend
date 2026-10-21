@@ -6,7 +6,8 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  footer?: ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   closeOnEsc?: boolean;
   closeOnBackdrop?: boolean;
 }
@@ -19,6 +20,7 @@ export function Modal({
   onClose,
   title,
   children,
+  footer,
   size = 'md',
   closeOnEsc = true,
   closeOnBackdrop = true,
@@ -97,6 +99,7 @@ export function Modal({
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
+    xl: 'max-w-5xl',
   };
 
   return (
@@ -129,6 +132,11 @@ export function Modal({
         <div className="p-6 overflow-y-auto" style={{ flex: 1 }}>
           {children}
         </div>
+        {footer && (
+          <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-app)' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

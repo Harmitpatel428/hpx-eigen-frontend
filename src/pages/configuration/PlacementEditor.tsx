@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useAuth } from '../../auth/public';
 import { useCaseFields } from '../../hooks/useCaseFields';
 import { usePlacements, useAddPlacement, useUpdatePlacement, useRemovePlacement } from '../../hooks/useCaseTypes';
@@ -33,16 +34,17 @@ export function PlacementEditor({ caseTypeId, disabled = false }: Props) {
 
   return (
     <div>
-      <div className="type-ui" style={{ fontWeight: 600, marginBottom: 8 }}>Placed fields</div>
+      <div className="type-ui" style={{ color: 'var(--text-tertiary)', marginBottom: 8 }}>Placed fields</div>
       {sorted.length === 0 && <div className="type-ui">No fields placed yet.</div>}
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {sorted.map((p, i) => (
-          <li key={p.fieldId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+          <li key={p.fieldId} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '4px 0' }}>
             <span style={{ flex: 1 }}>{nameOf(p.fieldId)}</span>
             {canEdit && (<>
-              <button className="btn btn-ghost" type="button" aria-label={`Move ${nameOf(p.fieldId)} up`} disabled={i === 0} onClick={() => swap(i, i - 1)}>Up</button>
-              <button className="btn btn-ghost" type="button" aria-label={`Move ${nameOf(p.fieldId)} down`} disabled={i === sorted.length - 1} onClick={() => swap(i, i + 1)}>Down</button>
-              <button className="btn btn-ghost" type="button" aria-label={`Remove ${nameOf(p.fieldId)}`} onClick={() => remove.mutate({ caseTypeId, fieldId: p.fieldId })}>Remove</button>
+              <button className="btn btn-icon" type="button" aria-label={`Move ${nameOf(p.fieldId)} up`} disabled={i === 0} onClick={() => swap(i, i - 1)}><ChevronUp size={16} aria-hidden="true" /></button>
+              <button className="btn btn-icon" type="button" aria-label={`Move ${nameOf(p.fieldId)} down`} disabled={i === sorted.length - 1} onClick={() => swap(i, i + 1)}><ChevronDown size={16} aria-hidden="true" /></button>
+              <button className="btn btn-secondary" type="button" style={{ color: 'var(--color-danger)' }} aria-label={`Remove ${nameOf(p.fieldId)}`}
+                onClick={() => window.confirm(`Remove "${nameOf(p.fieldId)}"?`) && remove.mutate({ caseTypeId, fieldId: p.fieldId })}><Trash2 size={14} aria-hidden="true" /> Remove</button>
             </>)}
           </li>
         ))}
@@ -53,7 +55,7 @@ export function PlacementEditor({ caseTypeId, disabled = false }: Props) {
             <option value="">Select a field…</option>
             {available.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
-          <button className="btn btn-ghost" type="button" disabled={!pick} onClick={() => add.mutate({ caseTypeId, payload: { fieldId: pick, displayOrder: nextOrder } }, { onSuccess: () => setPick('') })}>Add</button>
+          <button className="btn btn-secondary" type="button" disabled={!pick} onClick={() => add.mutate({ caseTypeId, payload: { fieldId: pick, displayOrder: nextOrder } }, { onSuccess: () => setPick('') })}>Add</button>
         </div>
       )}
     </div>

@@ -23,6 +23,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   emptyTitle?: string;
   rowActions?: (row: T) => ReactNode;
+  rowActionsAlign?: 'left' | 'right';
 }
 
 export const DataTable = React.memo(<T,>({
@@ -37,6 +38,7 @@ export const DataTable = React.memo(<T,>({
   emptyMessage = 'No data',
   emptyTitle = 'Nothing here yet',
   rowActions,
+  rowActionsAlign = 'left',
 }: DataTableProps<T>) => {
   if (isLoading) {
     return (
@@ -59,15 +61,15 @@ export const DataTable = React.memo(<T,>({
   };
 
   return (
-    <div className="overflow-x-auto w-full bg-white">
+    <div className="overflow-x-auto w-full bg-[var(--bg-app)]">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-[var(--border-medium)]">
             {columns.map((col) => (
               <th
                 key={String(col.key)}
-                className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50 
-                  ${col.sortable ? 'cursor-pointer hover:text-slate-900 transition-colors' : ''}
+                className={`px-4 py-3 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider bg-[var(--bg-subtle)]
+                  ${col.sortable ? 'cursor-pointer hover:text-[var(--text-primary)] transition-colors' : ''}
                   ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
                 style={{ width: col.width }}
                 onClick={() => col.sortable && onSort?.(String(col.key), sortKey === String(col.key) && sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -80,10 +82,10 @@ export const DataTable = React.memo(<T,>({
                 </div>
               </th>
             ))}
-            {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">Actions</th>}
+            {rowActions && <th className={`px-4 py-3 ${rowActionsAlign === 'right' ? 'text-right' : 'text-left'} text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider bg-[var(--bg-subtle)]`}>Actions</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="divide-y divide-[var(--border-light)] bg-[var(--bg-app)]">
           {data.map((row) => (
             <tr
               key={getRowKey(row)}
@@ -93,13 +95,13 @@ export const DataTable = React.memo(<T,>({
               {columns.map((col) => {
                 const alignClass = col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left';
                 return (
-                  <td key={String(col.key)} className={`px-4 py-3 text-sm text-slate-900 ${alignClass}`}>
+                  <td key={String(col.key)} className={`px-4 py-3 text-sm text-[var(--text-primary)] ${alignClass}`}>
                     {col.render ? col.render((row as any)[col.key], row) : String((row as any)[col.key] ?? '')}
                   </td>
                 );
               })}
               {rowActions && (
-                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                <td className={`px-4 py-3 ${rowActionsAlign === 'right' ? 'text-right' : 'text-left'}`} onClick={(e) => e.stopPropagation()}>
                   {rowActions(row)}
                 </td>
               )}

@@ -44,7 +44,7 @@ describe('CaseTypeFormModal stages', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByText('Edit case type')).toBeTruthy();
     expect(screen.getByText('Create')).toBeTruthy(); // inner still open
-    fireEvent.click(screen.getAllByText('Cancel')[1]);
+    fireEvent.click(screen.getAllByText('Cancel')[0]);
     expect(screen.queryByText('Create')).toBeNull();
     expect(screen.getByText('Edit case type')).toBeTruthy();
   });

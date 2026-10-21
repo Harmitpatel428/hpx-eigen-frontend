@@ -15,7 +15,7 @@ interface Props { isOpen: boolean; onClose: () => void; caseType?: CaseType | nu
 
 const EMPTY: CaseTypeFormValues = { key: '', name: '', description: '' };
 const row = { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 } as const;
-const err = { color: '#dc2626', fontSize: 12 } as const;
+const err = { color: 'var(--color-danger)', fontSize: 12 } as const;
 
 export function CaseTypeFormModal({ isOpen, onClose, caseType }: Props) {
   const isEdit = !!caseType;
@@ -38,45 +38,68 @@ export function CaseTypeFormModal({ isOpen, onClose, caseType }: Props) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit case type' : 'New case type'} size="lg">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-        {archived && (
-          <div role="alert" className="sm:col-span-2" style={{ ...row, background: 'rgba(245,158,11,0.1)', padding: 8, borderRadius: 6 }}>
-            This case type is archived and cannot be edited.
-          </div>
-        )}
-        <div style={row}>
-          <label className="type-ui" htmlFor="ct-key">Key</label>
-          <input id="ct-key" className="input" readOnly={isEdit} disabled={isEdit} {...register('key')} />
-          {errors.key && <span style={err}>{errors.key.message}</span>}
-        </div>
-        <div style={row}>
-          <label className="type-ui" htmlFor="ct-name">Name</label>
-          <input id="ct-name" className="input" disabled={archived} {...register('name')} />
-          {errors.name && <span style={err}>{errors.name.message}</span>}
-        </div>
-        <div style={row} className="sm:col-span-2">
-          <label className="type-ui" htmlFor="ct-description">Description</label>
-          <textarea id="ct-description" className="input" disabled={archived} {...register('description')} />
-          {errors.description && <span style={err}>{errors.description.message}</span>}
-        </div>
-
-        <div style={{ marginBottom: 12 }} className="sm:col-span-2">
-          {isEdit
-            ? <PlacementEditor caseTypeId={caseType!.id} disabled={archived} />
-            : <div className="type-ui">Save the case type first, then place fields.</div>}
-        </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-medium)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEdit ? 'Edit case type' : 'New case type'}
+      size="xl"
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
           <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" type="submit" disabled={archived || create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</button>
+          <button className="btn btn-primary" type="submit" form="case-type-form" disabled={archived || create.isPending || update.isPending}>{isEdit ? (update.isPending ? 'Saving…' : 'Save') : (create.isPending ? 'Creating…' : 'Create')}</button>
         </div>
-      </form>
-      {/* outside the <form>: the stage modal has its own form and Modal does not portal */}
-      {isEdit && <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-medium)' }}><StageTemplateEditor caseTypeId={caseType!.id} disabled={archived} /></div>}
-      {isEdit && <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-medium)' }}><ComponentsEditor caseType={caseType!} disabled={archived} /></div>}
+      }
+    >
+        <div className="space-y-8">
+          {archived && (
+            <div role="alert" style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-medium)', borderLeft: '3px solid var(--color-warning)', color: 'var(--text-secondary)', fontSize: 13 }}>
+              This case type is archived and cannot be edited.
+            </div>
+          )}
+          <form id="case-type-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <section>
+              <div className="type-micro" style={{ marginBottom: 'var(--space-3)' }}>Case type details</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                <div style={row}>
+                  <label className="type-ui" htmlFor="ct-key">Key</label>
+                  <input id="ct-key" className="input" readOnly={isEdit} disabled={isEdit} {...register('key')} />
+                  {errors.key && <span role="alert" style={err}>{errors.key.message}</span>}
+                </div>
+                <div style={row}>
+                  <label className="type-ui" htmlFor="ct-name">Name</label>
+                  <input id="ct-name" className="input" disabled={archived} {...register('name')} />
+                  {errors.name && <span role="alert" style={err}>{errors.name.message}</span>}
+                </div>
+                <div style={row} className="sm:col-span-2">
+                  <label className="type-ui" htmlFor="ct-description">Description</label>
+                  <textarea id="ct-description" className="input" style={{ minHeight: 88, height: 'auto', padding: 'var(--space-2) var(--space-4)' }} disabled={archived} {...register('description')} />
+                  {errors.description && <span role="alert" style={err}>{errors.description.message}</span>}
+                </div>
+              </div>
+            </section>
+            {isEdit
+              ? (
+                <section>
+                  <div className="type-micro" style={{ marginBottom: 'var(--space-3)' }}>Field placement</div>
+                  <PlacementEditor caseTypeId={caseType!.id} disabled={archived} />
+                </section>
+              )
+              : <div className="type-ui" style={{ color: 'var(--text-tertiary)' }}>Save the case type first, then place fields.</div>}
+          </form>
+          {/* outside the <form>: the stage modal has its own form and Modal does not portal */}
+          {isEdit && (
+            <section>
+              <div className="type-micro" style={{ marginBottom: 'var(--space-3)' }}>Stages</div>
+              <StageTemplateEditor caseTypeId={caseType!.id} disabled={archived} />
+            </section>
+          )}
+          {isEdit && (
+            <section>
+              <div className="type-micro" style={{ marginBottom: 'var(--space-3)' }}>Components</div>
+              <ComponentsEditor caseType={caseType!} disabled={archived} />
+            </section>
+          )}
+        </div>
     </Modal>
   );
 }

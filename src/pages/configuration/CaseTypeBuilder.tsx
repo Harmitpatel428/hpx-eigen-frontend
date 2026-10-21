@@ -34,7 +34,6 @@ export function CaseTypeBuilder() {
         }}>{s}</span>
       ),
     },
-    { key: 'displayOrder', label: 'Order' },
   ];
 
   return (
@@ -49,6 +48,7 @@ export function CaseTypeBuilder() {
         columns={columns}
         data={data}
         rowKey="id"
+        rowActionsAlign="right"
         isLoading={isLoading}
         emptyTitle="No case types yet"
         emptyMessage="No case types yet. Create field → Activate → place on a case type → Publish → assign to a case"
