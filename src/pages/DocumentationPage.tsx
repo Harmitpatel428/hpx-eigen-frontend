@@ -2236,7 +2236,8 @@ export function DocumentationPage() {
           <div style={{
             display: 'grid', gridTemplateColumns: CASE_GRID,
             padding: '6px 12px', gap: 12,
-            position: 'sticky', top: 0, zIndex: 2,
+            // top: -32 cancels <main>'s 32px top padding (AppLayout) so the header pins flush under the TopBar — otherwise rows bleed through the padding band above it ("floating header").
+            position: 'sticky', top: -32, zIndex: 2,
             background: 'var(--bg-app)',
             borderBottom: '1px solid var(--border-medium)',
           }}>
@@ -2278,7 +2279,8 @@ export function DocumentationPage() {
           <div style={{
             display: 'grid', gridTemplateColumns: INCOMING_GRID,
             padding: '6px 12px', gap: 12,
-            position: 'sticky', top: 0, zIndex: 2,
+            // top: -32 cancels <main>'s 32px top padding (AppLayout) so the header pins flush under the TopBar — otherwise rows bleed through the padding band above it ("floating header").
+            position: 'sticky', top: -32, zIndex: 2,
             background: 'var(--bg-app)',
             borderBottom: '1px solid var(--border-medium)',
           }}>
