@@ -1,11 +1,9 @@
 import { useAuth } from '../auth/public';
 import { useCaseEngineSettings, useSetCaseEngineEnabled } from '../hooks/useCaseFields';
 import { useState, useRef, type KeyboardEvent } from 'react';
-import { FieldBuilder } from './configuration/FieldBuilder';
 import { CaseTypeBuilder } from './configuration/CaseTypeBuilder';
-import { RuleBuilder } from './configuration/RuleBuilder';
 
-const TABS = ['Fields', 'Case Types', 'Rules'] as const;
+const TABS = ['Case Types'] as const;
 
 export function ConfigurationPage() {
   const { permissions } = useAuth();
@@ -13,7 +11,7 @@ export function ConfigurationPage() {
   const setEnabled = useSetCaseEngineEnabled();
   const canManage = permissions.can('case-engine:manage');
   const enabled = data?.caseOperationsEngineEnabled;
-  const [tab, setTab] = useState<(typeof TABS)[number]>('Fields');
+  const [tab, setTab] = useState<(typeof TABS)[number]>('Case Types');
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   if (isLoading) return null;
@@ -57,7 +55,7 @@ export function ConfigurationPage() {
       <header style={{ marginBottom: 'var(--space-4)' }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Configuration</h2>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 0, lineHeight: 1.6 }}>
-          Define the custom fields, case types, and rules for the Case Operations Engine.
+          Define the case types for the Case Operations Engine.
         </p>
       </header>
 
@@ -97,9 +95,7 @@ export function ConfigurationPage() {
           hidden={tab !== t}
           style={{ minWidth: 0, paddingTop: 'var(--space-6)', paddingBottom: 'var(--space-24)' }}
         >
-          {t === 'Fields' && <FieldBuilder />}
           {t === 'Case Types' && <CaseTypeBuilder />}
-          {t === 'Rules' && <RuleBuilder />}
         </div>
       ))}
 
