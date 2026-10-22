@@ -81,10 +81,10 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
   if (!canView) return null;
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', flex: 'none' }}>Mandate</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+        <h3 className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)', flex: 'none' }}>Mandate</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
           {canUpload && caseOpen && (
             <button className="btn btn-ghost" style={{ height: 26, paddingInline: 10, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}
               onClick={() => setShowFirmUpload(true)}>

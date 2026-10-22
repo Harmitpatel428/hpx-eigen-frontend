@@ -12,6 +12,7 @@ import type { CaseStage } from '../../types/caseConfig';
 import { useStageTemplates } from '../../hooks/useCaseTypes';
 import { SlaBadge } from './SlaBadge';
 import { EmptyState, LoadingRows } from '../EmptyState';
+import { Card } from '../ui/Card';
 
 const fmt = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '-');
 
@@ -106,10 +107,22 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
     );
   }
 
+  const overdueCount = stages.filter((s) => s.slaState === 'OVERDUE').length;
+  const atRiskCount = stages.filter((s) => s.slaState === 'AT_RISK').length;
+  const estimate = new Map((forecast?.stages ?? []).map((f) => [f.stageKey, f]));
+  const stat = (label: string, value: string | number, danger = false) => (
+    <Card style={{ padding: 'var(--space-4) var(--space-6)' }}>
+      <div className="type-micro">{label}</div>
+      <div className="tabular-nums" style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-lg)', fontWeight: 600, color: danger ? 'var(--color-danger)' : 'var(--text-primary)' }}>{value}</div>
+    </Card>
+  );
+  const alertRow = { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--radius-md)', background: 'rgba(220,38,38,0.08)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)' } as const;
+
   return (
-    <div>
-      <section aria-label="Timeline target" style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span>Target: {fmt(timeline?.targetDate)}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <section aria-label="Timeline target" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap', minHeight: 36 }} className="type-ui">
+        <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', marginRight: 'auto' }}>Stage timeline</h3>
+        <span className="tabular-nums">Target: {fmt(timeline?.targetDate)}</span>
         {timeline?.feasible === false && (
           <span role="status">Infeasible — {timeline.deficitDays ?? 0} days short</span>
         )}
@@ -122,26 +135,32 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
         )}
       </section>
 
-      <section aria-label="Forecast" style={{ marginBottom: 16 }}>
-        <strong>Projected completion: {fmt(forecast?.projectedCompletion)}</strong>
-        <ul>
-          {(forecast?.stages ?? []).map((f) => (
-            <li key={f.stageKey}>{f.stageKey} · {f.estimateDays}d · {f.confidence}</li>
-          ))}
-        </ul>
-      </section>
+      <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 'var(--space-4)' }}>
+        {stat('Projected completion', fmt(forecast?.projectedCompletion))}
+        {stat('Overdue', overdueCount, overdueCount > 0)}
+        {stat('At risk', atRiskCount)}
+      </div>
 
-      {stages.map((s) => {
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+      {stages.map((s, i) => {
         const isBlocked = s.status === 'BLOCKED';
+        const est = estimate.get(s.key);
         return (
-          <div key={s.id} data-testid={`stage-${s.key}`} style={{ borderBottom: '1px solid #e5e7eb', padding: '8px 0' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <strong>{s.label}</strong>
-              <span style={{ fontSize: 12, background: '#f3f4f6', padding: '2px 8px', borderRadius: 999 }}>{s.status}</span>
-              <SlaBadge state={s.slaState} />
-              <span style={{ fontSize: 12 }}>
-                Planned {fmt(s.plannedStart)} to {fmt(s.plannedFinish)} · Latest finish {fmt(s.latestFinish)}
-              </span>
+          <div key={s.id} data-testid={`stage-${s.key}`} style={{ padding: 'var(--space-4) var(--space-6)', borderTop: i ? '1px solid var(--border-light)' : undefined, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr) 250px 280px', gap: 'var(--space-4)', alignItems: 'center' }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.label}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 'var(--text-micro)', color: 'var(--text-tertiary)' }}>{s.key}{est ? ` · ${est.estimateDays}d est.` : ''}</div>
+              </div>
+              <div className="tabular-nums" style={{ fontFamily: 'monospace', fontSize: 'var(--text-micro)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                <div>Planned {fmt(s.plannedStart)} → {fmt(s.plannedFinish)}</div>
+                <div style={{ color: 'var(--text-tertiary)' }}>Latest finish {fmt(s.latestFinish)}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', whiteSpace: 'nowrap' }}>
+                <span className="chip" style={{ fontSize: 'var(--text-micro)', fontWeight: 600, letterSpacing: '0.04em' }}>{s.status}</span>
+                <SlaBadge state={s.slaState} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               {s.status === 'READY' && permissions.can('case-stage:start') && (
                 <button className="btn btn-ghost" disabled={isBlocked} onClick={() => start.mutate(s.id)}>Start</button>
               )}
@@ -164,20 +183,21 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
               {!isBlocked && LIVE.includes(s.status) && canOverride && (
                 <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'duration', stageId: s.id })}>Override duration</button>
               )}
-              {isBlocked && permissions.can('sla:unlock') && (
-                <button className="btn btn-ghost" onClick={() => setDlg({ kind: 'unlock', stageId: s.id })}>Unlock</button>
-              )}
+              </div>
             </div>
             {isBlocked && (
-              <div role="alert" style={{ background: '#fee2e2', color: '#991b1b', padding: 8, marginTop: 6, borderRadius: 4 }}>
-                This stage is blocked (SLA breach). It must be unlocked to proceed.
+              <div role="alert" style={alertRow}>
+                <span style={{ flex: 1 }}>This stage is blocked (SLA breach). It must be unlocked to proceed.</span>
+                {permissions.can('sla:unlock') && (
+                  <button className="btn btn-secondary" style={{ height: 30 }} onClick={() => setDlg({ kind: 'unlock', stageId: s.id })}>Unlock</button>
+                )}
               </div>
             )}
             {blocked?.stageId === s.id && (
-              <div role="alert" style={{ color: '#991b1b', marginTop: 6 }}>
-                Cannot complete: {blocked.missing} required field(s) missing.
+              <div role="alert" style={alertRow}>
+                <span style={{ flex: 1 }}>Cannot complete: {blocked.missing} required field(s) missing.</span>
                 {canOverride && (
-                  <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={() => setDlg({ kind: 'override', stageId: s.id })}>
+                  <button className="btn btn-secondary" style={{ height: 30 }} onClick={() => setDlg({ kind: 'override', stageId: s.id })}>
                     Override &amp; complete
                   </button>
                 )}
@@ -186,6 +206,7 @@ export function StagesTab({ caseId, caseTypeId }: { caseId: string; caseTypeId: 
           </div>
         );
       })}
+      </Card>
 
       <Modal isOpen={!!dlg} onClose={close} title={dlg ? TITLES[dlg.kind] : ''} size="sm">
         {dlg?.kind === 'target' ? (

@@ -33,6 +33,19 @@ describe('fieldValueHelpers', () => {
   it('reads stored value, falling back to defaultValue', () => {
     const stored = { valueNumber: 7 } as StoredFieldValue;
     expect(readStoredValue(f('NUMBER'), stored)).toBe(7);
-    expect(readStoredValue(f('TEXT', 'dflt'), undefined)).toBe('dflt');
+    expect(readStoredValue(f('TEXT'), undefined)).toBeNull();
+  });
+
+  it('unwraps the SET_DEFAULT payload shape per column', () => {
+    expect(readStoredValue(f('TEXT', { value: 'HIGH' }), undefined)).toBe('HIGH');
+    expect(readStoredValue(f('NUMBER', { value: 5 }), undefined)).toBe(5);
+    expect(readStoredValue(f('BOOLEAN', { value: true }), undefined)).toBe(true);
+    expect(readStoredValue(f('DATE', { value: '2026-12-01' }), undefined)).toBe('2026-12-01');
+    expect(readStoredValue(f('SELECT', { optionId: 'o1' }), undefined)).toBe('o1');
+    expect(readStoredValue(f('MULTI_SELECT', { optionIds: ['a', 'b'] }), undefined)).toEqual([{ optionId: 'a' }, { optionId: 'b' }]);
+  });
+
+  it('stored value wins over the default payload', () => {
+    expect(readStoredValue(f('TEXT', { value: 'HIGH' }), { valueText: 'LOW' } as StoredFieldValue)).toBe('LOW');
   });
 });

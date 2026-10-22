@@ -170,12 +170,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Public API
   const login = useCallback(async (email: string, password: string) => {
     try {
-      console.log('1. LOGIN START — email:', email);
       Sentry.addBreadcrumb({ category: 'auth', message: 'Login attempt started', level: 'info' });
       const res = await api.post('/api/v1/auth/login', { email, password });
 
-      console.log('2. API RESPONSE — status:', res.status, 'data:', res.data);
-      Sentry.addBreadcrumb({ category: 'auth', message: 'Login API success', level: 'info', data: res.data });
+      Sentry.addBreadcrumb({ category: 'auth', message: 'Login API success', level: 'info', data: { status: res.status } });
 
       // Extract from standardized response format: { success, data: { accessToken, refreshToken, user, sessionId, permissions } }
       const accessToken = res.data?.data?.accessToken;
@@ -206,36 +204,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('hpx:active-department');
       localStorage.removeItem('activeDepartmentId');
 
-      console.log('6. USER FROM RESPONSE:', user);
       if (user) {
         setUser(user);
         // Use permissions from response data or fallback to user object
         const perms = permissions || (user as any).permissions || {};
         const roles = user.roles || [];
         permissionService.current.setManifest(perms, roles);
-        console.log('6a. setUser + permissions SET');
-      } else {
-        console.warn('6b. WARN: No user object in login response — skipping setUser');
       }
 
-      console.log('7. FSM STATE BEFORE TRANSITION:', fsm.current.state);
       if (fsm.current.state !== 'AUTHENTICATED') {
         fsm.current.transition('AUTHENTICATED');
-        console.log('7a. FSM transitioned → AUTHENTICATED');
-      } else {
-        console.log('7b. FSM was already AUTHENTICATED — no transition');
       }
 
-      console.log('8. STATE UPDATED, PREPARING REDIRECT → /overview');
       Sentry.addBreadcrumb({ category: 'auth', message: 'State updated, preparing to redirect', level: 'info' });
       // Hard reload to bootstrap DepartmentContext with auth state
-      console.log('9. CALLING window.location.href = /overview');
       window.location.href = '/overview';
-      console.log('10. REDIRECT CALLED (should not see this if navigation fired)');
     } catch (error: any) {
-      console.error('LOGIN CATCH BLOCK ERROR — raw error:', error);
-      console.error('LOGIN CATCH — response data:', error?.response?.data);
-      console.error('LOGIN CATCH — status:', error?.response?.status);
       Sentry.captureException(error);
       // Extract real error message from backend response
       let message = 'Login failed. Please try again.';
@@ -247,7 +231,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message = error.message;
       }
 
-      console.error('[AuthContext] Login error thrown to UI:', message);
       throw new Error(message);
     }
   }, []);

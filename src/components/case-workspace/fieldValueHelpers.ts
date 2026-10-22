@@ -18,8 +18,21 @@ export function valueColumnFor(type: CaseFieldType): ValueColumn {
   }
 }
 
+// Runtime defaultValue is the SET_DEFAULT rule payload — { value } | { optionId } | { optionIds } —
+// not a column value, so unwrap it into the same shape the stored column would have.
+function decodeDefault(field: CaseFieldWithRuntime): unknown {
+  const d = field.defaultValue;
+  if (d == null || typeof d !== 'object') return d ?? null;
+  const p = d as { value?: unknown; optionId?: string; optionIds?: string[] };
+  switch (valueColumnFor(field.type)) {
+    case 'optionId': return p.optionId ?? null;
+    case 'selections': return (p.optionIds ?? []).map((optionId) => ({ optionId }));
+    default: return p.value ?? null;
+  }
+}
+
 export function readStoredValue(field: CaseFieldWithRuntime, value: StoredFieldValue | undefined): unknown {
-  if (!value) return field.defaultValue ?? null;
+  if (!value) return decodeDefault(field);
   return value[valueColumnFor(field.type)];
 }
 

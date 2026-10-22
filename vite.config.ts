@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        ...(hasAgentation ? { agentation: agentationPath } : {}),
+        agentation: hasAgentation ? agentationPath : path.resolve(__dirname, 'src/agentation-stub.ts'),
       },
     },
     build: {
