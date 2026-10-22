@@ -5,8 +5,6 @@ import { toast } from 'sonner';
 import { useAuth } from '../auth/context/AuthContext';
 import { MandateSection } from '../components/mandate/MandateSection';
 import { Modal } from '../components/Modal';
-import { FieldsTab } from '../components/case-workspace/FieldsTab';
-import { StagesTab } from '../components/case-workspace/StagesTab';
 import { useCaseEngineSettings } from '../hooks/useCaseFields';
 import { useCaseTypes } from '../hooks/useCaseTypes';
 import { PolicyAssignmentDialog } from '../components/case-workspace/PolicyAssignmentDialog';
@@ -965,7 +963,7 @@ function ReopenCaseDialog({
 function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: string; onClose: () => void; autoOpenMandateSend?: boolean }) {
   const qc = useQueryClient();
   const { permissions, user } = useAuth();
-  const [tab, setTab]   = useState<'overview' | 'fields' | 'stages' | 'contacts' | 'documents' | 'timeline' | 'notes'>('overview');
+  const [tab, setTab]   = useState<'overview' | 'contacts' | 'documents' | 'timeline' | 'notes'>('overview');
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
@@ -1188,17 +1186,12 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const priorityLabel = ['Normal', 'High', 'Urgent'][docCase.priority] ?? 'Normal';
   const divider = <div style={{ height: 1, background: 'var(--border-light)', margin: '1.375rem 0' }} />;
 
-  const engineEnabled = !!docCase.caseTypeId && engineFlag;
   const TABS = [
     'overview',
-    ...(engineEnabled && permissions.can('doc:view') ? ['fields' as const] : []),
-    ...(engineEnabled && permissions.can('case-timeline:view') ? ['stages' as const] : []),
     'contacts', 'documents', 'timeline', 'notes',
-  ] as Array<'overview' | 'fields' | 'stages' | 'contacts' | 'documents' | 'timeline' | 'notes'>;
+  ] as Array<'overview' | 'contacts' | 'documents' | 'timeline' | 'notes'>;
   const tabLabel = (t: typeof TABS[number]) =>
     t === 'overview'  ? 'Overview'
-    : t === 'fields'  ? 'Fields'
-    : t === 'stages'  ? 'Stages'
     : t === 'contacts'  ? 'Contacts'
     : t === 'documents' ? `Documents (${docCase.totalDocs})`
     : t === 'timeline'  ? 'History'
@@ -1624,17 +1617,6 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
             </div>
           )}
         </div>
-
-        {engineEnabled && (
-          <>
-            <div role="tabpanel" id="case-panel-fields" aria-labelledby="case-tab-fields" tabIndex={0} hidden={tab !== 'fields'}>
-              {tab === 'fields' && <FieldsTab caseId={docCase.id} />}
-            </div>
-            <div role="tabpanel" id="case-panel-stages" aria-labelledby="case-tab-stages" tabIndex={0} hidden={tab !== 'stages'}>
-              {tab === 'stages' && <StagesTab caseId={docCase.id} caseTypeId={docCase.caseTypeId ?? null} />}
-            </div>
-          </>
-        )}
 
         {/* ── Timeline (labelled "History") ── */}
         <div role="tabpanel" id="case-panel-timeline" aria-labelledby="case-tab-timeline" tabIndex={0} hidden={tab !== 'timeline'}>
