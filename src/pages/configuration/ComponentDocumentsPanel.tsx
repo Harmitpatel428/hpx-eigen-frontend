@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { useAuth } from '../../auth/public';
-import { useComponentDocumentList, useCreateComponentDocument, useUpdateComponentDocument } from '../../hooks/useCaseTypes';
+import { useComponentDocumentList, useCreateComponentDocument, useDeleteComponentDocument, useUpdateComponentDocument } from '../../hooks/useCaseTypes';
 import type { CaseTypeComponent, CaseTypeComponentDocument } from '../../types/caseConfig';
 
 interface Props {
@@ -25,6 +26,7 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
   const { data: documents = [], isLoading } = useComponentDocumentList(caseTypeId, component.id, includeInactive);
   const create = useCreateComponentDocument();
   const update = useUpdateComponentDocument();
+  const del = useDeleteComponentDocument();
 
   const [draft, setDraft] = useState({ name: '', description: '', isMandatory: false, requireDate: false, requireNote: false, displayOrder: 0 });
   const resetDraft = () => setDraft({ name: '', description: '', isMandatory: false, requireDate: false, requireNote: false, displayOrder: 0 });
@@ -75,6 +77,16 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
                   </button>
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => patch(d, { isActive: !d.isActive })}>
                     {d.isActive ? 'Archive' : 'Reactivate'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ fontSize: 11, color: 'var(--color-danger)' }}
+                    aria-label={`Delete ${d.name}`}
+                    disabled={del.isPending}
+                    onClick={() => window.confirm(`Delete "${d.name}"? This cannot be undone.`) && del.mutate({ caseTypeId, componentId: component.id, componentDocumentId: d.id })}
+                  >
+                    <Trash2 size={12} aria-hidden="true" /> Delete
                   </button>
                 </div>
               )}

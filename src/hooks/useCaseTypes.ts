@@ -106,6 +106,11 @@ export const useUpdateComponentDocument = () =>
     (v: { caseTypeId: string; componentId: string; componentDocumentId: string; payload: UpdateComponentDocumentPayload }) =>
       caseConfigService.updateComponentDocument(v.caseTypeId, v.componentId, v.componentDocumentId, v.payload),
     'Document updated', componentDocsKey);
+export const useDeleteComponentDocument = () =>
+  useCaseTypeMutation(
+    (v: { caseTypeId: string; componentId: string; componentDocumentId: string }) =>
+      caseConfigService.deleteComponentDocument(v.caseTypeId, v.componentId, v.componentDocumentId),
+    'Document deleted', componentDocsKey);
 
 const stagesKey = (v: { caseTypeId: string }) => ['case-types', v.caseTypeId, 'stages'];
 export const useCreateStageTemplate = () =>

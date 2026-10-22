@@ -14,6 +14,7 @@ vi.mock('../../services/case-config.service', () => ({
     listComponentDocuments: vi.fn(),
     createComponentDocument: vi.fn(),
     updateComponentDocument: vi.fn(),
+    deleteComponentDocument: vi.fn(),
   },
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -45,6 +46,7 @@ beforeEach(() => {
   svc.listComponentDocuments.mockResolvedValue([]);
   svc.createComponentDocument.mockResolvedValue(doc());
   svc.updateComponentDocument.mockResolvedValue(doc());
+  svc.deleteComponentDocument.mockResolvedValue({});
 });
 
 describe('ComponentDocumentsPanel', () => {
@@ -123,5 +125,56 @@ describe('ComponentDocumentsPanel', () => {
     expect(await screen.findByText('PAN')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Add document/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
+  });
+
+  it('Delete after confirm calls the mutation with the right ids; Cancel makes no call', async () => {
+    svc.listComponentDocuments.mockResolvedValue([doc()]);
+    const confirm = vi.spyOn(window, 'confirm');
+    renderPanel();
+    const btn = await screen.findByRole('button', { name: 'Delete PAN' });
+
+    confirm.mockReturnValueOnce(false);
+    await userEvent.click(btn);
+    expect(confirm).toHaveBeenCalledWith('Delete "PAN"? This cannot be undone.');
+    expect(svc.deleteComponentDocument).not.toHaveBeenCalled();
+
+    confirm.mockReturnValueOnce(true);
+    await userEvent.click(btn);
+    await waitFor(() => expect(svc.deleteComponentDocument).toHaveBeenCalledWith('ct-1', 'comp-1', 'cd-1'));
+    confirm.mockRestore();
+  });
+
+  it('disables the Delete button while the delete mutation is pending (no double-submit)', async () => {
+    svc.listComponentDocuments.mockResolvedValue([doc()]);
+    let resolve: (v?: unknown) => void = () => {};
+    svc.deleteComponentDocument.mockImplementation(() => new Promise((r) => { resolve = r; }));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPanel();
+    const btn = await screen.findByRole('button', { name: 'Delete PAN' });
+    expect(btn).toBeEnabled();
+    await userEvent.click(btn);
+    await waitFor(() => expect(btn).toBeDisabled());
+    resolve();
+    confirm.mockRestore();
+  });
+
+  it('Delete is absent without case-type:manage, and for an archived component or case type', async () => {
+    svc.listComponentDocuments.mockResolvedValue([doc()]);
+
+    granted = ['case-type:view'];
+    const a = renderPanel();
+    expect(await screen.findByText('PAN')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull();
+    a.unmount();
+
+    granted = ['case-type:view', 'case-type:manage'];
+    const b = renderPanel({ component: comp({ isActive: false }) });
+    expect(await screen.findByText('PAN')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull();
+    b.unmount();
+
+    renderPanel({ disabled: true });
+    expect(await screen.findByText('PAN')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull();
   });
 });

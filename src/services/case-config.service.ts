@@ -125,6 +125,9 @@ export const caseConfigService = {
   updateComponentDocument(caseTypeId: string, componentId: string, componentDocumentId: string, payload: UpdateComponentDocumentPayload): Promise<CaseTypeComponentDocument> {
     return unwrap(api.patch(`${typesBase}/${caseTypeId}/components/${componentId}/documents/${componentDocumentId}`, payload));
   },
+  deleteComponentDocument(caseTypeId: string, componentId: string, componentDocumentId: string): Promise<unknown> {
+    return unwrap(api.delete(`${typesBase}/${caseTypeId}/components/${componentId}/documents/${componentDocumentId}`));
+  },
   listRules(includeArchived = false): Promise<CaseFieldRule[]> {
     return unwrap(api.get(`${rulesBase}?includeArchived=${includeArchived}`));
   },
