@@ -57,7 +57,7 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {documents.map((d) => (
-            <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, opacity: d.isActive ? 1 : 0.6 }}>
+            <div key={d.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 12, opacity: d.isActive ? 1 : 0.6 }}>
               <span style={{ fontWeight: 600 }}>{d.name}</span>
               {d.isMandatory && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>mandatory</span>}
               {d.requireDate && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>date</span>}
@@ -65,7 +65,7 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
               {!d.isActive && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>archived</span>}
               <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>#{d.displayOrder}</span>
               {canManage && (
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4 }}>
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => patch(d, { isMandatory: !d.isMandatory })}>
                     {d.isMandatory ? 'Make optional' : 'Make mandatory'}
                   </button>
@@ -84,7 +84,7 @@ export function ComponentDocumentsPanel({ caseTypeId, component, disabled = fals
                     style={{ fontSize: 11, color: 'var(--color-danger)' }}
                     aria-label={`Delete ${d.name}`}
                     disabled={del.isPending}
-                    onClick={() => window.confirm(`Delete "${d.name}"? This cannot be undone.`) && del.mutate({ caseTypeId, componentId: component.id, componentDocumentId: d.id })}
+                    onClick={() => window.confirm('Delete this document? It will also be removed from any existing cases it is currently attached to.') && del.mutate({ caseTypeId, componentId: component.id, componentDocumentId: d.id })}
                   >
                     <Trash2 size={12} aria-hidden="true" /> Delete
                   </button>

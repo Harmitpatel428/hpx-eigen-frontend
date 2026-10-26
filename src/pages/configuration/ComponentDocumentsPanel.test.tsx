@@ -135,12 +135,25 @@ describe('ComponentDocumentsPanel', () => {
 
     confirm.mockReturnValueOnce(false);
     await userEvent.click(btn);
-    expect(confirm).toHaveBeenCalledWith('Delete "PAN"? This cannot be undone.');
+    expect(confirm).toHaveBeenCalledWith('Delete this document? It will also be removed from any existing cases it is currently attached to.');
     expect(svc.deleteComponentDocument).not.toHaveBeenCalled();
 
     confirm.mockReturnValueOnce(true);
     await userEvent.click(btn);
     await waitFor(() => expect(svc.deleteComponentDocument).toHaveBeenCalledWith('ct-1', 'comp-1', 'cd-1'));
+    confirm.mockRestore();
+  });
+
+  it('with multiple rows, each row Delete sends that row own id', async () => {
+    svc.listComponentDocuments.mockResolvedValue([doc({ id: 'cd-1', name: 'PAN' }), doc({ id: 'cd-2', name: 'GST Certificate', dedupeKey: 'gst' })]);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPanel();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete GST Certificate' }));
+    await waitFor(() => expect(svc.deleteComponentDocument).toHaveBeenLastCalledWith('ct-1', 'comp-1', 'cd-2'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete PAN' }));
+    await waitFor(() => expect(svc.deleteComponentDocument).toHaveBeenLastCalledWith('ct-1', 'comp-1', 'cd-1'));
     confirm.mockRestore();
   });
 
