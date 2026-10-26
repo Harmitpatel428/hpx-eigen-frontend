@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2, RotateCcw, AlertTriangle, X, Search } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import type { Lead } from '../types';
 import { leadService } from '../services/lead.service';
 

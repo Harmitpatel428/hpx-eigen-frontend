@@ -8,7 +8,7 @@ import { formatINR, formatDate } from '../utils/crm';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { Plus, X, ChevronDown, FileText, User, Building, Phone, Mail, IndianRupee } from 'lucide-react';
 
 // @react-pdf/renderer is ~470 KB gzipped; load it as its own chunk only when an

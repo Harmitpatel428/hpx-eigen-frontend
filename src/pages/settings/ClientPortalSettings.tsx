@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Check, Users, Clock, Shield } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../../components/notifications/notify';
 import { api } from '../../services/api';
 import { PORTAL_AUTH } from '../../domain/portal';
 

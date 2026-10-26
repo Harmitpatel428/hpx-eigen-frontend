@@ -14,7 +14,7 @@ import { leadService } from '../services/lead.service';
 import { leadContactsService, LeadContact } from '../services/lead-contacts.service';
 import { customFieldService } from '../services/custom-field.service';
 import { crmSettingsService } from '../services/crm-settings.service';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { useAuth } from '../auth/context/AuthContext';
 import { saveOriginalTokensForImpersonation } from '../components/layout/ImpersonationBanner';
 import { tokenStorage } from '../auth/storage/tokenStorage';

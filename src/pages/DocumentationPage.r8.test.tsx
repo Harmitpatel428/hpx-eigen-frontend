@@ -29,7 +29,7 @@ import type { DocCase } from '../types';
 // QueryClientProvider with retries off, and vi.mock for every service /
 // auth hook the render path touches.
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // All permissions off: hides upload/manage/verify affordances we don't
 // exercise, and (via mandate:view) keeps MandateSection's early-return-null

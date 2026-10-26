@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { useAuth } from '../auth/context/AuthContext';
 import { MandateSection } from '../components/mandate/MandateSection';
 import { Modal } from '../components/Modal';

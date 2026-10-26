@@ -8,7 +8,7 @@ import { formatINR, formatDate } from '../utils/crm';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { Plus, X, ChevronDown, CreditCard, FileText, IndianRupee } from 'lucide-react';
 
 const paymentSchema = z.object({

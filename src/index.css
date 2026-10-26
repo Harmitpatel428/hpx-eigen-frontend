@@ -50,6 +50,9 @@
   --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --transition-smooth: 240ms cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* ─── LAYERS ─── */
+  --z-toast: 100000; /* notification stack — above modals (which top out at 1200) */
 }
 
 /* ─── LIGHT THEME ─── */
@@ -79,6 +82,15 @@
   --color-warning: #D97706;
   --color-danger: #DC2626;
   --color-info: #2563EB;
+
+  /* Elevation + semantic tints (notifications) */
+  --surface-overlay: #FFFFFF;
+  --shadow-overlay: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 28px -6px rgba(0, 0, 0, 0.16);
+  --color-success-tint: rgba(5, 150, 105, 0.12);
+  --color-warning-tint: rgba(217, 119, 6, 0.12);
+  --color-danger-tint: rgba(220, 38, 38, 0.12);
+  --color-info-tint: rgba(37, 99, 235, 0.12);
+  --color-neutral-tint: rgba(0, 0, 0, 0.06);
 }
 
 /* ─── DARK THEME ─── */
@@ -108,6 +120,15 @@
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
   --color-info: #3B82F6;
+
+  /* Elevation + semantic tints (notifications) */
+  --surface-overlay: #1C1C1C;
+  --shadow-overlay: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 36px -6px rgba(0, 0, 0, 0.65);
+  --color-success-tint: rgba(16, 185, 129, 0.16);
+  --color-warning-tint: rgba(245, 158, 11, 0.16);
+  --color-danger-tint: rgba(239, 68, 68, 0.16);
+  --color-info-tint: rgba(59, 130, 246, 0.16);
+  --color-neutral-tint: rgba(255, 255, 255, 0.08);
 }
 
 /* ==========================================================================
@@ -592,4 +613,92 @@ ul, ol { list-style: none; }
 .sidebar-nav-item:hover .sidebar-nav-icon,
 .sidebar-nav-item.is-active .sidebar-nav-icon {
   color: var(--text-primary);
+}
+
+/* ─── Global notifications (AppToast, rendered via sonner) ───────────────── */
+.app-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 380px;
+  max-width: calc(100vw - var(--space-8));
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text-primary);
+  animation: app-toast-in 180ms var(--transition-smooth);
+}
+.app-toast[data-variant='success'] { --toast-accent: var(--color-success); }
+.app-toast[data-variant='error']   { --toast-accent: var(--color-danger); }
+.app-toast[data-variant='warning'] { --toast-accent: var(--color-warning); }
+.app-toast[data-variant='info']    { --toast-accent: var(--color-info); }
+.app-toast[data-variant='loading'] { --toast-accent: var(--text-tertiary); }
+@keyframes app-toast-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Variant identity: a bare semantic-coloured icon, no fill, no accent bar. */
+.app-toast__icon { flex: 0 0 auto; margin-top: 1px; color: var(--toast-accent); }
+.app-toast__icon--spin { animation: app-toast-spin 0.9s linear infinite; }
+@keyframes app-toast-spin { to { transform: rotate(360deg); } }
+
+.app-toast__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.app-toast__title { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); line-height: 1.4; }
+.app-toast__message { font-size: var(--text-sm); color: var(--text-primary); line-height: 1.45; overflow-wrap: anywhere; }
+/* With a title present the message becomes a quieter meta/description line (IDs, refs). */
+.app-toast__body[data-has-title] .app-toast__message { font-size: var(--text-xs); color: var(--text-tertiary); line-height: 1.4; }
+
+/* Actions reuse the app pill taxonomy; compacted for the toast context. */
+.app-toast__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+.app-toast__actions .btn { height: 30px; padding: 0 var(--space-3); font-size: var(--text-xs); }
+
+.app-toast__dismiss {
+  flex: 0 0 auto;
+  width: 28px; height: 28px;
+  margin: -2px calc(-1 * var(--space-2)) 0 0;
+  padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.app-toast__dismiss:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.app-toast__dismiss:focus-visible { outline: 2px solid var(--color-info); outline-offset: 1px; }
+
+/* 2px semantic hairline countdown, inset from the rounded corners. */
+.app-toast__progress {
+  position: absolute; left: var(--space-4); right: var(--space-4); bottom: 0;
+  height: 2px; border-radius: var(--radius-full);
+  background: var(--toast-accent, var(--text-tertiary));
+  opacity: 0.5;
+  transform-origin: left; transform: scaleX(1);
+  animation: app-toast-progress var(--toast-duration, 4000ms) linear forwards;
+}
+@keyframes app-toast-progress { to { transform: scaleX(0); } }
+[data-sonner-toaster]:hover .app-toast__progress,
+[data-sonner-toaster]:focus-within .app-toast__progress { animation-play-state: paused; }
+
+/* "+N" queue indicator shown when more toasts are waiting than the visible cap.
+   Sits top-right, just below the three visible toasts. */
+.app-toast-more {
+  position: fixed; right: var(--space-6); top: 264px; z-index: var(--z-toast);
+  padding: 3px var(--space-3);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-overlay);
+  font-size: var(--text-micro); font-weight: var(--font-bold);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toast] { transition: none !important; }
+  .app-toast { animation: none; }
+  .app-toast__progress { display: none; }
+  .app-toast__icon--spin { animation-duration: 1.6s; }
 }

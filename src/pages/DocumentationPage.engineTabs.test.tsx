@@ -12,7 +12,7 @@ import type { DocCase } from '../types';
 
 // Task 4 (Phase 11): engine tabs + assign-case-type control in CaseDetailPanel.
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('../auth/context/AuthContext', () => ({
   useAuth: () => ({ permissions: { can: () => true } }),
 }));

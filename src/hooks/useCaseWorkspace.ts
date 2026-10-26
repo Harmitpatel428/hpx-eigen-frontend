@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { caseWorkspaceService, type AssignPoliciesPayload } from '../services/case-workspace.service';
 import { extractApiError } from '../utils/extractApiError';
 import type { PatchValueEntry } from '../types/caseConfig';

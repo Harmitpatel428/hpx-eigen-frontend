@@ -4,7 +4,7 @@ import { Calendar, Check, Clock, Plus, X, ChevronDown, MapPin, User, Keyboard, L
 import { leadActivityService, GlobalFilter, LeadActivityItem } from '../services/lead-activity.service';
 import { leadService } from '../services/lead.service';
 import { invalidateLeadNotes } from '../services/lead-notes.service';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { ContextPanel } from '../components/layout/ContextPanel';
 import { LeadDetailPanel } from '../components/leads/LeadDetailPanel';
 import { LeadModal } from '../components/leads/LeadModal';

@@ -19,7 +19,7 @@ vi.mock('../../services/mandate.service', async () => {
   return { ...actual, mandateService: { ...actual.mandateService, listForCase: vi.fn() } };
 });
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // canView + canSend + canUpload true so the empty state takes its
 // send/upload dashed-box arm (exercises both actions in case 2).

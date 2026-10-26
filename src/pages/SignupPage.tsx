@@ -4,7 +4,7 @@ import { Command, Users, Lock, Globe, Check, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import axios from 'axios';
 
 const signupSchema = z.object({

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import { RotateCcw } from 'lucide-react';
 import { Modal } from '../Modal';
 import { crmSettingsService } from '../../services/crm-settings.service';

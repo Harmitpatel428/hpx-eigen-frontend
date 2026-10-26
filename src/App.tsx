@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AppToaster } from './components/notifications/AppToaster';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -120,6 +121,7 @@ export const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
+            <AppToaster />
             <Sentry.ErrorBoundary fallback={<p>An unexpected error occurred. Please refresh.</p>} showDialog>
               <Routes>
               {/* Public routes — no auth required */}

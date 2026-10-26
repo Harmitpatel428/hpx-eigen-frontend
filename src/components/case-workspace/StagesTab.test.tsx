@@ -16,7 +16,7 @@ const completeMutate = vi.fn();
 const validate = vi.fn();
 const toastError = vi.fn();
 
-vi.mock('sonner', () => ({ toast: { error: (m: string) => toastError(m) } }));
+vi.mock('../../components/notifications/notify', () => ({ toast: { error: (m: string) => toastError(m) } }));
 
 vi.mock('../../auth/public', () => ({
   useAuth: () => ({ permissions: { can: (s: string) => granted.includes(s) } }),

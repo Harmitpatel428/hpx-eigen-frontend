@@ -17,7 +17,7 @@ import { api } from '../services/api';
 import { crmSettingsService } from '../services/crm-settings.service';
 import { DEFAULT_TEMPLATE, DEFAULT_ORG_NAME } from '../utils/pendingReminder';
 import { loadColourfulFilters, saveColourfulFilters } from '../utils/salesDashboardPrefs';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 
 // Shared label + icon lookup so the expanded groups and the collapsed icon rail
 // render the same tab identically (single source — no triplicated markup).

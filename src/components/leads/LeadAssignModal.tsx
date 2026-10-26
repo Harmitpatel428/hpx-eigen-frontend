@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { X, UserCheck, Search, Loader2, Users } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import { leadService } from '../../services/lead.service';
 import { userService, TenantUser } from '../../services/user.service';
 import { permissionService } from '../../services/permission.service';

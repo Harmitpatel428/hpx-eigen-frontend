@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import { caseConfigService } from '../services/case-config.service';
 import { crmSettingsService } from '../services/crm-settings.service';
 import { extractApiError } from '../utils/extractApiError';

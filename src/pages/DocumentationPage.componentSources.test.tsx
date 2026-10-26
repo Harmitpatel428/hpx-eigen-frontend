@@ -14,7 +14,7 @@ import type { DocCase, DocCaseDocumentComponentSource } from '../types';
 
 // A merged requirement must render ONCE and name the components that require it.
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('../auth/context/AuthContext', () => ({ useAuth: () => ({ permissions: { can: () => true } }) }));
 vi.mock('../services/documentation.service', () => ({
   documentationService: { getCase: vi.fn(), listCases: vi.fn(), getDashboardKPIs: vi.fn(), listPresets: vi.fn() },

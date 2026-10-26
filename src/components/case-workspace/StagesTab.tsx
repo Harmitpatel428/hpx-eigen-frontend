@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import { extractApiError } from '../../utils/extractApiError';
 import { useAuth } from '../../auth/public';
 import { Modal } from '../Modal';

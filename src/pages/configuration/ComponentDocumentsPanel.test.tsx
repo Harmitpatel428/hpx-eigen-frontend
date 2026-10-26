@@ -17,7 +17,7 @@ vi.mock('../../services/case-config.service', () => ({
     deleteComponentDocument: vi.fn(),
   },
 }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const svc = vi.mocked(caseConfigService);
 
@@ -92,7 +92,7 @@ describe('ComponentDocumentsPanel', () => {
   });
 
   it('a duplicate-key (409) error from the API surfaces via the mutation toast', async () => {
-    const { toast } = await import('sonner');
+    const { toast } = await import('../../components/notifications/notify');
     svc.createComponentDocument.mockRejectedValue({ response: { data: { message: 'An active document with key "pan" already exists on this component.' } } });
     renderPanel();
     await screen.findByText(/No documents yet/);

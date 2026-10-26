@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '../components/notifications/notify';
 import axios from 'axios';
 
 export function VerifyEmailPage() {

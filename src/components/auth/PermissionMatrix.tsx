@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Shield, ShieldCheck, Search, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import { permissionService } from '../../services/permission.service';
 import type { Role, Permission } from '../../types';
 

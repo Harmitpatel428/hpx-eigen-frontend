@@ -3,7 +3,7 @@ import { AuthContextValue, AuthState, User } from '../contracts/AuthContext';
 import { AuthMachine } from '../machine/authMachine';
 import { authEventBus, AUTH_EVENTS } from '../events/authEvents';
 import { tokenStorage, isStorageDegraded } from '../storage/tokenStorage';
-import { toast } from 'sonner';
+import { toast } from '../../components/notifications/notify';
 import { api } from '../services/api';
 import { PermissionServiceImpl } from '../services/PermissionServiceImpl';
 import { clearStageFilter } from '../../utils/salesDashboardPrefs';

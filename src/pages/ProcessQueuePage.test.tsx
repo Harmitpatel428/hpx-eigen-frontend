@@ -10,7 +10,7 @@ let granted: string[] = [];
 vi.mock('../auth/context/AuthContext', () => ({
   useAuth: () => ({ permissions: { can: (s: string) => granted.includes(s) } }),
 }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('../services/documentation.service', () => ({
   documentationService: {
     getDashboardKPIs: vi.fn().mockResolvedValue({ pendingProcessReview: 4, transferredCases: 7, returnedToDocumentation: 2 }),

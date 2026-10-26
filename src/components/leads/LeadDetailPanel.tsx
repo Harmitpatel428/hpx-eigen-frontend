@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import {
   X,
   Building2, Calendar,
@@ -695,12 +695,15 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
       setLocalStage('QUALIFIED');
       const caseHref = `/documentation?caseId=${docCase.id}`;
       toast.success(
-        docCase.caseNumber ? `Handed off to Documentation · Case ID: ${docCase.caseNumber}` : 'Handed off to Documentation',
-        docCase.id ? {
-          duration: 10000,
-          action: { label: 'Open case', onClick: () => navigate(caseHref) },
-          cancel: { label: 'Send mandate now', onClick: () => navigate(`${caseHref}&mandate=send`) },
-        } : undefined,
+        docCase.caseNumber ? `Case ID ${docCase.caseNumber}` : 'The lead is now a documentation case.',
+        {
+          title: 'Handed off to Documentation',
+          ...(docCase.id ? {
+            duration: 10000,
+            action: { label: 'Open case', onClick: () => navigate(caseHref) },
+            cancel: { label: 'Send mandate now', onClick: () => navigate(`${caseHref}&mandate=send`) },
+          } : {}),
+        },
       );
       setShowHandoffConfirm(false);
       onUpdated?.({ ...lead, stage: 'QUALIFIED', handoffState: 'HANDED_OFF' } as Lead);

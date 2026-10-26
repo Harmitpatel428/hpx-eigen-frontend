@@ -17,7 +17,7 @@ import { CustomFieldBuilder } from './CustomFieldBuilder';
 import { LEAD_STAGE_LABELS, SELECTABLE_STAGES } from '../../domain/leadStage';
 import { LeadNotesSummary } from './LeadNotesSummary';
 import { LeadNotesModal } from './LeadNotesModal';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 
 // ============================================================================
 // CONSTANTS

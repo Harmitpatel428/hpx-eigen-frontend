@@ -7,7 +7,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import { FileText, ExternalLink, CheckCircle2, XCircle, RefreshCw, Send, Upload, Building2 } from 'lucide-react';
 import { Modal } from '../Modal';
 import { FileDropzone } from '../documents/FileDropzone';

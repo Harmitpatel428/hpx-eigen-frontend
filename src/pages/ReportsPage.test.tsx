@@ -8,7 +8,7 @@ vi.mock('../utils/csv', () => ({ exportCSV: vi.fn() }));
 let granted = ['doc:view', 'case-timeline:view'];
 let engineEnabled = true;
 vi.mock('../auth/public', () => ({ useAuth: () => ({ permissions: { can: (s: string) => granted.includes(s) } }) }));
-vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
+vi.mock('../components/notifications/notify', () => ({ toast: { error: vi.fn() } }));
 vi.mock('../components/reports/CaseFieldFilterBar', () => ({ CaseFieldFilterBar: () => <div>filterbar</div> }));
 vi.mock('../hooks/useCaseFields', () => ({
   useCaseFields: () => ({ data: [{ id: 'f1', name: 'Stage', type: 'SELECT', reportable: true }] }),

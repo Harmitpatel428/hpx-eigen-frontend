@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../notifications/notify';
 import { useAuth } from '../../auth/public';
 import { useCaseFieldValues, usePatchFieldValues } from '../../hooks/useCaseWorkspace';
 import { extractApiError } from '../../utils/extractApiError';
