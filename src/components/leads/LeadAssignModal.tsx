@@ -12,16 +12,25 @@ interface LeadAssignModalProps {
   selectedIds: Set<string>;
   onSuccess: () => void;
   onClose: () => void;
+  /**
+   * Omitted = Sales flow (all active tenant users, free department picker).
+   * `DOCUMENTATION` = pool and department come from the backend's
+   * documentation-assignees endpoint (single source of truth for the dept id).
+   */
+  assignContext?: { kind: 'DOCUMENTATION' };
 }
+
+type Assignee = Pick<TenantUser, 'id' | 'email' | 'firstName' | 'lastName'>;
 
 type Mode = 'MANUAL' | 'AUTO';
 
-export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignModalProps) {
+export function LeadAssignModal({ selectedIds, onSuccess, onClose, assignContext }: LeadAssignModalProps) {
   const leadIds = Array.from(selectedIds);
+  const isDoc = assignContext?.kind === 'DOCUMENTATION';
 
   const [mode, setMode] = useState<Mode>('MANUAL');
   const [search, setSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<TenantUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<Assignee | null>(null);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [previewLoaded, setPreviewLoaded] = useState(false);
 
@@ -31,22 +40,35 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const docQuery = useQuery({
+    queryKey: ['documentation-assignees'],
+    queryFn: () => leadService.getDocumentationAssignees(),
+    enabled: isDoc,
+    staleTime: 30_000,
+  });
+  const docDepartmentId = docQuery.data?.departmentId ?? null;
+  // Sales: the picked department. Documentation: the backend-resolved one (null = AUTO cannot run).
+  const deptId = isDoc ? docDepartmentId : (selectedDept?.id ?? null);
+
   // Reset preview when department changes
-  useEffect(() => { setPreviewLoaded(false); }, [selectedDept]);
+  useEffect(() => { setPreviewLoaded(false); }, [selectedDept, deptId]);
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => userService.listAll(),
     staleTime: 60_000,
+    enabled: !isDoc,
   });
 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ['departments'],
     queryFn: () => permissionService.getDepartments(),
     staleTime: 60_000,
+    enabled: !isDoc,
   });
 
-  const activeUsers = users.filter(u => u.status === 'ACTIVE');
+  // Documentation users are already ACTIVE-only server-side.
+  const activeUsers: Assignee[] = isDoc ? (docQuery.data?.users ?? []) : users.filter(u => u.status === 'ACTIVE');
   const filtered = search.trim()
     ? activeUsers.filter(u => {
         const name = `${u.firstName ?? ''} ${u.lastName ?? ''} ${u.email}`.toLowerCase();
@@ -55,9 +77,9 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
     : activeUsers;
 
   const previewQuery = useQuery({
-    queryKey: ['lead-assign-preview', leadIds.join(','), selectedDept?.id],
-    queryFn: () => leadService.previewAutoAssign({ leadIds, departmentId: selectedDept!.id }),
-    enabled: previewLoaded && !!selectedDept,
+    queryKey: ['lead-assign-preview', leadIds.join(','), deptId],
+    queryFn: () => leadService.previewAutoAssign({ leadIds, departmentId: deptId! }),
+    enabled: previewLoaded && !!deptId,
     staleTime: 0,
   });
 
@@ -79,12 +101,13 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
   }, [selectedUser, leadIds, assignMutation]);
 
   const handleAutoAssign = useCallback(() => {
-    if (!selectedDept) return;
-    assignMutation.mutate({ leadIds, mode: 'AUTO', departmentId: selectedDept.id });
-  }, [selectedDept, leadIds, assignMutation]);
+    if (!deptId) return;
+    assignMutation.mutate({ leadIds, mode: 'AUTO', departmentId: deptId });
+  }, [deptId, leadIds, assignMutation]);
 
   const preview = previewQuery.data;
   const noEligible = previewLoaded && preview && preview.employees.length === 0;
+  const docLoadError = isDoc && docQuery.isError;
 
   return (
     <div
@@ -147,8 +170,14 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
                 />
               </div>
               <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-                {filtered.length === 0 ? (
-                  <p style={{ fontSize: '0.8125rem', color: '#94a3b8', padding: '1rem', textAlign: 'center' }}>No active employees found.</p>
+                {isDoc && docQuery.isLoading ? (
+                  <p style={{ fontSize: '0.8125rem', color: '#94a3b8', padding: '1rem', textAlign: 'center' }}>Loading Documentation users…</p>
+                ) : docLoadError ? (
+                  <p role="alert" style={{ fontSize: '0.8125rem', color: '#b91c1c', padding: '1rem', textAlign: 'center' }}>Failed to load Documentation users.</p>
+                ) : filtered.length === 0 ? (
+                  <p style={{ fontSize: '0.8125rem', color: '#94a3b8', padding: '1rem', textAlign: 'center' }}>
+                    {isDoc && activeUsers.length === 0 ? 'No assignable users in the Documentation department.' : 'No active employees found.'}
+                  </p>
                 ) : filtered.map(u => {
                   const name = displayName(u);
                   const isSelected = selectedUser?.id === u.id;
@@ -182,6 +211,15 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
               <p style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.875rem' }}>
                 Distribute selected leads intelligently based on current workload.
               </p>
+              {isDoc ? (
+                <div style={{ marginBottom: '0.875rem', fontSize: '0.8125rem', color: docDepartmentId ? '#0f172a' : '#92400e' }}>
+                  {docQuery.isLoading ? 'Loading Documentation department…'
+                    : docLoadError ? 'Failed to load the Documentation department.'
+                    : docDepartmentId ? 'Distributing within the Documentation department.'
+                    : 'Auto assign is unavailable: no single Documentation department could be resolved.'}
+                </div>
+              ) : (
+              <>
               <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>Department</label>
               <select
                 value={selectedDept?.id ?? ''}
@@ -194,8 +232,10 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
                 <option value="">Select department…</option>
                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
+              </>
+              )}
 
-              {selectedDept && !previewLoaded && (
+              {deptId && !previewLoaded && (
                 <button
                   onClick={() => setPreviewLoaded(true)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.8125rem', fontWeight: 500, color: '#374151', cursor: 'pointer' }}
@@ -258,8 +298,8 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose }: LeadAssignM
           ) : (
             <button
               onClick={handleAutoAssign}
-              disabled={!selectedDept || noEligible || previewQuery.isLoading || assignMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: 'none', background: (selectedDept && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? '#6366f1' : '#c7d2fe', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: (selectedDept && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? 'pointer' : 'not-allowed', transition: 'background 150ms' }}
+              disabled={!deptId || noEligible || previewQuery.isLoading || assignMutation.isPending}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: 'none', background: (deptId && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? '#6366f1' : '#c7d2fe', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: (deptId && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? 'pointer' : 'not-allowed', transition: 'background 150ms' }}
             >
               {assignMutation.isPending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <UserCheck size={13} />}
               {assignMutation.isPending ? 'Assigning…' : `Auto Assign ${leadIds.length} Lead${leadIds.length !== 1 ? 's' : ''}`}

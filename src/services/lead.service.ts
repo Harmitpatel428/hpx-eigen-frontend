@@ -234,6 +234,14 @@ export const leadService = {
     return data?.data ?? data;
   },
 
+  async getDocumentationAssignees(): Promise<{
+    departmentId: string | null;
+    users: Array<{ id: string; firstName: string | null; lastName: string | null; email: string }>;
+  }> {
+    const { data } = await api.get<any>('/api/v1/leads/bulk-assign/documentation-assignees');
+    return data?.data ?? data;
+  },
+
   async bulkAssign(payload: {
     leadIds: string[];
     mode: 'MANUAL' | 'AUTO';

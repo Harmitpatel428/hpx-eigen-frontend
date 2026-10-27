@@ -17,7 +17,7 @@ import {
   Shield, RefreshCw, ExternalLink,
   FolderOpen, AlertCircle, Inbox, Eye,
   Building2, MapPin, User, Phone, Mail,
-  Upload, Trash2, Download,
+  Upload, Trash2, Download, UserCheck,
 } from 'lucide-react';
 import { documentationService } from '../services/documentation.service';
 import { handoffService } from '../services/handoff.service';
@@ -44,6 +44,7 @@ import { LeadContactInformationSection } from '../components/leads/sections/Lead
 import { LeadAllContactsSection } from '../components/leads/sections/LeadAllContactsSection';
 import { LeadQuickActionsSection } from '../components/leads/sections/LeadQuickActionsSection';
 import { LeadModal } from '../components/leads/LeadModal';
+import { LeadAssignModal } from '../components/leads/LeadAssignModal';
 import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { LeadWaChannelsModal } from '../components/leads/LeadWaChannelsModal';
 
@@ -94,7 +95,7 @@ const STORAGE_LABELS: Record<DocStorageType, string> = {
 };
 
 // Grid column templates — matches Leads page density
-const CASE_GRID     = 'minmax(200px,1.6fr) minmax(150px,1fr) minmax(100px,0.75fr) 72px';
+const CASE_GRID     = '32px minmax(200px,1.6fr) minmax(150px,1fr) minmax(100px,0.75fr) 72px';
 const INCOMING_GRID = 'minmax(200px,1.6fr) minmax(120px,0.9fr) 140px 160px';
 
 function initials(first: string, last: string) {
@@ -194,7 +195,7 @@ function ProgressBar({ pct, ready }: { pct: number; ready: boolean }) {
 }
 
 // ─── Case row (dense, matches Leads page style) ───────────────────────────────
-function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }) {
+function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocCase; onClick: () => void; selected: boolean; onToggleSelect: () => void }) {
   return (
     <div
       className="dense-row"
@@ -207,6 +208,11 @@ function CaseRow({ docCase, onClick }: { docCase: DocCase; onClick: () => void }
         contain: 'layout style',
       }}
     >
+      {/* Select (must not open the case detail) */}
+      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center' }}>
+        <input type="checkbox" checked={selected} onChange={onToggleSelect} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label={`Select case ${docCase.lead.company || `${docCase.lead.firstName} ${docCase.lead.lastName}`}`} />
+      </div>
+
       {/* Lead — company primary, person secondary (Documentation Dept rule) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <Avatar first={docCase.lead.firstName} last={docCase.lead.lastName} />
@@ -2035,6 +2041,8 @@ export function DocumentationPage() {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(searchParams.get('caseId'));
   const [rejectTarget, setRejectTarget]   = useState<DocCase | null>(null);
   const [acceptingId, setAcceptingId]     = useState<string | null>(null);
+  const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set()); // doc-case ids (main table only)
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   // 400ms debounce — matches Leads page
   useEffect(() => {
@@ -2062,6 +2070,31 @@ export function DocumentationPage() {
     enabled:   !isIncoming,
   });
   const cases = useMemo<DocCase[]>(() => casesResponse?.data ?? [], [casesResponse]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => prev.size === cases.length ? new Set() : new Set(cases.map(c => c.id)));
+  }, [cases]);
+  const allSelected = cases.length > 0 && selectedIds.size === cases.length;
+  // Selection is by case; assignment writes Lead.ownerId, so hand the modal the cases' lead ids.
+  const selectedLeadIds = useMemo(
+    () => new Set(cases.filter(c => selectedIds.has(c.id)).map(c => c.lead.id)),
+    [cases, selectedIds],
+  );
+  // Drop selections that left the current list (filter/search change, refetch).
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const live = new Set(cases.map(c => c.id));
+      const next = new Set([...prev].filter(id => live.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [cases]);
 
   // Incoming handoffs — always fetched so the pill badge count is live
   const { data: incomingCases = [], isLoading: incomingLoading } = useQuery({
@@ -2212,6 +2245,21 @@ export function DocumentationPage() {
         </div>
       </div>
 
+      {/* BULK ACTIONS TOOLBAR (cases table only) */}
+      {!isIncoming && selectedIds.size > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 12, background: 'var(--bg-muted)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedIds.size} selected</span>
+          <div style={{ width: 1, height: 16, background: 'var(--border-medium)' }} />
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#6366f1' }} onClick={() => setShowAssignModal(true)}>
+            <UserCheck size={12} style={{ marginRight: 4 }} /> Assign
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)' }} onClick={() => setSelectedIds(new Set())}>
+            <X size={12} style={{ marginRight: 4 }} /> Clear
+          </button>
+        </div>
+      )}
+
       {/* ── Cases table ── */}
       {!isIncoming && (
         <>
@@ -2223,6 +2271,9 @@ export function DocumentationPage() {
             background: 'var(--bg-app)',
             borderBottom: '1px solid var(--border-medium)',
           }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all cases" />
+            </div>
             {['Lead', 'Preset', 'Status', '%'].map(h => (
               <div key={h} style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-tertiary)' }}>
                 {h}
@@ -2244,7 +2295,7 @@ export function DocumentationPage() {
             </div>
           ) : (
             cases.map(c => (
-              <CaseRow key={c.id} docCase={c} onClick={() => {
+              <CaseRow key={c.id} docCase={c} selected={selectedIds.has(c.id)} onToggleSelect={() => toggleSelect(c.id)} onClick={() => {
                 if (permissions.can('mandate:view')) {
                   qc.prefetchQuery({ queryKey: ['mandate-requests', c.id], queryFn: () => mandateService.listForCase(c.id), staleTime: 30_000 });
                 }
@@ -2318,6 +2369,21 @@ export function DocumentationPage() {
             qc.invalidateQueries({ queryKey: ['doc-dashboard'] });
             setSelectedCaseId(newCase.id);
           }}
+        />
+      )}
+
+      {/* Assign leads (Documentation context — dept + pool come from the backend) */}
+      {showAssignModal && (
+        <LeadAssignModal
+          selectedIds={selectedLeadIds}
+          assignContext={{ kind: 'DOCUMENTATION' }}
+          onSuccess={() => {
+            qc.invalidateQueries({ queryKey: ['doc-cases'] });
+            qc.invalidateQueries({ queryKey: ['leads'] });
+            setSelectedIds(new Set());
+            setShowAssignModal(false);
+          }}
+          onClose={() => setShowAssignModal(false)}
         />
       )}
 
