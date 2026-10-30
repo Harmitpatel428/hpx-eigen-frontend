@@ -24,3 +24,10 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </Sentry.ErrorBoundary>,
 )
+
+// Offline-shell service worker — production builds only (skipped under dev HMR to avoid stale caches).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* non-fatal: app works without SW */ });
+  });
+}
