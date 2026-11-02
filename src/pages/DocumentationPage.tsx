@@ -2175,7 +2175,7 @@ export function DocumentationPage() {
   const incomingCount = incomingCases.length;
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div>
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
         <div>

@@ -107,7 +107,7 @@ export const ProcessQueuePage: React.FC = () => {
   const canReturn = permissions.can('process:return');
 
   return (
-    <div style={{ padding: 'var(--space-8)', maxWidth: 1200 }}>
+    <div style={{ padding: 'var(--space-8)' }}>
       <h1 className="type-title" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 'var(--space-5)' }}>
         Process
       </h1>
