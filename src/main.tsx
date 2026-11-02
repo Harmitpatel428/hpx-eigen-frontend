@@ -25,9 +25,9 @@ createRoot(document.getElementById('root')!).render(
   </Sentry.ErrorBoundary>,
 )
 
-// Offline-shell service worker — production builds only (skipped under dev HMR to avoid stale caches).
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => { /* non-fatal: app works without SW */ });
-  });
+// Self-heal: unregister any previously-installed service worker + clear its caches. The offline SW was
+// caching a stale app shell; removing it on load fixes browsers that still have it registered.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+  if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
 }

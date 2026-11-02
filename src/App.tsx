@@ -89,15 +89,52 @@ class GlobalErrorBoundary extends React.Component<
 }
 
 // ─── Dev-only: agentation visual feedback (lives in parent node_modules) ──
+// endpoint connects to the local agentation-server.mjs (MCP + HTTP bridge).
+// Never rendered in production — import.meta.env.DEV guard + dynamic import.
+// Use 127.0.0.1 explicitly — on Windows, 'localhost' can resolve to ::1 (IPv6)
+// which fails when the server only binds to 127.0.0.1 (IPv4).
+const AGENTATION_ENDPOINT = 'http://127.0.0.1:4747';
+
 function DevAgentation() {
-  const [Comp, setComp] = useState<React.ComponentType | null>(null);
+  const [Comp, setComp] = useState<React.ComponentType<{ endpoint?: string }> | null>(null);
+  const [serverReady, setServerReady] = useState(false);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
+
+    // Wipe stale "undefined" session keys written before the server was wired up.
+    // Without this, the toolbar loops on GET /sessions/undefined → 404 forever.
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('agentation-session-') && localStorage.getItem(k) === 'undefined')
+        .forEach(k => localStorage.removeItem(k));
+    } catch {}
+
     import('agentation')
       .then(m => setComp(() => m.Agentation))
       .catch(() => {});
+
+    // Only pass endpoint after the server is confirmed healthy — avoids
+    // ERR_CONNECTION_REFUSED console noise when the server starts after the app.
+    let cancelled = false;
+    const probe = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(`${AGENTATION_ENDPOINT}/health`, {
+          signal: AbortSignal.timeout(800),
+        });
+        if (res.ok) { setServerReady(true); return; }
+      } catch {}
+      if (!cancelled) setTimeout(probe, 2000);
+    };
+    probe();
+    return () => { cancelled = true; };
   }, []);
-  return Comp ? <Comp /> : null;
+
+  // Render immediately once the component loads; endpoint passed only when server is healthy.
+  // This ensures the toolbar is always visible — it starts in clipboard mode and upgrades to
+  // Agent Sync mode once the health probe confirms the server is up.
+  return Comp ? <Comp endpoint={serverReady ? AGENTATION_ENDPOINT : undefined} /> : null;
 }
 
 // ─── Protected App Shell (lazy loaded) ─────────────────────────────
