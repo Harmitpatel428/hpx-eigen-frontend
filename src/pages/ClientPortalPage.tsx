@@ -19,6 +19,9 @@ const CSS = `
 
   .portal-root {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    /* #root is a flex row (the authed app shell); claim the full row so the
+       centered 420px column (main { margin: 0 auto }) isn't pinned left. */
+    width: 100%;
     min-height: 100vh;
     background: #fafafa;
     color: #111827;

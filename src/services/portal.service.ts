@@ -99,13 +99,29 @@ function delay(ms: number) {
 
 // ── API adapter stub ──────────────────────────────────────────────────────────
 
-class ApiPortalService implements IPortalService {
-  async authenticate(caseId: string, phoneDigits: string, idempotencyKey: string): Promise<PortalAuthResult> {
+export class ApiPortalService implements IPortalService {
+  async authenticate(caseId: string, phoneDigits: string, _idempotencyKey: string): Promise<PortalAuthResult> {
     const { api } = await import('./api');
-    const res = await api.post('/api/v1/portal/verify', { caseNumber: caseId, phoneLast4: phoneDigits }, {
-      headers: { 'Idempotency-Key': idempotencyKey },
-    });
-    return (res.data as any).data;
+    try {
+      // No custom request header: the backend /verify ignores Idempotency-Key, and
+      // sending it forces a CORS preflight that the dev cross-origin setup (5173→3000)
+      // rejects because the header isn't in the server allowlist — which silently blocks
+      // EVERY verify (correct digits included) with a network error read as "wrong details".
+      const res = await api.post('/api/v1/portal/verify', { caseNumber: caseId, phoneLast4: phoneDigits });
+      // Backend success body: { success: true, data: { sessionToken, expiresAt } }.
+      return { success: true, ...(res.data as any).data };
+    } catch (err: any) {
+      // A 429 is a rate-limit lockout — surface it distinctly so the UI doesn't
+      // tell a caller with the CORRECT details "wrong details". Lockout is keyed
+      // on (caseNumber, ip) server-side; we don't get the exact expiry, so show
+      // the policy window.
+      if (err?.response?.status === 429) {
+        return { success: false, lockedUntil: new Date(Date.now() + PORTAL_AUTH.LOCKOUT_MINUTES * 60_000).toISOString() };
+      }
+      // Every other failure is a uniform 401 with a generic body by design (no
+      // case-number oracle, no remaining-attempts leak): client learns only "not verified".
+      return { success: false };
+    }
   }
 
   async getCaseView(sessionToken: string): Promise<PortalCaseView> {
@@ -113,7 +129,7 @@ class ApiPortalService implements IPortalService {
     const res = await api.get('/api/v1/portal/case', {
       headers: { Authorization: `Bearer ${sessionToken}` },
     });
-    return (res.data as any).data;
+    return mapCaseView((res.data as any).data);
   }
 
   async requestContactChange(sessionToken: string, newPhone: string, reason: string): Promise<void> {
@@ -132,5 +148,19 @@ export const portalService: IPortalService =
 export async function getPortalPreview(caseId: string): Promise<PortalCaseView> {
   const { api } = await import('./api');
   const res = await api.get(`/api/v1/portal/preview/${encodeURIComponent(caseId)}`);
-  return (res.data as any).data;
+  return mapCaseView((res.data as any).data);
+}
+
+/**
+ * The backend case-view projection keys the case by `caseNumber` and omits
+ * `clientVisible` (it already returns only client-visible documents). Map it
+ * onto the FE PortalCaseView the screens read: `caseId`, and clientVisible:true
+ * so the view's redundant visibility filter keeps every returned doc.
+ */
+function mapCaseView(raw: any): PortalCaseView {
+  return {
+    ...raw,
+    caseId: raw.caseId ?? raw.caseNumber,
+    documents: (raw.documents ?? []).map((d: any) => ({ clientVisible: true, ...d })),
+  };
 }

@@ -51,7 +51,7 @@ export const PORTAL_AUTH = {
 
 export const PORTAL_ERROR_MESSAGES = {
   INVALID_CREDENTIALS: "We couldn't verify those details.",
-  ACCOUNT_LOCKED: "We couldn't verify those details.",
+  ACCOUNT_LOCKED: 'Too many attempts. Please wait a while and try again.',
   SESSION_EXPIRED: 'Your session has expired. Please log in again.',
   CASE_UNAVAILABLE: "We couldn't verify those details.",
 } as const;
