@@ -5,6 +5,7 @@ import { VerificationModal } from './VerificationModal';
 import {
   Eye, EyeOff, Command, Users, Lock, Globe, Check
 } from 'lucide-react';
+import { HpxMark, HpxLockup } from '../components/brand/HpxLogo';
 
 const LivingBlueprintExperience = () => {
   return (
@@ -96,7 +97,7 @@ const FeatureSequence = () => {
 const HPXLoader = () => (
   <div className="hpx-loader-wrapper">
     <div className="hpx-logo-container">
-      <Command size={24} strokeWidth={2.5} />
+      <HpxMark size={44} />
     </div>
     <div className="hpx-progress-bar">
       <div className="hpx-progress-fill"></div>
@@ -182,10 +183,9 @@ export function LoginPage() {
         <LivingBlueprintExperience />
         <div className="left-panel-content">
           <div className="brand-header entrance-stagger-1">
-            <div className="brand-logo">
-              <Command size={20} strokeWidth={2.5} />
-            </div>
-            <span className="brand-name">HPX Eigen</span>
+            <span style={{ display: 'inline-flex', background: '#fff', padding: '9px 14px', borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
+              <HpxLockup height={26} />
+            </span>
           </div>
 
           <h1 className="hero-title entrance-stagger-2">

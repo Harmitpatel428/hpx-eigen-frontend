@@ -78,3 +78,37 @@ export const PORTAL_PROGRESS_STAGES = [
 ] as const;
 
 export type PortalProgressStageKey = typeof PORTAL_PROGRESS_STAGES[number]['key'];
+
+// ── Client document categories (3-category client abstraction; backend-aligned) ──
+// The backend delivers one of these three per document (toClientDocStatus). The FE treats any
+// unrecognised/future value as ACTION_REQUIRED (safe default) so the UI never crashes or hides a doc.
+
+export type DocCategory = 'ACTION_REQUIRED' | 'AWAITING_REVIEW' | 'APPROVED';
+
+// Attention-first display order.
+export const DOC_CATEGORY_ORDER: readonly DocCategory[] = ['ACTION_REQUIRED', 'AWAITING_REVIEW', 'APPROVED'];
+
+export const DOC_CATEGORY_META: Record<DocCategory, { label: string; color: string; tint: string; title: string; subtitle: string }> = {
+  // Light tints = app semantic status hues (--color-warning/info/success); text+dot use the AA-safe -800
+  // shade of the same hue so 11px chip text clears WCAG AA (≥4.5:1) on the tint. "Align, keep identity".
+  ACTION_REQUIRED: { label: 'Action needed', color: '#92400E', tint: 'rgba(217,119,6,0.12)', title: 'Action needed', subtitle: 'These documents need your attention.' },
+  AWAITING_REVIEW: { label: 'In review',     color: '#1E40AF', tint: 'rgba(37,99,235,0.12)', title: 'In review',     subtitle: 'Submitted — our team is reviewing these.' },
+  APPROVED:        { label: 'Approved',       color: '#065F46', tint: 'rgba(5,150,105,0.12)', title: 'Approved',      subtitle: 'These documents are complete.' },
+};
+
+// Guidance shown for ACTION_REQUIRED documents — honest, no upload/resubmit/download action exists.
+export const ACTION_REQUIRED_GUIDANCE =
+  'This document needs your attention — contact your documentation representative to submit or resubmit it.';
+
+/** Any value that is not a known non-action category falls back to ACTION_REQUIRED (safe default). */
+export function toDocCategory(status: string): DocCategory {
+  return status === 'AWAITING_REVIEW' || status === 'APPROVED' ? status : 'ACTION_REQUIRED';
+}
+
+/** Group documents into the 3 categories in attention-first order. Sum of group sizes === docs.length. */
+export function groupPortalDocuments<T extends { status: string }>(docs: readonly T[]): Array<{ category: DocCategory; docs: T[] }> {
+  return DOC_CATEGORY_ORDER.map(category => ({
+    category,
+    docs: docs.filter(d => toDocCategory(d.status) === category),
+  }));
+}

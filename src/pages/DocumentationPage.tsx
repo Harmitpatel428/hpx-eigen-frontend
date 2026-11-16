@@ -15,7 +15,7 @@ import {
   Search, Plus, Clock, AlertTriangle, CheckCircle2,
   ChevronRight, X, ArrowRight, FileText, Layers,
   Shield, RefreshCw, ExternalLink,
-  FolderOpen, AlertCircle, Inbox, Eye,
+  FolderOpen, Inbox, Eye,
   Building2, MapPin, User, Phone, Mail,
   Upload, Trash2, Download, UserCheck,
 } from 'lucide-react';
@@ -38,7 +38,9 @@ import { resolveDisplayContact, resolveLeadIdentity, formatLeadAddress } from '.
 import { findDuplicateByChecksum } from '../utils/doc-duplicate';
 import { extractApiError } from '../utils/extractApiError';
 import { buildPendingNames } from '../utils/pendingReminder';
+import { computeDocProgress } from '../utils/docProgress';
 import PendingReminderButton from '../components/documentation/PendingReminderButton';
+import { DownloadAllButton } from '../components/documentation/DownloadAllButton';
 import { LeadSectionStyles, buildContactCopyText, buildLeadCopyText } from '../components/leads/sections/shared';
 import { LeadContactInformationSection } from '../components/leads/sections/LeadContactInformationSection';
 import { LeadAllContactsSection } from '../components/leads/sections/LeadAllContactsSection';
@@ -973,6 +975,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
+  const [showPending, setShowPending] = useState(false);
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
   const [showReturn, setShowReturn] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
@@ -988,6 +991,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const canUploadDoc = permissions.can('doc:upload');
   const canManageFile = permissions.can('doc:file:manage');
   const canVerifyDoc = permissions.can('doc:verify');
+  const canViewDoc = permissions.can('doc:view');
 
   const { data: docCase, isLoading } = useQuery({
     queryKey:  ['doc-case', caseId],
@@ -1030,6 +1034,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     qc.invalidateQueries({ queryKey: ['doc-cases'] });
     qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
   }, [qc, caseId]);
+
+  // The pending-documents list is per-case and hidden by default: collapse it when the open case changes.
+  useEffect(() => { setShowPending(false); }, [caseId]);
 
   const onViewFile = useCallback(async (fileId: string) => {
     try {
@@ -1156,6 +1163,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   // Client-derived "awaiting customer" count — single source of truth shared with
   // the Copy Pending Documents reminder so the badge and message can never disagree.
   const pendingCount = buildPendingNames(docCase.documents).length;
+  // Progress counts computed from the SAME records (one source → counts can never disagree). Scoped to this
+  // case: docCase is fetched by caseId (tenant-scoped server-side), so no cross-company leakage.
+  const docProgress = computeDocProgress(docCase.documents ?? []);
   const canTransfer = docCase.isReady && !['TRANSFERRED_TO_PROCESS', 'PENDING_PROCESS_REVIEW'].includes(docCase.status);
 
   // Group uploaded files (unified Document store) by requirement; R8: general docs AND
@@ -1523,39 +1533,51 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Documentation Progress</span>
                   <span style={{ fontSize: 22, fontWeight: 800, color: docCase.isReady ? '#059669' : 'var(--text-primary)' }}>
-                    {docCase.completionPercent}%
+                    {docProgress.percent}%
                   </span>
                 </div>
-                <ProgressBar pct={docCase.completionPercent} ready={docCase.isReady} />
+                <ProgressBar pct={docProgress.percent} ready={docCase.isReady} />
                 <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
                   {[
-                    { label: 'Total',    val: docCase.totalDocs },
-                    { label: 'Received', val: docCase.receivedDocs },
-                    { label: 'Approved', val: docCase.approvedDocs, color: '#059669' },
-                    { label: 'Rejected', val: docCase.rejectedDocs, color: '#dc2626' },
-                    { label: 'Pending', val: pendingCount, color: pendingCount > 0 ? '#d97706' : '#059669' },
+                    { label: 'Total',    val: docProgress.total },
+                    { label: 'Received', val: docProgress.received },
+                    { label: 'Approved', val: docProgress.approved, color: '#059669' },
+                    { label: 'Rejected', val: docProgress.rejected, color: '#dc2626' },
                   ].map(s => (
                     <div key={s.label}>
                       <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: s.color ?? 'var(--text-primary)' }}>{s.val}</div>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {missingMandatory.length > 0 && (
-                <div style={{ marginBottom: 16, padding: 12, background: 'rgba(220,38,38,0.04)', borderRadius: 8, border: '1px solid rgba(220,38,38,0.12)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Missing Mandatory Documents
-                  </div>
-                  {missingMandatory.map(d => (
-                    <div key={d.id} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                      <AlertCircle size={11} style={{ color: '#dc2626' }} />
-                      {d.name} — <StatusChip status={d.status} />
+                  {/* Pending is clickable → toggles a collapsible, current-case list of the pending documents. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPending(v => !v)}
+                    disabled={docProgress.pending === 0}
+                    aria-expanded={showPending}
+                    aria-controls="doc-pending-list"
+                    style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: docProgress.pending > 0 ? 'pointer' : 'default' }}
+                  >
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      Pending
+                      {docProgress.pending > 0 && (
+                        <ChevronRight size={11} style={{ transform: showPending ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                      )}
                     </div>
-                  ))}
+                    <div style={{ fontSize: 18, fontWeight: 700, color: docProgress.pending > 0 ? '#d97706' : '#059669' }}>{docProgress.pending}</div>
+                  </button>
                 </div>
-              )}
+                {showPending && docProgress.pending > 0 && (
+                  <div id="doc-pending-list" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                    {docProgress.pendingDocs.map(d => (
+                      <div key={d.id} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <span style={{ flex: 1 }}>{d.name}</span>
+                        <StatusChip status={d.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                 {/* Left cluster: section title + pending count chip */}
@@ -1575,6 +1597,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     documents={docCase.documents}
                     customerName={docCase.lead.company || personName}
                   />
+                  {canViewDoc && (
+                    <DownloadAllButton caseId={caseId} docCount={(docCase.documents ?? []).length} />
+                  )}
                   {canUploadDoc && (
                     <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
                       onClick={() => setFileUploadTarget({ category: 'GENERAL' })}>

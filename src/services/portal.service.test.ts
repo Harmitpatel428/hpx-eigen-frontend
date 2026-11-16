@@ -61,7 +61,7 @@ describe('ApiPortalService.getCaseView', () => {
           status: 'ACTIVE',
           portalActivatedAt: '2026-01-01T00:00:00Z',
           progressStages: [],
-          documents: [{ id: 'd1', name: 'KYC Form', status: 'RECEIVED', receivedAt: null }],
+          documents: [{ id: 'd1', name: 'KYC Form', status: 'AWAITING_REVIEW', receivedAt: null }],
           notes: [],
         },
       },
@@ -70,8 +70,8 @@ describe('ApiPortalService.getCaseView', () => {
     const view = await svc.getCaseView('tok-123');
 
     expect(view.caseId).toBe('HPX-7K3M-92QD');
-    // Backend already scopes to client-visible docs; every returned doc must survive the view's filter.
+    // Backend already scopes to client-visible docs with a 3-category status; they pass through unchanged.
     expect(view.documents).toHaveLength(1);
-    expect(view.documents[0].clientVisible).toBe(true);
+    expect(view.documents[0].status).toBe('AWAITING_REVIEW');
   });
 });

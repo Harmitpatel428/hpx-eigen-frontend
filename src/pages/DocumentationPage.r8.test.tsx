@@ -110,9 +110,7 @@ function buildDocCase(): DocCase {
     },
     preset: null,
     // The one LIVE requirement — its id is what `liveRequirementIds` contains.
-    // isMandatory: false so it never lands in the "Missing Mandatory
-    // Documents" alert too (that would print its name a second time in the
-    // same tab and make the row-scoping below ambiguous).
+    // isMandatory: false keeps the row-scoping assertions below unambiguous.
     documents: [
       {
         id: LIVE_REQUIREMENT_ID,

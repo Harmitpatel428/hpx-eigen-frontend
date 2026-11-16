@@ -479,7 +479,9 @@ export type PortalAuthResult =
 export interface PortalCaseView {
   caseId: string;
   clientName: string;
+  company: string | null;
   status: DocCaseStatus;
+  mandateStatus: 'UPLOADED' | 'PENDING';
   portalActivatedAt: string;
   documents: PortalDocument[];
   notes: PortalNote[];
@@ -489,10 +491,9 @@ export interface PortalCaseView {
 export interface PortalDocument {
   id: string;
   name: string;
-  status: DocDocumentStatus;
-  clientVisible: boolean;
+  // 3-category client abstraction delivered by the backend (see domain/portal DocCategory).
+  status: 'ACTION_REQUIRED' | 'AWAITING_REVIEW' | 'APPROVED';
   receivedAt: string | null;
-  downloadUrl?: string;
 }
 
 export interface PortalNote {

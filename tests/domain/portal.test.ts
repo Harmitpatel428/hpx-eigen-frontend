@@ -5,6 +5,9 @@ import {
   PORTAL_AUTH,
   PORTAL_ERROR_MESSAGES,
   PORTAL_PROGRESS_STAGES,
+  toDocCategory,
+  groupPortalDocuments,
+  DOC_CATEGORY_ORDER,
 } from '../../src/domain/portal';
 
 describe('checkPortalActivation', () => {
@@ -58,6 +61,42 @@ describe('portal auth constants', () => {
 
   it('session is 15 minutes', () => {
     expect(PORTAL_AUTH.SESSION_MINUTES).toBe(15);
+  });
+});
+
+describe('document categories', () => {
+  it('maps the 3 known categories to themselves', () => {
+    expect(toDocCategory('ACTION_REQUIRED')).toBe('ACTION_REQUIRED');
+    expect(toDocCategory('AWAITING_REVIEW')).toBe('AWAITING_REVIEW');
+    expect(toDocCategory('APPROVED')).toBe('APPROVED');
+  });
+
+  it('falls back any unknown/future/empty status to ACTION_REQUIRED (never crashes)', () => {
+    expect(toDocCategory('SOMETHING_NEW')).toBe('ACTION_REQUIRED');
+    expect(toDocCategory('')).toBe('ACTION_REQUIRED');
+    expect(toDocCategory('RECEIVED')).toBe('ACTION_REQUIRED'); // old vocabulary no longer a category
+  });
+
+  it('groups attention-first and preserves every document (counts sum to length)', () => {
+    const docs = [
+      { id: '1', status: 'APPROVED' },
+      { id: '2', status: 'ACTION_REQUIRED' },
+      { id: '3', status: 'AWAITING_REVIEW' },
+      { id: '4', status: 'WEIRD' }, // → ACTION_REQUIRED
+      { id: '5', status: 'APPROVED' },
+    ];
+    const groups = groupPortalDocuments(docs);
+    expect(groups.map(g => g.category)).toEqual(DOC_CATEGORY_ORDER);
+    const total = groups.reduce((n, g) => n + g.docs.length, 0);
+    expect(total).toBe(docs.length); // no document silently hidden
+    expect(groups[0].docs.map(d => d.id)).toEqual(['2', '4']); // action-required incl. unknown fallback
+    expect(groups[2].docs.map(d => d.id)).toEqual(['1', '5']);
+  });
+
+  it('returns all three groups even when some are empty', () => {
+    const groups = groupPortalDocuments([{ id: '1', status: 'APPROVED' }]);
+    expect(groups).toHaveLength(3);
+    expect(groups.find(g => g.category === 'ACTION_REQUIRED')!.docs).toHaveLength(0);
   });
 });
 

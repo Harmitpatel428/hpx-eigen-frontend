@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useAuth } from '../../auth/context/AuthContext';
+import { HpxMark } from '../brand/HpxLogo';
 import {
   LayoutDashboard,
   GitBranch,
@@ -28,6 +29,8 @@ const allDepartmentItems: { name: string; href: string; permission?: string }[] 
   { name: 'Sales',          href: '/leads'         },
   { name: 'Documentation',  href: '/documentation' },
   { name: 'Process',        href: '/process',       permission: 'process:view' },
+  // Staff read-only preview of the client portal — gated by the existing least-privilege portal permission.
+  { name: 'Client Portal',  href: '/portal-preview', permission: 'portal:preview' },
 ];
 
 const bottomNavigation = [
@@ -69,11 +72,12 @@ export const Sidebar: React.FC = () => {
         width: 260, height: '100vh', flexShrink: 0,
       }}
     >
-      {/* Logo */}
+      {/* Logo — official HPX EIGEN mark + product wordmark */}
       <div style={{
-        height: 56, display: 'flex', alignItems: 'center',
+        height: 56, display: 'flex', alignItems: 'center', gap: 10,
         paddingInline: 24, flexShrink: 0,
       }}>
+        <HpxMark size={22} />
         <span className="sidebar-logo" style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>
           HPX EIGEN CRM
         </span>

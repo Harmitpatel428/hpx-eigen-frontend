@@ -18,7 +18,9 @@ const MOCK_CASES: Record<string, { phone: string; caseView: PortalCaseView }> = 
     caseView: {
       caseId: 'HPX-7K3M-92QD',
       clientName: 'Arun Sharma',
+      company: 'Sharma Textiles Pvt Ltd',
       status: 'ACTIVE',
+      mandateStatus: 'PENDING',
       portalActivatedAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
       progressStages: [
         { key: 'RECEIVED',   label: 'Application received',     completedAt: new Date(Date.now() - 5 * 86400000).toISOString(), isCurrent: false },
@@ -28,10 +30,9 @@ const MOCK_CASES: Record<string, { phone: string; caseView: PortalCaseView }> = 
         { key: 'COMPLETED',  label: 'Case completed',           completedAt: null, isCurrent: false },
       ],
       documents: [
-        { id: 'd1', name: 'KYC Form',         status: 'APPROVED',  clientVisible: true,  receivedAt: new Date(Date.now() - 86400000 * 4).toISOString() },
-        { id: 'd2', name: 'Income Statement', status: 'RECEIVED',  clientVisible: true,  receivedAt: new Date(Date.now() - 86400000 * 2).toISOString() },
-        { id: 'd3', name: 'Internal Check',   status: 'APPROVED',  clientVisible: false, receivedAt: null },
-        { id: 'd4', name: 'Address Proof',    status: 'REQUESTED', clientVisible: true,  receivedAt: null },
+        { id: 'd1', name: 'KYC Form',         status: 'APPROVED',        receivedAt: new Date(Date.now() - 86400000 * 4).toISOString() },
+        { id: 'd2', name: 'Income Statement', status: 'AWAITING_REVIEW', receivedAt: new Date(Date.now() - 86400000 * 2).toISOString() },
+        { id: 'd4', name: 'Address Proof',    status: 'ACTION_REQUIRED', receivedAt: null },
       ],
       notes: [
         { id: 'n1', content: 'Your application has been received and is under review. Our team will contact you if additional documents are required.', createdAt: new Date(Date.now() - 86400000 * 3).toISOString() },
@@ -158,9 +159,7 @@ export async function getPortalPreview(caseId: string): Promise<PortalCaseView> 
  * so the view's redundant visibility filter keeps every returned doc.
  */
 function mapCaseView(raw: any): PortalCaseView {
-  return {
-    ...raw,
-    caseId: raw.caseId ?? raw.caseNumber,
-    documents: (raw.documents ?? []).map((d: any) => ({ clientVisible: true, ...d })),
-  };
+  // Backend keys the case by `caseNumber`; the FE reads `caseId`. Documents already arrive scoped to
+  // client-visible with the 3-category `status`, so they pass through unchanged.
+  return { ...raw, caseId: raw.caseId ?? raw.caseNumber, documents: raw.documents ?? [] };
 }
