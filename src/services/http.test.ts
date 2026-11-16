@@ -152,6 +152,14 @@ describe('http public client', () => {
     expect(tokenStorage.get()?.accessToken).toBe('acc'); // tokens intact
     unsub();
   });
+
+  it('preserves a caller-supplied Authorization and never attaches the stored staff token', async () => {
+    // beforeEach stored a staff session ('acc'). The portal passes its own session Bearer; publicApi must keep
+    // it — this is the fix for "Unable to load case details" (the authed `api` interceptor overrode it).
+    mock.onGet('/api/v1/portal/case').reply(200, { ok: true });
+    const res = await publicApi.get('/api/v1/portal/case', { headers: { Authorization: 'Bearer PORTAL-SESSION' } });
+    expect(res.config.headers.get('Authorization')).toBe('Bearer PORTAL-SESSION');
+  });
 });
 
 // ─── 4. Fail-fast module-load gate (dev/test only) ──────────────────────────

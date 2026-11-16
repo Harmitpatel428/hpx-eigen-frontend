@@ -21,6 +21,7 @@ const MOCK_CASES: Record<string, { phone: string; caseView: PortalCaseView }> = 
       company: 'Sharma Textiles Pvt Ltd',
       status: 'ACTIVE',
       mandateStatus: 'PENDING',
+      portalActive: true,
       portalActivatedAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
       progressStages: [
         { key: 'RECEIVED',   label: 'Application received',     completedAt: new Date(Date.now() - 5 * 86400000).toISOString(), isCurrent: false },
@@ -102,7 +103,10 @@ function delay(ms: number) {
 
 export class ApiPortalService implements IPortalService {
   async authenticate(caseId: string, phoneDigits: string, _idempotencyKey: string): Promise<PortalAuthResult> {
-    const { api } = await import('./api');
+    // publicApi, never the staff-authed `api`: the portal is a client-session domain. The authed client's
+    // request interceptor would overwrite the portal Bearer with the logged-in staff token (and its 401
+    // handler would log the staff user out), so a staff session in localStorage broke every portal call.
+    const { publicApi: api } = await import('./http');
     try {
       // No custom request header: the backend /verify ignores Idempotency-Key, and
       // sending it forces a CORS preflight that the dev cross-origin setup (5173→3000)
@@ -126,7 +130,7 @@ export class ApiPortalService implements IPortalService {
   }
 
   async getCaseView(sessionToken: string): Promise<PortalCaseView> {
-    const { api } = await import('./api');
+    const { publicApi: api } = await import('./http'); // client-session domain — never the staff-authed client
     const res = await api.get('/api/v1/portal/case', {
       headers: { Authorization: `Bearer ${sessionToken}` },
     });
@@ -134,7 +138,7 @@ export class ApiPortalService implements IPortalService {
   }
 
   async requestContactChange(sessionToken: string, newPhone: string, reason: string): Promise<void> {
-    const { api } = await import('./api');
+    const { publicApi: api } = await import('./http'); // client-session domain — never the staff-authed client
     await api.post('/api/v1/portal/contact-change', { newPhone, reason }, {
       headers: { Authorization: `Bearer ${sessionToken}` },
     });

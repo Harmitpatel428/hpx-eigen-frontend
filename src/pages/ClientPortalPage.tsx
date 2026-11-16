@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { portalService } from '../services/portal.service';
 import type { PortalCaseView, DocCaseStatus } from '../types';
@@ -733,7 +733,6 @@ export default ClientPortalPage;
 
 export function PortalPreviewPage() {
   const { caseId } = useParams<{ caseId: string }>();
-  const navigate = useNavigate();
   const [data, setData] = useState<PortalCaseView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -741,16 +740,20 @@ export function PortalPreviewPage() {
   useEffect(() => {
     if (!caseId) return;
     import('../services/portal.service').then(({ getPortalPreview }) =>
-      getPortalPreview(caseId).then(setData).catch(e => setError(e?.response?.data?.message ?? 'Unable to load preview.'))
+      getPortalPreview(caseId).then(setData).catch(e => {
+        const s = e?.response?.status;
+        setError(
+          s === 404 ? 'Case not found.'
+          : s === 403 ? "You don't have permission to preview this case."
+          : e?.response?.data?.message ?? 'Unable to load preview.',
+        );
+      })
     ).finally(() => setLoading(false));
   }, [caseId]);
 
-  // No case chosen (reached from the staff "Client Portal" nav): pick one to preview. Reuses the case-id entry;
-  // navigating to /portal-preview/:caseId renders the read-only preview below. No client session is minted.
+  // Preview is per-case only (reached from a staff case context, never the sidebar). The base path is not routed.
   if (!caseId) return (
-    <PortalShell>
-      <CaseIdEntryScreen initialId="" onNext={(id) => navigate(`/portal-preview/${encodeURIComponent(id)}`)} />
-    </PortalShell>
+    <PortalShell><div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>No case selected.</div></PortalShell>
   );
 
   return (
@@ -774,7 +777,19 @@ export function PortalPreviewPage() {
           </div>
         </div>
       ) : (
-        <CaseViewScreen sessionToken="" caseId={caseId} previewData={data} />
+        <>
+          {!data.portalActive && (
+            <div role="status" style={{
+              margin: '16px 16px 0', padding: '10px 14px', borderRadius: 10,
+              background: 'var(--color-warning-tint)', color: '#92400E',
+              fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
+              Portal not yet activated for this case — the client can’t access it until it’s activated.
+            </div>
+          )}
+          <CaseViewScreen sessionToken="" caseId={caseId} previewData={data} />
+        </>
       )}
     </PortalShell>
   );

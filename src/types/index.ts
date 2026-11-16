@@ -482,6 +482,7 @@ export interface PortalCaseView {
   company: string | null;
   status: DocCaseStatus;
   mandateStatus: 'UPLOADED' | 'PENDING';
+  portalActive: boolean;
   portalActivatedAt: string;
   documents: PortalDocument[];
   notes: PortalNote[];
