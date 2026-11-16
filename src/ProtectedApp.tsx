@@ -50,7 +50,6 @@ export default function ProtectedApp() {
             <Route path="/process" element={<ProtectedRoute requirePermission="process:view" fallback={<Navigate to="/overview" replace />}><React.Suspense fallback={<PageFallback />}><ProcessQueuePage /></React.Suspense></ProtectedRoute>} />
             <Route path="/documentation"element={<React.Suspense fallback={<PageFallback />}><DocumentationPage /></React.Suspense>} />
             <Route path="/recycle-bin" element={<React.Suspense fallback={<PageFallback />}><RecycleBinPage /></React.Suspense>} />
-            <Route path="/portal-preview" element={<React.Suspense fallback={<PageFallback />}><PortalPreviewPage /></React.Suspense>} />
             <Route path="/portal-preview/:caseId" element={<React.Suspense fallback={<PageFallback />}><PortalPreviewPage /></React.Suspense>} />
           </Route>
           <Route path="/" element={<Navigate to="/overview" replace />} />

@@ -15,22 +15,24 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  Globe,
 } from 'lucide-react';
 
-const baseNavigation = [
-  { name: 'Overview',   href: '/overview',   icon: LayoutDashboard },
-  { name: 'Pipeline',   href: '/pipeline',    icon: GitBranch       },
-  { name: 'Activities', href: '/activities',  icon: Activity        },
-  { name: 'Invoices',   href: '/invoices',    icon: FileText        },
-  { name: 'Payments',   href: '/payments',    icon: CreditCard      },
+const baseNavigation: { name: string; href: string; icon: typeof LayoutDashboard; permission?: string }[] = [
+  { name: 'Overview',     href: '/overview',      icon: LayoutDashboard },
+  { name: 'Pipeline',     href: '/pipeline',       icon: GitBranch       },
+  { name: 'Activities',   href: '/activities',     icon: Activity        },
+  { name: 'Invoices',     href: '/invoices',       icon: FileText        },
+  { name: 'Payments',     href: '/payments',       icon: CreditCard      },
+  // Top-level, after Payments: the client-facing portal lookup. Permission-gated; the per-case staff preview
+  // is reached from a case, not here.
+  { name: 'Client Portal', href: '/client-portal', icon: Globe, permission: 'portal:preview' },
 ];
 
 const allDepartmentItems: { name: string; href: string; permission?: string }[] = [
   { name: 'Sales',          href: '/leads'         },
   { name: 'Documentation',  href: '/documentation' },
   { name: 'Process',        href: '/process',       permission: 'process:view' },
-  // Staff read-only preview of the client portal — gated by the existing least-privilege portal permission.
-  { name: 'Client Portal',  href: '/portal-preview', permission: 'portal:preview' },
 ];
 
 const bottomNavigation = [
@@ -163,8 +165,11 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* Remaining nav items */}
-        {navigation.slice(1).map(item => {
-          const isActive = location.pathname === item.href;
+        {navigation.slice(1).filter(item => !item.permission || permissions.can(item.permission)).map(item => {
+          // Client Portal highlights on its route and any sub-route; the others keep exact matching unchanged.
+          const isActive = item.href === '/client-portal'
+            ? location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
+            : location.pathname === item.href;
           return (
             <NavLink
               key={item.name}
