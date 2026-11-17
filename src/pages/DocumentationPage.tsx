@@ -1736,7 +1736,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   {!docCase.portalEnabled
                     ? 'Portal disabled for this case.'
                     : !docCase.portalActivatedAt
-                    ? 'Awaiting activation — add a client-visible note or document first.'
+                    ? 'Awaiting activation — the portal goes live once a client phone number is on record.'
                     : `Activated ${relativeTime(docCase.portalActivatedAt)}`}
                 </div>
               </div>
