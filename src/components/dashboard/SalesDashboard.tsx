@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDashboardMetrics } from '../../hooks/useDashboardMetrics';
 import { KpiCard } from './KpiCard';
+import { LeadStageChart } from './LeadStageChart';
 import { formatCurrency } from '../../utils/crm';
 import { ArrowRight } from 'lucide-react';
 import type { SalesMetrics } from '../../hooks/useDashboardMetrics';
@@ -78,6 +79,11 @@ export const SalesDashboard: React.FC = () => {
               <KpiCard {...(card as any)} />
             </div>
           ))}
+        </div>
+
+        {/* ── Leads by stage ────────────────────────────────────── */}
+        <div style={{ marginBottom: 'var(--space-16)', ...anim(440) }}>
+          <LeadStageChart />
         </div>
 
         {/* ── Pipeline Momentum ─────────────────────────────────── */}

@@ -29,17 +29,20 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
 
   return (
-    <div className="group relative overflow-hidden rounded-3xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md hover:ring-gray-200">
+    <div
+      className="group relative overflow-hidden"
+      style={{ borderRadius: 16, backgroundColor: 'var(--surface-overlay)', padding: 24, border: '1px solid var(--border-light)' }}
+    >
       <div className="flex items-start justify-between">
         <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          <p className="text-[11px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
             {title}
           </p>
-          <p className="text-[32px] font-light tracking-tight text-gray-900 leading-none">
+          <p className="text-[32px] font-light tracking-tight leading-none" style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
             {value}
           </p>
           {subtitle && (
-            <p className="text-[13px] text-gray-500">{subtitle}</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>
           )}
         </div>
         

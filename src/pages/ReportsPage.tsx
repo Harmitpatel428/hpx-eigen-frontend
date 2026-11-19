@@ -15,9 +15,15 @@ import type { DocCase } from '../types';
 const EXPORT_CAP = 5000;
 const SORTABLE = ['createdAt', 'priority', 'completionPercent', 'targetDate'];
 
+// Raw case-status enums (e.g. TRANSFERRED_TO_PROCESS) read as code; show them humanized.
+const humanizeStatus = (v: unknown): string =>
+  typeof v === 'string' && v
+    ? v.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
+    : String(v ?? '');
+
 const columns: Column<DocCase>[] = [
   { key: 'caseNumber', label: 'Case #' },
-  { key: 'status', label: 'Status' },
+  { key: 'status', label: 'Status', render: (v) => humanizeStatus(v) },
   { key: 'priority', label: 'Priority', sortable: true },
   { key: 'completionPercent', label: 'Completion %', sortable: true },
   { key: 'createdAt', label: 'Created', sortable: true },

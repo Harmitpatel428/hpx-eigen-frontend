@@ -10,7 +10,6 @@ import {
   FileText,
   CreditCard,
   Settings,
-  HelpCircle,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -38,7 +37,6 @@ const allDepartmentItems: { name: string; href: string; permission?: string }[] 
 const bottomNavigation = [
   { name: 'Recycle Bin',    href: '/recycle-bin', icon: Trash2     },
   { name: 'Settings',       href: '/settings',    icon: Settings   },
-  { name: 'Help & Support', href: '/help',         icon: HelpCircle },
 ];
 
 // Shared logo-link styling (reused by both the gated portal <a> and the /overview fallback NavLink)
