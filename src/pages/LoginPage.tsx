@@ -192,7 +192,7 @@ export function LoginPage() {
             Relationship intelligence for the modern enterprise.
           </h1>
           <p className="hero-subtitle entrance-stagger-3">
-            The most powerful CRM built to capture, analyze, and leverage your organizational network.
+            Capture, analyze, and act on your organization's network of relationships — in one place your whole team shares.
           </p>
 
           <div className="entrance-stagger-4">
@@ -495,7 +495,7 @@ export function LoginPage() {
 
         /* Accent */
         .bp-accent {
-          fill: #3b82f6; /* HPX Blue Accent */
+          fill: #2563EB; /* brand info accent (index.css --color-info) */
           opacity: 0;
           animation: pulseAccent 19s var(--ease-smooth) infinite;
           animation-delay: -3s;
@@ -633,13 +633,13 @@ export function LoginPage() {
           color: #737373;
           font-size: 12px;
           font-weight: 500;
-          text-transform: uppercase;
           margin-bottom: 6px;
         }
         .stat-value {
           color: #ffffff;
           font-size: 14px;
           font-weight: 500;
+          font-variant-numeric: tabular-nums;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -751,7 +751,7 @@ export function LoginPage() {
         .auth-form {
           display: flex;
           flex-direction: column;
-          gap: 22px;
+          gap: 24px;
         }
         .input-group {
           display: flex;
@@ -778,15 +778,15 @@ export function LoginPage() {
           color: var(--color-auth-text);
           font-size: 15px;
           outline: none;
-          transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out), background-color 200ms var(--ease-out);
+          transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), background-color 200ms var(--ease-out);
         }
         .pr-10 { padding-right: 44px; }
         .premium-input::placeholder { color: #a1a1aa; }
         
         .premium-input:focus {
-          border-color: #a1a1aa;
-          background-color: #fafafa;
-          transform: translateY(-1px);
+          border-color: #18181b;
+          background-color: #ffffff;
+          box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07);
         }
         
         .premium-input.input-error {
@@ -871,6 +871,16 @@ export function LoginPage() {
         }
         .premium-button:active {
           transform: translateY(1px);
+        }
+        .premium-button:focus-visible {
+          outline: 2px solid #18181b;
+          outline-offset: 2px;
+        }
+        .forgot-link:focus-visible,
+        .password-toggle:focus-visible {
+          outline: 2px solid #18181b;
+          outline-offset: 2px;
+          border-radius: 4px;
         }
         
         .shortcut-hint {
