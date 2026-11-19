@@ -39,7 +39,7 @@ export const SalesDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="rounded-3xl bg-rose-50 p-6 text-rose-700">
+      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--color-danger-tint)', color: 'var(--color-danger)' }}>
         <p className="font-medium">Failed to load dashboard</p>
         <p className="text-sm opacity-80">{error.message}</p>
       </div>
@@ -162,13 +162,13 @@ export const SalesDashboard: React.FC = () => {
 
 const DashboardSkeleton: React.FC = () => (
   <div className="space-y-8">
-    <div className="h-36 animate-pulse rounded-3xl bg-gray-100" />
+    <div className="h-36 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-32 animate-pulse rounded-3xl bg-gray-100" />
+        <div key={i} className="h-32 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
       ))}
     </div>
-    <div className="h-48 animate-pulse rounded-3xl bg-gray-100" />
+    <div className="h-48 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
   </div>
 );
 
