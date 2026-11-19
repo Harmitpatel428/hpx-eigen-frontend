@@ -25,7 +25,7 @@ export const DocumentationDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="rounded-3xl bg-rose-50 p-6 text-rose-700">
+      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--color-danger-tint)', color: 'var(--color-danger)' }}>
         <p className="font-medium">Failed to load dashboard</p>
         <p className="text-sm opacity-80">{error.message}</p>
       </div>
@@ -69,8 +69,8 @@ export const DocumentationDashboard: React.FC = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { title: 'Active Drafts',      value: metrics.activeDrafts,                                 subtitle: 'In progress',     accent: 'amber'   as const },
-            { title: 'Review Turnaround',  value: `${metrics.reviewTurnaround} ${metrics.unit}`,        trend: 'down' as const, trendValue: '-3 hrs', accent: 'amber'   as const },
-            { title: 'Compliance Rate',    value: `${metrics.complianceRate}%`,                          trend: 'up'   as const, trendValue: '+2%',    accent: 'emerald' as const },
+            { title: 'Review Turnaround',  value: `${metrics.reviewTurnaround} ${metrics.unit}`,        accent: 'amber'   as const },
+            { title: 'Compliance Rate',    value: `${metrics.complianceRate}%`,                          accent: 'emerald' as const },
             { title: 'Pending Signatures', value: metrics.pendingSignatures,                             subtitle: 'Awaiting client', accent: 'rose'    as const },
             { title: 'Overdue stages',     value: metrics.overdueStages,                                 subtitle: 'Past deadline',   accent: 'rose'    as const },
             { title: 'At-risk stages',     value: metrics.atRiskStages,                                  subtitle: 'Approaching deadline', accent: 'amber' as const },
@@ -108,10 +108,9 @@ function ClientPortalCard() {
 
   return (
     <div style={{
-      borderRadius: 24, background: 'var(--bg-subtle)',
+      borderRadius: 16, background: 'var(--bg-subtle)',
       padding: '28px 28px 24px',
-      border: '1px solid #F3F4F6',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      border: '1px solid var(--border-light)',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
         <div style={{
@@ -153,11 +152,11 @@ function ClientPortalCard() {
           disabled={!isValid}
           style={{
             height: 36, borderRadius: 10, paddingInline: 16,
-            background: isValid ? '#111827' : 'var(--bg-subtle)',
-            color: isValid ? '#fff' : 'var(--text-tertiary)',
+            background: isValid ? 'var(--color-accent)' : 'var(--bg-subtle)',
+            color: isValid ? 'var(--text-inverse)' : 'var(--text-tertiary)',
             border: isValid ? 'none' : '1px solid var(--border-medium)',
-            fontSize: 12, fontWeight: 700, cursor: isValid ? 'pointer' : 'not-allowed',
-            whiteSpace: 'nowrap', transition: 'all 0.15s',
+            fontSize: 12, fontWeight: 600, cursor: isValid ? 'pointer' : 'not-allowed',
+            whiteSpace: 'nowrap', transition: 'background 0.15s, color 0.15s',
           }}
         >
           Enter Case ID
@@ -169,10 +168,10 @@ function ClientPortalCard() {
 
 const DashboardSkeleton: React.FC = () => (
   <div className="space-y-8">
-    <div className="h-32 animate-pulse rounded-3xl bg-gray-100" />
+    <div className="h-32 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-32 animate-pulse rounded-3xl bg-gray-100" />
+        <div key={i} className="h-32 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
       ))}
     </div>
   </div>

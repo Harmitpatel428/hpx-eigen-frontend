@@ -23,7 +23,7 @@ export const ProcessDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="rounded-3xl bg-rose-50 p-6 text-rose-700">
+      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--color-danger-tint)', color: 'var(--color-danger)' }}>
         <p className="font-medium">Failed to load dashboard</p>
         <p className="text-sm opacity-80">{error.message}</p>
       </div>
@@ -67,8 +67,8 @@ export const ProcessDashboard: React.FC = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { title: 'Active Tasks',         value: metrics.activeTasks,                                subtitle: 'In progress',    accent: 'blue'  as const },
-            { title: 'Completion Rate',       value: `${metrics.completionRate}%`,                       trend: 'up'   as const, trendValue: '+8%',       accent: 'blue'  as const },
-            { title: 'Avg Processing',        value: `${metrics.avgProcessingTime} ${metrics.unit}`,     trend: 'down' as const, trendValue: '-1.2 days',  accent: 'blue'  as const },
+            { title: 'Completion Rate',       value: `${metrics.completionRate}%`,                       accent: 'blue'  as const },
+            { title: 'Avg Processing',        value: `${metrics.avgProcessingTime} ${metrics.unit}`,     accent: 'blue'  as const },
             { title: 'Pending Verifications', value: metrics.pendingVerifications,                        subtitle: 'High priority', accent: 'amber' as const },
           ].map((card, i) => (
             <div key={card.title} style={anim(220 + i * 60)}>
@@ -78,15 +78,15 @@ export const ProcessDashboard: React.FC = () => {
         </div>
 
         {/* Empty state */}
-        <div className="rounded-3xl bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-gray-100" style={anim(500)}>
+        <div className="rounded-2xl p-8" style={{ backgroundColor: 'var(--surface-overlay)', border: '1px solid var(--border-light)', ...anim(500) }}>
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-              <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--color-info-tint)' }}>
+              <svg className="h-6 w-6" style={{ color: 'var(--color-info)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900">Process tasks</h3>
-            <p className="mt-1 max-w-sm text-sm text-gray-500">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Process tasks</h3>
+            <p className="mt-1 max-w-sm text-sm" style={{ color: 'var(--text-secondary)' }}>
               Process task tracking will be available once the ProcessTask data model is added to your schema.
             </p>
           </div>
@@ -98,10 +98,10 @@ export const ProcessDashboard: React.FC = () => {
 
 const DashboardSkeleton: React.FC = () => (
   <div className="space-y-8">
-    <div className="h-32 animate-pulse rounded-3xl bg-gray-100" />
+    <div className="h-32 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-32 animate-pulse rounded-3xl bg-gray-100" />
+        <div key={i} className="h-32 animate-pulse rounded-2xl bg-[var(--bg-muted)]" />
       ))}
     </div>
   </div>
