@@ -47,12 +47,26 @@ describe('Sidebar — relocated config nav', () => {
     expect(screen.queryByRole('link', { name: 'Client Portal' })).toBeNull();
   });
 
-  it('logo is a link to /overview with the Go to Client Portal Overview label', () => {
+  it('logo (with portal:preview) links to the client portal in a new tab, hardened, no nested interactive', () => {
+    canImpl = () => true; // holds portal:preview
     renderSidebar();
     const logo = screen.getByRole('link', { name: 'Go to Client Portal Overview' });
-    expect(logo.getAttribute('href')).toBe('/overview');
-    // The mark + wordmark live inside the single link — no nested interactive element.
+    expect(logo.getAttribute('href')).toBe('/client-portal');
+    expect(logo.getAttribute('target')).toBe('_blank');
+    // new-tab hardening: no window.opener access, no referrer leak.
+    const rel = logo.getAttribute('rel') ?? '';
+    expect(rel).toContain('noopener');
+    expect(rel).toContain('noreferrer');
     expect(logo.querySelector('a, button')).toBeNull();
     expect(logo.textContent).toContain('HPX EIGEN CRM');
+  });
+
+  it('logo (without portal:preview) falls back to an in-place /overview home link', () => {
+    canImpl = () => false; // lacks portal:preview
+    renderSidebar();
+    const logo = screen.getByRole('link', { name: 'Go to Overview' });
+    expect(logo.getAttribute('href')).toBe('/overview');
+    expect(logo.getAttribute('target')).toBeNull(); // in-place, not a new tab
+    expect(screen.queryByRole('link', { name: 'Go to Client Portal Overview' })).toBeNull();
   });
 });

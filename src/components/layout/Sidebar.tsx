@@ -41,6 +41,15 @@ const bottomNavigation = [
   { name: 'Help & Support', href: '/help',         icon: HelpCircle },
 ];
 
+// Shared logo-link styling (reused by both the gated portal <a> and the /overview fallback NavLink)
+// so the mark + wordmark look identical regardless of destination.
+const logoLinkStyle: React.CSSProperties = {
+  height: 56, display: 'flex', alignItems: 'center', gap: 10,
+  paddingInline: 24, flexShrink: 0,
+  textDecoration: 'none', color: 'inherit', cursor: 'pointer',
+};
+const logoWordmarkStyle: React.CSSProperties = { fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' };
+
 export const Sidebar: React.FC = () => {
   const { activeDepartment } = useDepartment();
   const { permissions } = useAuth();
@@ -74,22 +83,28 @@ export const Sidebar: React.FC = () => {
         width: 260, height: '100vh', flexShrink: 0,
       }}
     >
-      {/* Logo — official HPX EIGEN mark + product wordmark. Doubles as a home link to the Overview page. */}
-      <NavLink
-        to="/overview"
-        aria-label="Go to Client Portal Overview"
-        className="sidebar-logo-link"
-        style={{
-          height: 56, display: 'flex', alignItems: 'center', gap: 10,
-          paddingInline: 24, flexShrink: 0,
-          textDecoration: 'none', color: 'inherit', cursor: 'pointer',
-        }}
-      >
-        <HpxMark size={22} />
-        <span className="sidebar-logo" style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>
-          HPX EIGEN CRM
-        </span>
-      </NavLink>
+      {/* Logo — official HPX EIGEN mark + product wordmark, doubling as a nav link.
+          Gated like the Client Portal menu item: only portal:preview holders get the portal
+          destination (opened in a new tab so the authenticated workspace stays put, with
+          rel="noopener noreferrer" hardening). Everyone else lands on the Overview home. */}
+      {permissions.can('portal:preview') ? (
+        <a
+          href="/client-portal"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Go to Client Portal Overview"
+          className="sidebar-logo-link"
+          style={logoLinkStyle}
+        >
+          <HpxMark size={22} />
+          <span className="sidebar-logo" style={logoWordmarkStyle}>HPX EIGEN CRM</span>
+        </a>
+      ) : (
+        <NavLink to="/overview" aria-label="Go to Overview" className="sidebar-logo-link" style={logoLinkStyle}>
+          <HpxMark size={22} />
+          <span className="sidebar-logo" style={logoWordmarkStyle}>HPX EIGEN CRM</span>
+        </NavLink>
+      )}
 
       {/* Main nav */}
       <nav style={{ flex: 1, padding: '4px 12px', overflowY: 'auto' }}>
