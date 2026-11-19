@@ -97,7 +97,7 @@ const STORAGE_LABELS: Record<DocStorageType, string> = {
 };
 
 // Grid column templates — matches Leads page density
-const CASE_GRID     = '32px minmax(200px,1.6fr) minmax(150px,1fr) minmax(100px,0.75fr) 72px';
+const CASE_GRID     = '32px minmax(200px,1.6fr) minmax(150px,1fr) minmax(100px,0.75fr) minmax(110px,0.9fr) 72px';
 const INCOMING_GRID = 'minmax(200px,1.6fr) minmax(120px,0.9fr) 140px 160px';
 
 function initials(first: string, last: string) {
@@ -242,6 +242,12 @@ function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocC
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <CaseBadge status={docCase.status} />
         <MandateDot status={docCase.latestMandateStatus} />
+      </div>
+
+      {/* Assigned user — mirrors Sales owner-name cell (no impersonation) */}
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}
+           title={[docCase.assignedUser?.firstName, docCase.assignedUser?.lastName].filter(Boolean).join(' ') || undefined}>
+        {[docCase.assignedUser?.firstName, docCase.assignedUser?.lastName].filter(Boolean).join(' ') || '—'}
       </div>
 
       {/* Completion % + chevron */}
@@ -2299,7 +2305,7 @@ export function DocumentationPage() {
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all cases" />
             </div>
-            {['Lead', 'Preset', 'Status', '%'].map(h => (
+            {['Lead', 'Preset', 'Status', 'Assigned', '%'].map(h => (
               <div key={h} style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-tertiary)' }}>
                 {h}
               </div>
