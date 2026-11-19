@@ -33,6 +33,7 @@ export const SalesDashboard: React.FC = () => {
   // Per-stage pipeline comes from the metrics endpoint — no full opportunity fetch
   const stageMap = new Map((metrics?.pipelineByStage ?? []).map(s => [s.stage, s]));
   const totalPipelineVal = metrics?.pipelineValue ?? 0;
+  const pipelineDeals = (metrics?.pipelineByStage ?? []).reduce((n, s) => n + s.count, 0);
 
   if (isLoading) return <DashboardSkeleton />;
 
@@ -95,6 +96,11 @@ export const SalesDashboard: React.FC = () => {
             </button>
           </div>
 
+          {pipelineDeals === 0 ? (
+            <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14, border: '1px solid var(--border-light)', borderRadius: 16 }}>
+              No deals in the pipeline yet
+            </div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {PIPELINE_STAGES.map((stage, i) => {
               const entry = stageMap.get(stage);
@@ -147,6 +153,7 @@ export const SalesDashboard: React.FC = () => {
               );
             })}
           </div>
+          )}
         </div>
       </div>
     </>
