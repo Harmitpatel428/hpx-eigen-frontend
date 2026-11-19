@@ -74,16 +74,22 @@ export const Sidebar: React.FC = () => {
         width: 260, height: '100vh', flexShrink: 0,
       }}
     >
-      {/* Logo — official HPX EIGEN mark + product wordmark */}
-      <div style={{
-        height: 56, display: 'flex', alignItems: 'center', gap: 10,
-        paddingInline: 24, flexShrink: 0,
-      }}>
+      {/* Logo — official HPX EIGEN mark + product wordmark. Doubles as a home link to the Overview page. */}
+      <NavLink
+        to="/overview"
+        aria-label="Go to Client Portal Overview"
+        className="sidebar-logo-link"
+        style={{
+          height: 56, display: 'flex', alignItems: 'center', gap: 10,
+          paddingInline: 24, flexShrink: 0,
+          textDecoration: 'none', color: 'inherit', cursor: 'pointer',
+        }}
+      >
         <HpxMark size={22} />
         <span className="sidebar-logo" style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>
           HPX EIGEN CRM
         </span>
-      </div>
+      </NavLink>
 
       {/* Main nav */}
       <nav style={{ flex: 1, padding: '4px 12px', overflowY: 'auto' }}>

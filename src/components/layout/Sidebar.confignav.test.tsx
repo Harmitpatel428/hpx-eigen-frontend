@@ -46,4 +46,13 @@ describe('Sidebar — relocated config nav', () => {
     renderSidebar();
     expect(screen.queryByRole('link', { name: 'Client Portal' })).toBeNull();
   });
+
+  it('logo is a link to /overview with the Go to Client Portal Overview label', () => {
+    renderSidebar();
+    const logo = screen.getByRole('link', { name: 'Go to Client Portal Overview' });
+    expect(logo.getAttribute('href')).toBe('/overview');
+    // The mark + wordmark live inside the single link — no nested interactive element.
+    expect(logo.querySelector('a, button')).toBeNull();
+    expect(logo.textContent).toContain('HPX EIGEN CRM');
+  });
 });
