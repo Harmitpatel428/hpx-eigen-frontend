@@ -3,16 +3,42 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/public';
 import { VerificationModal } from './VerificationModal';
 import {
-  Eye, EyeOff, Command, Users, Lock, Globe, Check
+  Eye, EyeOff, Users, Lock, Check,
+  Target, Share2, BarChart3, Workflow, Lightbulb, ShieldCheck
 } from 'lucide-react';
 import { HpxMark, HpxLockup } from '../components/brand/HpxLogo';
 
-const LivingBlueprintExperience = () => {
+/**
+ * The organization's relationship graph, drawn in blueprint ink: entities as
+ * nodes, relationships as edges, one live connection. This is the product —
+ * relationship intelligence — made visible behind the sign-in.
+ */
+const GRAPH_NODES: Record<string, { x: number; y: number; r: number }> = {
+  n1: { x: 540, y: 486, r: 7 }, // structural hub, behind the headline
+  n2: { x: 360, y: 326, r: 5 },
+  n3: { x: 724, y: 320, r: 5 },
+  n4: { x: 300, y: 582, r: 5 },
+  n5: { x: 788, y: 548, r: 6 }, // the live node, in open space
+
+  n6: { x: 476, y: 672, r: 4 },
+  n7: { x: 624, y: 676, r: 4 },
+  n8: { x: 196, y: 436, r: 4 },
+  n9: { x: 848, y: 430, r: 4 },
+  n10: { x: 452, y: 206, r: 4 },
+  n11: { x: 636, y: 196, r: 4 },
+  n12: { x: 540, y: 806, r: 4 },
+};
+const GRAPH_EDGES: [string, string][] = [
+  ['n1', 'n2'], ['n1', 'n3'], ['n1', 'n4'], ['n1', 'n5'], ['n1', 'n6'], ['n1', 'n7'],
+  ['n2', 'n8'], ['n2', 'n10'], ['n3', 'n9'], ['n3', 'n11'], ['n4', 'n8'], ['n5', 'n9'],
+  ['n6', 'n12'], ['n7', 'n12'], ['n10', 'n11'],
+];
+
+const RelationshipGraph = () => {
+  const live = GRAPH_NODES.n5;
   return (
     <div className="blueprint-container blueprint-entrance">
       <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" className="blueprint-svg">
-
-        {/* Base Grid Pattern */}
         <defs>
           <pattern id="blueprint-grid" width="50" height="50" patternUnits="userSpaceOnUse">
             <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#ffffff" strokeWidth="0.5" opacity="0.02" />
@@ -20,45 +46,43 @@ const LivingBlueprintExperience = () => {
         </defs>
         <rect width="100%" height="100%" fill="url(#blueprint-grid)" />
 
-        {/* Alignment Markers (+) */}
-        <g className="blueprint-markers" opacity="0.1">
-          <path d="M 200,195 L 200,205 M 195,200 L 205,200" stroke="#ffffff" strokeWidth="1" />
-          <path d="M 800,195 L 800,205 M 795,200 L 805,200" stroke="#ffffff" strokeWidth="1" />
-          <path d="M 200,795 L 200,805 M 195,800 L 205,800" stroke="#ffffff" strokeWidth="1" />
-          <path d="M 800,795 L 800,805 M 795,800 L 805,800" stroke="#ffffff" strokeWidth="1" />
-          <path d="M 500,495 L 500,505 M 495,500 L 505,500" stroke="#ffffff" strokeWidth="1" />
+        <g className="bp-edges">
+          {GRAPH_EDGES.map(([a, b], i) => (
+            <line
+              key={`${a}-${b}`}
+              className="bp-edge"
+              x1={GRAPH_NODES[a].x} y1={GRAPH_NODES[a].y}
+              x2={GRAPH_NODES[b].x} y2={GRAPH_NODES[b].y}
+              pathLength={1}
+              style={{ animationDelay: `${300 + i * 70}ms` }}
+            />
+          ))}
         </g>
 
-        {/* Frame Assembly Layer */}
-        <g className="blueprint-frames">
-          <rect x="240" y="240" width="200" height="120" className="bp-frame bp-frame-1" />
-          <rect x="460" y="240" width="300" height="320" className="bp-frame bp-frame-2" />
-          <rect x="240" y="380" width="200" height="180" className="bp-frame bp-frame-3" />
-          <rect x="240" y="580" width="520" height="180" className="bp-frame bp-frame-4" />
+        <g className="bp-nodes">
+          {Object.entries(GRAPH_NODES).map(([id, n], i) => (
+            <circle
+              key={id}
+              className={`bp-node ${id === 'n5' ? 'bp-node-accent' : ''}`}
+              cx={n.x} cy={n.y} r={n.r}
+              style={{ animationDelay: `${640 + i * 50}ms` }}
+            />
+          ))}
         </g>
 
-        {/* Guide Lines Extending */}
-        <g className="blueprint-guides">
-          <line x1="100" y1="240" x2="900" y2="240" className="bp-guide bp-guide-x1" />
-          <line x1="100" y1="560" x2="900" y2="560" className="bp-guide bp-guide-x2" />
-          <line x1="240" y1="100" x2="240" y2="900" className="bp-guide bp-guide-y1" />
-          <line x1="760" y1="100" x2="760" y2="900" className="bp-guide bp-guide-y2" />
-        </g>
-
-        {/* Accent Marker */}
-        <rect x="760" y="240" width="3" height="3" className="bp-accent" />
+        <circle className="bp-pulse" cx={live.x} cy={live.y} r={live.r} />
       </svg>
     </div>
   );
 };
 
 const featureList = [
-  "Lead Intelligence",
-  "Relationship Intelligence",
-  "Pipeline Analytics",
-  "Workflow Automation",
-  "AI Recommendations",
-  "Enterprise Security"
+  { label: 'Lead intelligence', Icon: Target },
+  { label: 'Relationship intelligence', Icon: Share2 },
+  { label: 'Pipeline analytics', Icon: BarChart3 },
+  { label: 'Workflow automation', Icon: Workflow },
+  { label: 'AI recommendations', Icon: Lightbulb },
+  { label: 'Enterprise security', Icon: ShieldCheck },
 ];
 
 const FeatureSequence = () => {
@@ -79,15 +103,15 @@ const FeatureSequence = () => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {featureList.map((feature, i) => (
+      {featureList.map(({ label, Icon }, i) => (
         <div
-          key={feature}
+          key={label}
           className={`feature-card ${i === index ? 'active' : ''}`}
         >
           <div className="feature-icon-wrapper">
-            <Command size={16} />
+            <Icon size={16} strokeWidth={1.5} />
           </div>
-          <span>{feature}</span>
+          <span>{label}</span>
         </div>
       ))}
     </div>
@@ -180,7 +204,7 @@ export function LoginPage() {
       </div>
 
       <div className="auth-left-panel">
-        <LivingBlueprintExperience />
+        <RelationshipGraph />
         <div className="left-panel-content">
           <div className="brand-header entrance-stagger-1">
             <span style={{ display: 'inline-flex', background: '#fff', padding: '9px 14px', borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
@@ -204,7 +228,7 @@ export function LoginPage() {
           <div className="stat-block">
             <div className="stat-label">Customers</div>
             <div className="stat-value">
-              <Users size={14} className="stat-icon" /> 10,000+ Teams
+              <Users size={14} strokeWidth={1.5} className="stat-icon" /> 10,000+ Teams
             </div>
           </div>
           <div className="stat-block">
@@ -216,7 +240,7 @@ export function LoginPage() {
           <div className="stat-block">
             <div className="stat-label">Security</div>
             <div className="stat-value">
-              <Lock size={14} className="stat-icon" /> SOC-2 Type II
+              <Lock size={14} strokeWidth={1.5} className="stat-icon" /> SOC-2 Type II
             </div>
           </div>
         </div>
@@ -231,7 +255,7 @@ export function LoginPage() {
 
       <div className="auth-right-panel">
         <div className="secure-indicator">
-          <Globe size={14} /> Secure Login
+          <ShieldCheck size={14} strokeWidth={1.5} /> Secure login
         </div>
 
         <div className="auth-card-container">
@@ -290,7 +314,7 @@ export function LoginPage() {
                     className="password-toggle"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                    {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
                   </button>
                 </div>
               </div>
@@ -316,7 +340,8 @@ export function LoginPage() {
                 ) : (
                   osShortcut && (
                     <div className="shortcut-hint">
-                      <span className="os-key">{osShortcut}</span> Enter
+                      <kbd className="key-cap">{osShortcut}</kbd>
+                      <kbd className="key-cap">Enter</kbd>
                     </div>
                   )
                 )}
@@ -441,96 +466,79 @@ export function LoginPage() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .bp-frame, .bp-guide, .bp-accent {
-            animation: none !important;
-            opacity: 0.1 !important;
-            transform: none !important;
-          }
+          .bp-edge { animation: none !important; stroke-dashoffset: 0 !important; opacity: 0.1 !important; }
+          .bp-node { animation: none !important; opacity: 0.22 !important; transform: none !important; }
+          .bp-node-accent { opacity: 0.9 !important; }
+          .bp-pulse { animation: none !important; opacity: 0 !important; }
         }
 
-        /* Frames Assembly */
-        .bp-frame {
-          fill: none;
+        /* Relationship edges — drawn once on entry */
+        .bp-edge {
           stroke: #ffffff;
-          stroke-width: 0.5;
-          opacity: 0;
+          stroke-width: 1;
+          opacity: 0.1;
+          stroke-dasharray: 1;
+          stroke-dashoffset: 1;
         }
-        .bp-frame-1 { animation: assembleFrame 21s var(--ease-smooth) infinite; }
-        .bp-frame-2 { animation: assembleFrame 27s var(--ease-smooth) infinite; animation-delay: -5s; }
-        .bp-frame-3 { animation: assembleFrame 19s var(--ease-smooth) infinite; animation-delay: -11s; }
-        .bp-frame-4 { animation: assembleFrame 29s var(--ease-smooth) infinite; animation-delay: -17s; }
-
-        @keyframes assembleFrame {
-          0%, 100% { opacity: 0; transform: translate3d(4px, 4px, 0); }
-          10% { opacity: 0; }
-          15%, 35% { opacity: 0.1; transform: translate3d(0, 0, 0); }
-          40% { opacity: 0; }
+        .is-loaded .bp-edge {
+          animation: drawEdge 1100ms var(--ease-out) forwards;
+        }
+        @keyframes drawEdge {
+          to { stroke-dashoffset: 0; }
         }
 
-        /* Guide Lines Extending */
-        .bp-guide {
+        /* Relationship nodes — entities */
+        .bp-node {
+          fill: #0a0a0a;
           stroke: #ffffff;
-          stroke-width: 0.5;
+          stroke-width: 1;
           opacity: 0;
           transform-box: fill-box;
+          transform-origin: center;
         }
-        .bp-guide-x1 { transform-origin: left; animation: extendGuideX 23s var(--ease-smooth) infinite; }
-        .bp-guide-x2 { transform-origin: right; animation: extendGuideX 31s var(--ease-smooth) infinite; animation-delay: -7s; }
-        .bp-guide-y1 { transform-origin: top; animation: extendGuideY 17s var(--ease-smooth) infinite; animation-delay: -13s; }
-        .bp-guide-y2 { transform-origin: bottom; animation: extendGuideY 29s var(--ease-smooth) infinite; animation-delay: -19s; }
-
-        @keyframes extendGuideX {
-          0%, 100% { opacity: 0; transform: scaleX(0); }
-          10% { opacity: 0; transform: scaleX(0); }
-          15%, 30% { opacity: 0.15; transform: scaleX(1); }
-          40% { opacity: 0; transform: scaleX(1); }
+        .is-loaded .bp-node {
+          animation: nodeIn 500ms var(--ease-out) forwards;
         }
-        
-        @keyframes extendGuideY {
-          0%, 100% { opacity: 0; transform: scaleY(0); }
-          10% { opacity: 0; transform: scaleY(0); }
-          15%, 30% { opacity: 0.15; transform: scaleY(1); }
-          40% { opacity: 0; transform: scaleY(1); }
+        @keyframes nodeIn {
+          from { opacity: 0; transform: scale(0.5); }
+          to { opacity: 0.22; transform: scale(1); }
         }
 
-        /* Accent */
-        .bp-accent {
-          fill: #2563EB; /* brand info accent (index.css --color-info) */
+        /* The one live hub carries the accent */
+        .bp-node-accent {
+          fill: #2563EB;
+          stroke: none;
+        }
+        .is-loaded .bp-node-accent {
+          animation: nodeInAccent 600ms var(--ease-out) forwards;
+        }
+        @keyframes nodeInAccent {
+          from { opacity: 0; transform: scale(0.5); }
+          to { opacity: 0.85; transform: scale(1); }
+        }
+
+        /* A single live connection, slow and quiet */
+        .bp-pulse {
+          fill: none;
+          stroke: #2563EB;
+          stroke-width: 1;
           opacity: 0;
-          animation: pulseAccent 19s var(--ease-smooth) infinite;
-          animation-delay: -3s;
+          transform-box: fill-box;
+          transform-origin: center;
         }
-        @keyframes pulseAccent {
-          0%, 100% { opacity: 0; }
-          45% { opacity: 0; }
-          50%, 55% { opacity: 0.8; }
-          60% { opacity: 0; }
+        .is-loaded .bp-pulse {
+          animation: livePulse 4.5s var(--ease-smooth) 1500ms infinite;
         }
-
-        /* Hover Interactivity */
-        .auth-left-panel:hover .bp-frame-2 {
-          opacity: 0.15 !important;
-          transform: translate3d(0, 0, 0) !important;
-          transition: all 1.5s var(--ease-smooth);
-        }
-        .auth-left-panel:hover .bp-guide-x1 {
-          opacity: 0.25 !important;
-          transform: scaleX(1) !important;
-          transition: all 1.5s var(--ease-smooth);
+        @keyframes livePulse {
+          0% { opacity: 0.45; transform: scale(1); }
+          70%, 100% { opacity: 0; transform: scale(2.6); }
         }
 
-        /* Login Success Resolution */
-        .is-success .bp-frame,
-        .is-success .bp-guide,
-        .is-success .bp-accent {
-          animation: none !important;
-          opacity: 0.15 !important;
-          transform: scale(1) translate3d(0,0,0) !important;
-          transition: all 1s var(--ease-out);
-        }
-        .is-success .blueprint-svg {
-          opacity: 0.3;
-        }
+        /* Login success settles the graph */
+        .is-success .bp-edge { opacity: 0.08; }
+        .is-success .bp-node { opacity: 0.18; }
+        .is-success .bp-pulse { animation: none; opacity: 0; }
+        .is-success .blueprint-svg { opacity: 0.3; }
 
         /* STAGGERED ENTRANCES (Left Panel) */
         .entrance-stagger-1, .entrance-stagger-2, .entrance-stagger-3, .entrance-stagger-4, .entrance-stagger-5 {
@@ -887,10 +895,23 @@ export function LoginPage() {
           display: flex;
           align-items: center;
           gap: 4px;
-          font-size: 12px;
-          color: rgba(255,255,255,0.5);
         }
-        .os-key { font-family: monospace; }
+        .key-cap {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          font-family: inherit;
+          font-size: 11px;
+          font-weight: 500;
+          line-height: 1;
+          color: rgba(255,255,255,0.72);
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.14);
+          border-radius: 4px;
+        }
 
         /* LOADING EXPERIENCE */
         .loader-overlay {
