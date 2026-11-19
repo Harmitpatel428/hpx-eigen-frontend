@@ -15,7 +15,7 @@ const accentMap = {
   blue: 'text-blue-600 bg-blue-50',
   amber: 'text-amber-600 bg-amber-50',
   rose: 'text-rose-600 bg-rose-50',
-  purple: 'text-purple-600 bg-purple-50',
+  purple: 'text-slate-600 bg-slate-100',
 };
 
 export const KpiCard: React.FC<KpiCardProps> = ({

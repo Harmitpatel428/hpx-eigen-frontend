@@ -19,7 +19,7 @@ const TYPES: WaChannelType[] = ['INDIVIDUAL_NUMBER', 'GROUP', 'USERNAME', 'BUSIN
 
 const TYPE_CONFIG: Record<WaChannelType, { bg: string; border: string; color: string; glyph: string }> = {
   INDIVIDUAL_NUMBER: { bg: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.14)', color: '#3b82f6', glyph: '👤' },
-  GROUP:             { bg: 'rgba(139,92,246,0.07)', border: 'rgba(139,92,246,0.14)', color: '#8b5cf6', glyph: '👥' },
+  GROUP:             { bg: 'rgba(71, 85, 105,0.07)', border: 'rgba(71, 85, 105,0.14)', color: '#475569', glyph: '👥' },
   USERNAME:          { bg: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.14)', color: '#d97706', glyph: '@'  },
   BUSINESS_ACCOUNT:  { bg: 'rgba(34,197,94,0.07)',  border: 'rgba(34,197,94,0.14)',  color: '#16a34a', glyph: '🏢' },
 };

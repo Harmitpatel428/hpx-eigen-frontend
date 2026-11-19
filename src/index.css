@@ -279,7 +279,7 @@ ul, ol { list-style: none; }
 }
 .status-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .status-chip:disabled { opacity: 0.4; cursor: not-allowed; }
-.status-chip-waiting { background: rgba(168, 85, 247, 0.1); color: #7c3aed; }
+.status-chip-waiting { background: rgba(168, 85, 247, 0.1); color: #475569; }
 
 /* ─── INPUTS ─── */
 .input {
@@ -615,6 +615,40 @@ ul, ol { list-style: none; }
 .sidebar-nav-item:hover .sidebar-nav-icon,
 .sidebar-nav-item.is-active .sidebar-nav-icon {
   color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE APP SHELL — sidebar collapses into a drawer below 768px
+   ========================================================================== */
+.app-hamburger { display: none; }
+.app-nav-backdrop { display: none; }
+
+@media (max-width: 767px) {
+  .sidebar-root {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+  .sidebar-root.is-open {
+    transform: translateX(0);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+  }
+  .app-hamburger { display: flex; }
+  .app-nav-backdrop {
+    display: block;
+    position: fixed; inset: 0; z-index: 150;
+    background: rgba(0, 0, 0, 0.45);
+    animation: appFadeIn 180ms ease both;
+  }
+  .app-main { padding: 16px !important; }
+}
+@keyframes appFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-root { transition: none; }
+  .app-nav-backdrop { animation: none; }
 }
 
 /* ─── Global notifications (AppToast, rendered via sonner) ───────────────── */

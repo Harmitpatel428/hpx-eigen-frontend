@@ -212,7 +212,7 @@ function MandateStatusCard({ req, canVerify, canSend, onVerifyReject, onRegenera
       </div>
 
       {upload?.uploadedByParty === 'FIRM' && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 10, padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 10, padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 600, background: 'rgba(71, 85, 105,0.1)', color: '#475569' }}>
           <Building2 size={11} />
           Uploaded by firm{upload.sourceChannel && upload.sourceChannel !== 'FIRM_UPLOAD' && upload.sourceChannel !== 'CLIENT_PORTAL'
             ? ` · via ${FIRM_CHANNEL_LABELS[upload.sourceChannel as FirmSourceChannel] ?? upload.sourceChannel}` : ''}

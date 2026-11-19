@@ -60,9 +60,6 @@ export const SalesDashboard: React.FC = () => {
             </span>
             .
           </h1>
-          {/* Inline Win Rate / Active Deals / Avg Velocity removed — they duplicated
-              the KPI cards below one-for-one (audit P-05). Cards are the single
-              canonical KPI presentation. */}
         </div>
 
         {/* ── KPI Cards ─────────────────────────────────────────── */}

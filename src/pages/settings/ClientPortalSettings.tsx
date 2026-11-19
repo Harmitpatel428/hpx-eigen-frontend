@@ -37,8 +37,8 @@ function ToggleCard({
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '14px 16px', borderRadius: 10,
-      border: `1px solid ${enabled ? '#7C3AED' : 'var(--border-medium)'}`,
-      background: enabled ? 'rgba(124,58,237,0.03)' : 'var(--bg-subtle)',
+      border: `1px solid ${enabled ? '#475569' : 'var(--border-medium)'}`,
+      background: enabled ? 'rgba(71, 85, 105,0.03)' : 'var(--bg-subtle)',
       maxWidth: 520,
       transition: 'border-color 0.15s, background 0.15s',
     }}>
@@ -58,7 +58,7 @@ function ToggleCard({
         style={{
           position: 'relative', width: 44, height: 24, borderRadius: 999,
           border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-          background: enabled ? '#7C3AED' : '#cbd5e1',
+          background: enabled ? '#475569' : '#cbd5e1',
           transition: 'background 0.15s', flexShrink: 0,
         }}
       >

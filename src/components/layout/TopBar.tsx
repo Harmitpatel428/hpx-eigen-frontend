@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DepartmentSwitcher } from '../ui/DepartmentSwitcher';
 import { HeaderTimeStat } from './HeaderTimeStat';
-import { Bell, Sun, Moon, LogOut, CheckCheck, User, Settings, Shield } from 'lucide-react';
+import { Bell, Sun, Moon, LogOut, CheckCheck, User, Settings, Shield, Menu } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../auth/public';
 import type { User as UserType } from '../../auth/public';
@@ -73,9 +73,9 @@ const NotifPanel: React.FC<{
         </span>
         {unreadCount > 0 && (
           <span style={{
-            fontSize: 10, fontWeight: 700, lineHeight: 1,
-            background: '#7C3AED', color: '#fff',
-            padding: '2px 7px', borderRadius: 99,
+            fontSize: 11, fontWeight: 500, lineHeight: 1,
+            background: 'var(--bg-muted)', color: 'var(--text-secondary)',
+            padding: '3px 7px', borderRadius: 6,
           }}>
             {unreadCount} new
           </span>
@@ -84,7 +84,7 @@ const NotifPanel: React.FC<{
       {unreadCount > 0 && (
         <button
           onClick={onMarkAll}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#7C3AED', fontWeight: 500 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--color-info)', fontWeight: 500 }}
         >
           <CheckCheck size={13} strokeWidth={2} />
           Mark all read
@@ -111,13 +111,13 @@ const NotifPanel: React.FC<{
             style={{
               display: 'flex', gap: 11, padding: '12px 16px',
               borderBottom: '1px solid var(--border-light)',
-              background: n.readAt ? 'transparent' : 'rgba(124,58,237,0.05)',
+              background: n.readAt ? 'transparent' : 'var(--bg-muted)',
               cursor: 'pointer', transition: 'background 0.15s',
             }}
           >
             <div style={{
               width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-              background: n.readAt ? 'var(--border-strong)' : '#7C3AED',
+              background: n.readAt ? 'var(--border-strong)' : 'var(--color-info)',
             }} />
             <div>
               <p style={{ fontSize: 13, fontWeight: n.readAt ? 400 : 600, color: 'var(--text-primary)', marginBottom: 3 }}>
@@ -139,7 +139,7 @@ const NotifPanel: React.FC<{
       borderTop: '1px solid var(--border-light)',
       textAlign: 'center',
     }}>
-      <button onClick={onViewAll} style={{ fontSize: 12, color: '#7C3AED', fontWeight: 500 }}>
+      <button onClick={onViewAll} style={{ fontSize: 12, color: 'var(--color-info)', fontWeight: 500 }}>
         View all notifications
       </button>
     </div>
@@ -160,9 +160,9 @@ const ProfilePanel: React.FC<{
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{
           width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-          background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)',
+          background: 'var(--text-primary)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 600, color: '#fff',
+          fontSize: 14, fontWeight: 600, color: 'var(--bg-app)',
         }}>
           {initials}
         </div>
@@ -183,9 +183,9 @@ const ProfilePanel: React.FC<{
           {user?.roles && user.roles.length > 0 && (
             <span style={{
               display: 'inline-block', marginTop: 5,
-              fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-              background: 'rgba(124,58,237,0.1)', color: '#7C3AED',
-              padding: '2px 6px', borderRadius: 6,
+              fontSize: 11, fontWeight: 500,
+              background: 'var(--bg-muted)', color: 'var(--text-secondary)',
+              padding: '2px 8px', borderRadius: 6,
             }}>
               {user.roles[0]}
             </span>
@@ -238,7 +238,7 @@ const ProfilePanel: React.FC<{
 
 // ── TopBar ─────────────────────────────────────────────────────────────────────
 
-export const TopBar: React.FC = () => {
+export const TopBar: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) => {
   const { theme, toggle: toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -327,6 +327,14 @@ export const TopBar: React.FC = () => {
       backgroundColor: 'var(--bg-subtle)',
       paddingInline: 24, position: 'relative', zIndex: 50,
     }}>
+      <button
+        className="app-hamburger topbar-icon-btn"
+        style={{ width: 36, height: 36, marginRight: 8 }}
+        onClick={onMenuClick}
+        aria-label="Open navigation menu"
+      >
+        <Menu size={18} strokeWidth={1.5} />
+      </button>
       <DepartmentSwitcher />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 'auto' }}>
@@ -362,15 +370,9 @@ export const TopBar: React.FC = () => {
               <span style={{
                 position: 'absolute', top: 8, right: 8,
                 width: 7, height: 7, borderRadius: '50%',
-                background: '#7C3AED',
+                background: 'var(--color-info)',
                 boxShadow: '0 0 0 2px var(--bg-subtle)',
-              }}>
-                <span style={{
-                  position: 'absolute', inset: 0, borderRadius: '50%',
-                  background: '#7C3AED', opacity: 0.6,
-                  animation: 'topbar-ping 1.4s cubic-bezier(0,0,0.2,1) infinite',
-                }} />
-              </span>
+              }} />
             )}
           </button>
 
@@ -394,10 +396,10 @@ export const TopBar: React.FC = () => {
             title="Account"
             style={{
               width: 32, height: 32, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)',
-              fontSize: 12, fontWeight: 600, color: '#fff',
+              background: 'var(--text-primary)',
+              fontSize: 12, fontWeight: 600, color: 'var(--bg-app)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 0 2px var(--bg-subtle), 0 0 0 3.5px rgba(124,58,237,0.3)',
+              boxShadow: '0 0 0 2px var(--bg-subtle)',
               flexShrink: 0,
             }}
           >

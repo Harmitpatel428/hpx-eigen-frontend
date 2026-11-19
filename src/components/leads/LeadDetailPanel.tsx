@@ -48,7 +48,7 @@ const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }>
   DISQUALIFIED:         { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#dc2626' },
   // legacy read-only
   CONTACTED:            { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
-  CONVERTED:            { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
+  CONVERTED:            { bg: 'rgba(71, 85, 105,0.1)',  text: '#475569', dot: '#475569' },
 };
 
 const PRIORITY_COLORS: Record<LeadPriority, { color: string; bg: string }> = {
@@ -464,7 +464,7 @@ function CaseIdSection({ lead, onCaseIdGenerated }: {
         {lead.phone && !portalLast4 && (
           <button
             style={{
-              fontSize: 10, fontWeight: 600, color: '#7C3AED',
+              fontSize: 10, fontWeight: 600, color: '#475569',
               background: 'none', border: 'none', cursor: 'pointer', padding: 0,
             }}
           >
@@ -927,8 +927,8 @@ export const LeadDetailPanel = memo(function LeadDetailPanel({
                   onClick={() => setShowFixResend(true)}
                   style={{
                     fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 5,
-                    border: '1px solid #7c3aed', background: 'rgba(124,58,237,0.08)',
-                    color: '#7c3aed', cursor: 'pointer',
+                    border: '1px solid #475569', background: 'rgba(71, 85, 105,0.08)',
+                    color: '#475569', cursor: 'pointer',
                   }}
                 >
                   Fix & resend

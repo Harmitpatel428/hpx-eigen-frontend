@@ -336,7 +336,7 @@ function UserAssignmentTab() {
               })}
             </select>
             {selectedUser && (
-              <p style={{ fontSize: 12, color: '#7C3AED', marginBottom: 12, fontWeight: 500 }}>
+              <p style={{ fontSize: 12, color: '#475569', marginBottom: 12, fontWeight: 500 }}>
                 Selected: {[selectedUser.firstName, selectedUser.lastName].filter(Boolean).join(' ') || selectedUser.email}
               </p>
             )}

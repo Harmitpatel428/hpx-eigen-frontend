@@ -278,7 +278,7 @@ function ProfileTab({ user, onSaved }: { user: any; onSaved: () => Promise<void>
             {user.roles.map((r: string) => (
               <span key={r} style={{
                 display: 'inline-block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-                background: 'rgba(124,58,237,0.1)', color: '#7C3AED',
+                background: 'rgba(71, 85, 105,0.1)', color: '#475569',
                 padding: '3px 8px', borderRadius: 6,
               }}>
                 {r}

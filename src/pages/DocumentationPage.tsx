@@ -58,7 +58,7 @@ const DOC_STATUS_META: Record<DocDocumentStatus, { label: string; color: string;
   REQUESTED:          { label: 'Requested',          color: '#6366f1', bg: 'rgba(99,102,241,0.1)',  dot: '#6366f1' },
   PENDING_COLLECTION: { label: 'Collection Pending', color: '#d97706', bg: 'rgba(245,158,11,0.1)', dot: '#d97706' },
   RECEIVED:           { label: 'Received',           color: '#2563eb', bg: 'rgba(37,99,235,0.1)',  dot: '#2563eb' },
-  UNDER_VERIFICATION: { label: 'Under Verification', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)', dot: '#7c3aed' },
+  UNDER_VERIFICATION: { label: 'Under Verification', color: '#475569', bg: 'rgba(71, 85, 105,0.1)', dot: '#475569' },
   APPROVED:           { label: 'Approved',           color: '#059669', bg: 'rgba(5,150,105,0.1)',  dot: '#059669' },
   REJECTED:           { label: 'Rejected',           color: '#dc2626', bg: 'rgba(220,38,38,0.1)',  dot: '#dc2626' },
   RE_REQUESTED:       { label: 'Re-Requested',       color: '#ea580c', bg: 'rgba(234,88,12,0.1)',  dot: '#ea580c' },
@@ -73,8 +73,8 @@ const CASE_STATUS_META: Record<string, { label: string; color: string; bg: strin
   ACTIVE:                  { label: 'Active',      color: '#2563eb', bg: 'rgba(37,99,235,0.1)'  },
   RETURNED:                { label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
   DOCUMENTATION_READY:     { label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'  },
-  TRANSFERRED_TO_PROCESS:  { label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
-  PENDING_PROCESS_REVIEW:     { label: 'Pending Process',     color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  TRANSFERRED_TO_PROCESS:  { label: 'Transferred', color: '#475569', bg: 'rgba(71, 85, 105,0.1)' },
+  PENDING_PROCESS_REVIEW:     { label: 'Pending Process',     color: '#475569', bg: 'rgba(71, 85, 105,0.1)' },
   RETURNED_TO_DOCUMENTATION:  { label: 'Returned by Process', color: '#d97706', bg: 'rgba(217,119,6,0.1)'  },
   CLOSED:                  { label: 'Closed',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)'},
   CANCELLED:               { label: 'Cancelled',      color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
@@ -266,7 +266,7 @@ const DOC_FILE_STATUS_META: Record<DocFileStatus, { label: string; color: string
   UPLOADING:        { label: 'Uploading',    color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
   SCANNING:         { label: 'Scanning',     color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
   RECEIVED:         { label: 'Received',     color: '#2563eb', bg: 'rgba(37,99,235,0.1)' },
-  UNDER_REVIEW:     { label: 'Under review', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  UNDER_REVIEW:     { label: 'Under review', color: '#475569', bg: 'rgba(71, 85, 105,0.1)' },
   VERIFIED:         { label: 'Verified',     color: '#059669', bg: 'rgba(5,150,105,0.1)' },
   REJECTED:         { label: 'Rejected',     color: '#dc2626', bg: 'rgba(220,38,38,0.1)' },
   EXPIRED:          { label: 'Expired',      color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
@@ -289,7 +289,7 @@ function DocumentFileRow({ file, canManageFile, onView, onDelete }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
-          <span title={isFirm ? 'Uploaded by firm' : 'Uploaded by client'} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: isFirm ? 'rgba(124,58,237,0.1)' : 'rgba(37,99,235,0.1)', color: isFirm ? '#7c3aed' : '#2563eb' }}>{isFirm ? 'FIRM' : 'CLIENT'}</span>
+          <span title={isFirm ? 'Uploaded by firm' : 'Uploaded by client'} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: isFirm ? 'rgba(71, 85, 105,0.1)' : 'rgba(37,99,235,0.1)', color: isFirm ? '#475569' : '#2563eb' }}>{isFirm ? 'FIRM' : 'CLIENT'}</span>
           <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{SOURCE_LABELS[file.sourceChannel] ?? file.sourceChannel}</span>
           <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: s.bg, color: s.color }}>{s.label}</span>
           {pastDue && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}>PAST DUE</span>}
@@ -1713,7 +1713,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     Changing the portal number requires manager or admin approval. Sessions are revoked on change.
                   </div>
                   <button style={{
-                    marginTop: 8, fontSize: 11, fontWeight: 600, color: '#7C3AED',
+                    marginTop: 8, fontSize: 11, fontWeight: 600, color: '#475569',
                     background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                   }}>
                     Request contact change…
@@ -1791,7 +1791,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{
                         fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                        color: note.noteType === 'CUSTOMER' ? '#111827' : note.noteType === 'INTERNAL' ? '#7c3aed' : '#2563eb',
+                        color: note.noteType === 'CUSTOMER' ? '#111827' : note.noteType === 'INTERNAL' ? '#475569' : '#2563eb',
                       }}>{note.noteType === 'CUSTOMER' ? 'Client-visible' : note.noteType}</span>
                       {note.clientVisible && (
                         <Eye size={11} style={{ color: '#6b7280' }} />
@@ -2051,8 +2051,8 @@ const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
   { key: 'ACTIVE',                 label: 'Active',      color: '#2563eb', bg: 'rgba(37,99,235,0.1)'   },
   { key: 'INCOMING',               label: 'Incoming',    color: '#d97706', bg: 'rgba(245,158,11,0.1)'  },
   { key: 'DOCUMENTATION_READY',    label: 'Ready',       color: '#059669', bg: 'rgba(5,150,105,0.1)'   },
-  { key: 'TRANSFERRED_TO_PROCESS', label: 'Transferred', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)'  },
-  { key: 'PENDING_PROCESS_REVIEW', label: 'Pending Process', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  { key: 'TRANSFERRED_TO_PROCESS', label: 'Transferred', color: '#475569', bg: 'rgba(71, 85, 105,0.1)'  },
+  { key: 'PENDING_PROCESS_REVIEW', label: 'Pending Process', color: '#475569', bg: 'rgba(71, 85, 105,0.1)' },
   { key: 'RETURNED_TO_DOCUMENTATION', label: 'Returned by Process', color: '#d97706', bg: 'rgba(217,119,6,0.1)' },
   { key: 'RETURNED',               label: 'Returned',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
   { key: 'CLOSED',                 label: 'Closed',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },

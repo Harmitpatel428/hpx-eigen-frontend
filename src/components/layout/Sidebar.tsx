@@ -48,9 +48,9 @@ const logoLinkStyle: React.CSSProperties = {
   paddingInline: 24, flexShrink: 0,
   textDecoration: 'none', color: 'inherit', cursor: 'pointer',
 };
-const logoWordmarkStyle: React.CSSProperties = { fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' };
+const logoWordmarkStyle: React.CSSProperties = { fontSize: 15, fontWeight: 600, letterSpacing: '-0.02em' };
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ open?: boolean }> = ({ open = false }) => {
   const { activeDepartment } = useDepartment();
   const { permissions } = useAuth();
   const location = useLocation();
@@ -77,7 +77,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className="sidebar-root"
+      className={`sidebar-root${open ? ' is-open' : ''}`}
       style={{
         display: 'flex', flexDirection: 'column',
         width: 260, height: '100vh', flexShrink: 0,
@@ -109,10 +109,10 @@ export const Sidebar: React.FC = () => {
       {/* Main nav */}
       <nav style={{ flex: 1, padding: '4px 12px', overflowY: 'auto' }}>
         <p className="sidebar-section-label" style={{
-          fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-          letterSpacing: '0.1em', paddingInline: 12, paddingBlock: '16px 8px',
+          fontSize: 12, fontWeight: 600,
+          paddingInline: 12, paddingBlock: '16px 8px',
         }}>
-          Your Workspace
+          Workspace
         </p>
 
         {/* Overview */}
@@ -125,13 +125,13 @@ export const Sidebar: React.FC = () => {
               className={`sidebar-nav-item${isActive ? ' is-active' : ''}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 12px', marginBottom: 2,
+                padding: '8px 12px', marginBottom: 2,
                 fontSize: 13, fontWeight: 500, textDecoration: 'none',
               }}
             >
               <item.icon
                 className="sidebar-nav-icon"
-                style={{ width: 17, height: 17, flexShrink: 0 }}
+                style={{ width: 16, height: 16, flexShrink: 0 }}
                 strokeWidth={1.5}
               />
               {item.name}
@@ -153,7 +153,7 @@ export const Sidebar: React.FC = () => {
         >
           <Building2
             className="sidebar-nav-icon"
-            style={{ width: 17, height: 17, flexShrink: 0 }}
+            style={{ width: 16, height: 16, flexShrink: 0 }}
             strokeWidth={1.5}
           />
           <span style={{ flex: 1 }}>Departments</span>
@@ -174,7 +174,7 @@ export const Sidebar: React.FC = () => {
                   className={`sidebar-nav-item${isActive ? ' is-active' : ''}`}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '7px 12px', marginBottom: 2,
+                    padding: '8px 12px', marginBottom: 2,
                     fontSize: 13, fontWeight: 500, textDecoration: 'none',
                   }}
                 >
@@ -198,13 +198,13 @@ export const Sidebar: React.FC = () => {
               className={`sidebar-nav-item${isActive ? ' is-active' : ''}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 12px', marginBottom: 2,
+                padding: '8px 12px', marginBottom: 2,
                 fontSize: 13, fontWeight: 500, textDecoration: 'none',
               }}
             >
               <item.icon
                 className="sidebar-nav-icon"
-                style={{ width: 17, height: 17, flexShrink: 0 }}
+                style={{ width: 16, height: 16, flexShrink: 0 }}
                 strokeWidth={1.5}
               />
               {item.name}
@@ -224,13 +224,13 @@ export const Sidebar: React.FC = () => {
               className={`sidebar-nav-item${isActive ? ' is-active' : ''}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 12px', marginBottom: 2,
+                padding: '8px 12px', marginBottom: 2,
                 fontSize: 13, fontWeight: 500, textDecoration: 'none',
               }}
             >
               <item.icon
                 className="sidebar-nav-icon"
-                style={{ width: 17, height: 17, flexShrink: 0 }}
+                style={{ width: 16, height: 16, flexShrink: 0 }}
                 strokeWidth={1.5}
               />
               {item.name}

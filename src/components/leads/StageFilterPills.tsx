@@ -15,7 +15,7 @@ export const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: st
   OTHER:               { bg: 'rgba(107,114,128,0.1)', text: '#6b7280', dot: '#6b7280' },
   DISQUALIFIED:        { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#dc2626' },
   CONTACTED:           { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },
-  CONVERTED:           { bg: 'rgba(139,92,246,0.1)',  text: '#7c3aed', dot: '#7c3aed' },
+  CONVERTED:           { bg: 'rgba(71, 85, 105,0.1)',  text: '#475569', dot: '#475569' },
 };
 
 // Labels + order are single-sourced in domain/leadStage so the filter pills can

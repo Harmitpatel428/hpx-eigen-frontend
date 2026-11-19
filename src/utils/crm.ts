@@ -149,10 +149,10 @@ export function statusColor(status: string): string {
     Contacted: 'bg-yellow-500',
     Qualified: 'bg-green-500',
     Disqualified: 'bg-red-500',
-    Converted: 'bg-purple-500',
+    Converted: 'bg-slate-500',
     'PROSPECTING': 'bg-blue-500',
     'QUALIFICATION': 'bg-indigo-500',
-    'PROPOSAL': 'bg-purple-500',
+    'PROPOSAL': 'bg-slate-500',
     'NEGOTIATION': 'bg-orange-500',
     'CLOSED_WON': 'bg-green-500',
     'CLOSED_LOST': 'bg-red-500',
@@ -179,7 +179,7 @@ export function activityTypeColor(type: string): string {
     Call: 'text-blue-500',
     Email: 'text-orange-500',
     Meeting: 'text-green-500',
-    Task: 'text-purple-500',
+    Task: 'text-slate-500',
     Note: 'text-gray-500',
   };
   return colorMap[type] || 'text-gray-500';
@@ -191,7 +191,7 @@ export function activityTypeBg(type: string): string {
     Call: 'bg-blue-500/20',
     Email: 'bg-orange-500/20',
     Meeting: 'bg-green-500/20',
-    Task: 'bg-purple-500/20',
+    Task: 'bg-slate-500/20',
     Note: 'bg-gray-500/20',
   };
   return colorMap[type] || 'bg-gray-500/20';

@@ -56,7 +56,7 @@ export function TimelineCard({ activity, icon, children, actions }: TimelineCard
                 </span>
               )}
               {activity.linkedOpportunityName && (
-                <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">
+                <span className="text-xs px-2 py-1 bg-slate-500/20 text-slate-400 rounded">
                   Opp: {activity.linkedOpportunityName}
                 </span>
               )}
