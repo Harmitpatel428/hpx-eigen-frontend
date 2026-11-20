@@ -30,8 +30,8 @@ const columns: Column<DocCase>[] = [
 ];
 
 const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="rounded border border-slate-200 bg-white" style={{ padding: 'var(--space-6)' }}>
-    <h2 className="text-sm font-semibold text-slate-700" style={{ marginBottom: 'var(--space-3)' }}>{title}</h2>
+  <section className="rounded-xl border border-[var(--border-light)] bg-[var(--surface-overlay)]" style={{ padding: 'var(--space-6)' }}>
+    <h2 className="text-sm font-semibold text-[var(--text-primary)]" style={{ marginBottom: 'var(--space-3)' }}>{title}</h2>
     {children}
   </section>
 );
@@ -77,7 +77,7 @@ export const ReportsPage: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-3">
         {canSla && <Card title="Overdue / at-risk by stage">
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500"><th className="text-left font-semibold" style={{ padding: 'var(--space-2) var(--space-3)' }}>Stage</th><th className="text-right font-semibold" style={{ padding: 'var(--space-2) var(--space-3)' }}>Overdue</th><th className="text-right font-semibold" style={{ padding: 'var(--space-2) var(--space-3)' }}>At risk</th></tr></thead>
+            <thead><tr className="border-b border-[var(--border-medium)] text-xs uppercase tracking-wider text-[var(--text-tertiary)]"><th className="text-left font-semibold" style={{ padding: 'var(--space-2) var(--space-3)' }}>Stage</th><th className="text-right font-semibold" style={{ padding: 'var(--space-2) var(--space-3)' }}>Overdue</th><th className="text-right font-semibold" style={{ padding: 'var(--space-2) var(--space-3)' }}>At risk</th></tr></thead>
             <tbody>
               {(overdue.data ?? []).map((r) => (
                 <tr key={r.stageKey} className="transition-colors hover:bg-[var(--bg-subtle)]"><td style={{ padding: 'var(--space-2) var(--space-3)' }}>{r.stageKey}</td><td className="text-right tabular-nums" style={{ padding: 'var(--space-2) var(--space-3)' }}>{r.overdue}</td><td className="text-right tabular-nums" style={{ padding: 'var(--space-2) var(--space-3)' }}>{r.atRisk}</td></tr>
@@ -90,7 +90,7 @@ export const ReportsPage: React.FC = () => {
           <p className="text-sm flex justify-between" style={{ padding: 'var(--space-2) 0' }}><span>Late:</span> <b className="tabular-nums">{onTime.data?.late ?? '-'}</b></p>
         </Card>}
         <Card title="Cases by option">
-          <select aria-label="Report field" className="mb-2 rounded border border-slate-300 px-2 py-1 text-sm"
+          <select aria-label="Report field" className="mb-2 rounded border border-[var(--border-medium)] px-2 py-1 text-sm"
             value={reportFieldId ?? ''} onChange={(e) => setReportFieldId(e.target.value || null)}>
             <option value="">Select field...</option>
             {reportable.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
