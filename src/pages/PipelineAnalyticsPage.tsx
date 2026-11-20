@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Target, Trophy, Filter, Activity } from 'lucide-react';
 import type { Opportunity } from '../types';
 import { opportunityService } from '../services/opportunity.service';
+import { StageBarChart } from '../components/dashboard/StageBarChart';
 
 const STAGES = ['PROSPECTING','QUALIFICATION','PROPOSAL','NEGOTIATION','CLOSED_WON'];
 const STAGE_LABELS: Record<string,string> = {
@@ -89,6 +90,19 @@ export function PipelineAnalyticsPage() {
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-light)' }} />
+
+          {/* Pipeline by stage */}
+          <div>
+            <h2 className="type-h2" style={{ marginBottom: 'var(--space-8)' }}>Pipeline by stage</h2>
+            <StageBarChart
+              data={STAGES.map((stage) => ({
+                label: STAGE_LABELS[stage],
+                value: opportunities.filter((o) => o.stage === stage).reduce((s, o) => s + parseFloat(o.value || '0'), 0),
+              }))}
+              emptyMessage="No deals in the pipeline yet"
+              formatValue={formatCurrency}
+            />
+          </div>
 
           {/* Velocity Breakdown */}
           <div>
