@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, UserPlus, Shield, Loader2, X, Check } from 'lucide-react';
+import { Search, UserPlus, Shield, Loader2, Check, KeyRound } from 'lucide-react';
 import { useAuth } from '../../auth/public';
 import { userService, type TenantUser } from '../../services/user.service';
 import { permissionService } from '../../services/permission.service';
@@ -199,15 +199,103 @@ function RoleAssignModal({ user, roles, onClose }: { user: TenantUser; roles: Ro
   );
 }
 
+// ─── Change Password Modal (admin-only) ────────────────────────────────
+const MIN_PASSWORD = 12;
+
+function ChangePasswordModal({ user, onClose }: { user: TenantUser; onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [clientError, setClientError] = useState('');
+  const [done, setDone] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () => userService.setMemberPassword(user.id, password),
+    onSuccess: () => setDone(true),
+  });
+
+  function handleSave() {
+    setClientError('');
+    if (password.length < MIN_PASSWORD) { setClientError(`Password must be at least ${MIN_PASSWORD} characters.`); return; }
+    if (password !== confirm) { setClientError('Passwords do not match.'); return; }
+    mutation.mutate();
+  }
+
+  const serverError = mutation.isError
+    ? ((mutation.error as any)?.response?.data?.message || (mutation.error as any)?.response?.data?.error?.message || 'Failed to update password.')
+    : '';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }} />
+      <div style={{ position: 'relative', background: 'var(--bg-app, #fff)', borderRadius: 16, padding: 28, width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', border: '1px solid var(--border-medium)' }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Change Password</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>{user.email}</p>
+
+        {done ? (
+          <>
+            <p style={{ fontSize: 14, color: '#15803d', marginBottom: 20, lineHeight: 1.5 }}>
+              Password updated. This member’s active sessions were signed out — they must log in again with the new password.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Done</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>New password</label>
+            <input
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, color: 'var(--text-primary)', background: 'transparent', outline: 'none', marginBottom: 12 }}
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setClientError(''); }}
+              autoFocus
+            />
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Confirm password</label>
+            <input
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, color: 'var(--text-primary)', background: 'transparent', outline: 'none', marginBottom: 10 }}
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={e => { setConfirm(e.target.value); setClientError(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleSave()}
+            />
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>
+              At least {MIN_PASSWORD} characters, with an uppercase letter, a lowercase letter, a number and a symbol. Must not contain the member’s name or email.
+            </p>
+
+            {(clientError || serverError) && (
+              <p style={{ fontSize: 13, color: '#dc2626', marginBottom: 12 }}>{clientError || serverError}</p>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={handleSave}
+                disabled={!password || !confirm || mutation.isPending}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 500, cursor: mutation.isPending ? 'not-allowed' : 'pointer', opacity: (!password || !confirm) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {mutation.isPending ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <KeyRound size={14} />}
+                Update Password
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────
 export function MembersSettings() {
-  const { permissions } = useAuth();
+  const { permissions, user: currentUser } = useAuth();
   const canManageUsers = permissions.can('user:manage');
   const canManageRoles = permissions.can('role:manage');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [assignTarget, setAssignTarget] = useState<TenantUser | null>(null);
+  const [pwTarget, setPwTarget] = useState<TenantUser | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['tenant-users'],
@@ -285,7 +373,7 @@ export function MembersSettings() {
       ) : (
         <div style={{ border: '1px solid var(--border-light)', borderRadius: 12, overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px minmax(140px,1fr) 100px', gap: 12, padding: '10px 16px', background: 'var(--bg-muted, #f8fafc)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px minmax(140px,1fr) 160px', gap: 12, padding: '10px 16px', background: 'var(--bg-muted, #f8fafc)', borderBottom: '1px solid var(--border-light)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
             <div>Member</div>
             <div>Status</div>
             <div>Roles</div>
@@ -294,7 +382,7 @@ export function MembersSettings() {
 
           {/* Rows */}
           {filtered.map(user => (
-            <div key={user.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px minmax(140px,1fr) 100px', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-light)', alignItems: 'center', fontSize: 13 }}>
+            <div key={user.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px minmax(140px,1fr) 160px', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-light)', alignItems: 'center', fontSize: 13 }}>
               <div style={{ overflow: 'hidden' }}>
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user.email}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>Joined {new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
@@ -306,13 +394,23 @@ export function MembersSettings() {
                   : <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No role</span>
                 }
               </div>
-              <div style={{ textAlign: 'right' }}>
+              <div style={{ textAlign: 'right', display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                 {canManageRoles && (
                   <button
                     onClick={() => setAssignTarget(user)}
                     style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
                     <Shield size={12} /> Role
+                  </button>
+                )}
+                {/* Admin-only; hidden on self (admins change their own password in account settings). Backend enforces both. */}
+                {canManageUsers && currentUser?.id !== user.id && (
+                  <button
+                    onClick={() => setPwTarget(user)}
+                    title="Set a new password for this member"
+                    style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <KeyRound size={12} /> Password
                   </button>
                 )}
               </div>
@@ -324,6 +422,7 @@ export function MembersSettings() {
       {/* Modals */}
       {showInvite && <InviteModal roles={roles} onClose={() => setShowInvite(false)} />}
       {assignTarget && <RoleAssignModal user={assignTarget} roles={roles} onClose={() => setAssignTarget(null)} />}
+      {pwTarget && <ChangePasswordModal user={pwTarget} onClose={() => setPwTarget(null)} />}
     </div>
   );
 }

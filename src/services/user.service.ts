@@ -17,4 +17,10 @@ export const userService = {
     if (Array.isArray(data)) return data;
     return data?.data ?? [];
   },
+
+  /** Admin-only: set another member's password. Backend enforces user:manage + same-tenant. */
+  async setMemberPassword(userId: string, newPassword: string): Promise<{ sessionsRevoked?: number }> {
+    const { data } = await api.put<any>(`/api/v1/users/${userId}/password`, { newPassword });
+    return data?.data ?? data ?? {};
+  },
 };
