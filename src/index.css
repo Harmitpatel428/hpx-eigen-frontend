@@ -83,6 +83,12 @@
   --color-danger: #DC2626;
   --color-info: #2563EB;
 
+  /* Primary interactive accent (selection, links, primary non-brand buttons) */
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-active: #1E40AF;
+  --color-primary-tint: rgba(37, 99, 235, 0.10);
+
   /* Elevation + semantic tints (notifications) */
   --surface-overlay: #FFFFFF;
   --shadow-overlay: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 28px -6px rgba(0, 0, 0, 0.16);
@@ -120,6 +126,12 @@
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
   --color-info: #3B82F6;
+
+  /* Primary interactive accent (lighter on dark for contrast) */
+  --color-primary: #3B82F6;
+  --color-primary-hover: #60A5FA;
+  --color-primary-active: #93C5FD;
+  --color-primary-tint: rgba(59, 130, 246, 0.16);
 
   /* Elevation + semantic tints (notifications) */
   --surface-overlay: #1C1C1C;

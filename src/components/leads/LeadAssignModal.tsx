@@ -119,8 +119,8 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose, assignContext
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <UserCheck size={15} color="#6366f1" />
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(37, 99, 235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserCheck size={15} color="#2563eb" />
             </div>
             <div>
               <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Assign Leads</h3>
@@ -142,8 +142,8 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose, assignContext
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: '0.75rem 0', marginRight: '1.5rem',
                 fontSize: '0.8125rem', fontWeight: 600,
-                color: mode === m ? '#6366f1' : '#94a3b8',
-                borderBottom: mode === m ? '2px solid #6366f1' : '2px solid transparent',
+                color: mode === m ? '#2563eb' : '#94a3b8',
+                borderBottom: mode === m ? '2px solid #2563eb' : '2px solid transparent',
                 transition: 'all 150ms',
               }}
             >
@@ -188,19 +188,19 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose, assignContext
                       style={{
                         width: '100%', display: 'flex', alignItems: 'center', gap: '0.625rem',
                         padding: '0.625rem 0.875rem', border: 'none', cursor: 'pointer', textAlign: 'left',
-                        background: isSelected ? 'rgba(99,102,241,0.08)' : 'transparent',
+                        background: isSelected ? 'rgba(37, 99, 235,0.08)' : 'transparent',
                         borderBottom: '1px solid #f1f5f9',
                         transition: 'background 100ms',
                       }}
                     >
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: isSelected ? '#6366f1' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: isSelected ? '#2563eb' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Users size={13} color={isSelected ? '#fff' : '#64748b'} />
                       </div>
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
                         <div style={{ fontSize: '0.6875rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</div>
                       </div>
-                      {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366f1', flexShrink: 0 }} />}
+                      {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0 }} />}
                     </button>
                   );
                 })}
@@ -290,7 +290,7 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose, assignContext
             <button
               onClick={handleManualAssign}
               disabled={!selectedUser || assignMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: 'none', background: selectedUser && !assignMutation.isPending ? '#6366f1' : '#c7d2fe', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: selectedUser && !assignMutation.isPending ? 'pointer' : 'not-allowed', transition: 'background 150ms' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: 'none', background: selectedUser && !assignMutation.isPending ? '#2563eb' : '#bfdbfe', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: selectedUser && !assignMutation.isPending ? 'pointer' : 'not-allowed', transition: 'background 150ms' }}
             >
               {assignMutation.isPending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <UserCheck size={13} />}
               {assignMutation.isPending ? 'Assigning…' : `Assign ${leadIds.length} Lead${leadIds.length !== 1 ? 's' : ''}`}
@@ -299,7 +299,7 @@ export function LeadAssignModal({ selectedIds, onSuccess, onClose, assignContext
             <button
               onClick={handleAutoAssign}
               disabled={!deptId || noEligible || previewQuery.isLoading || assignMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: 'none', background: (deptId && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? '#6366f1' : '#c7d2fe', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: (deptId && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? 'pointer' : 'not-allowed', transition: 'background 150ms' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4375rem 1rem', borderRadius: '0.5rem', border: 'none', background: (deptId && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? '#2563eb' : '#bfdbfe', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: (deptId && !noEligible && !previewQuery.isLoading && !assignMutation.isPending) ? 'pointer' : 'not-allowed', transition: 'background 150ms' }}
             >
               {assignMutation.isPending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <UserCheck size={13} />}
               {assignMutation.isPending ? 'Assigning…' : `Auto Assign ${leadIds.length} Lead${leadIds.length !== 1 ? 's' : ''}`}

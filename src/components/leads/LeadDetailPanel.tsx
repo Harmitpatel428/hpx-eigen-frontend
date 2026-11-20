@@ -38,7 +38,7 @@ import { LeadQuickActionsSection } from './sections/LeadQuickActionsSection';
 // STAGE_LABELS now imported from domain/leadStage (single source — audit S-07).
 
 const STAGE_COLORS: Record<LeadStage, { bg: string; text: string; dot: string }> = {
-  NEW:                  { bg: 'rgba(99,102,241,0.1)',  text: '#6366f1', dot: '#6366f1' },
+  NEW:                  { bg: 'rgba(37, 99, 235,0.1)',  text: '#2563eb', dot: '#2563eb' },
   QUALIFIED:            { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#059669' },
   INTERESTED:           { bg: 'rgba(13,148,136,0.1)',  text: '#0d9488', dot: '#0d9488' },
   FOLLOW_UP:            { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#d97706' },

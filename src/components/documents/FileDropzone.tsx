@@ -56,8 +56,8 @@ export function FileDropzone({
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); if (!disabled) pick(e.dataTransfer.files?.[0] ?? null); }}
         style={{
-          border: `1.5px dashed ${dragging ? 'var(--color-accent, #6366f1)' : 'var(--border-medium)'}`,
-          background: dragging ? 'rgba(99,102,241,0.06)' : 'var(--bg-subtle)',
+          border: `1.5px dashed ${dragging ? 'var(--color-primary)' : 'var(--border-medium)'}`,
+          background: dragging ? 'rgba(37, 99, 235,0.06)' : 'var(--bg-subtle)',
           borderRadius: 'var(--radius-md, 10px)',
           padding: '18px 16px',
           textAlign: 'center',
@@ -89,7 +89,7 @@ export function FileDropzone({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <UploadCloud size={22} style={{ color: 'var(--text-tertiary)' }} />
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Drag a file here, or <span style={{ color: 'var(--color-accent, #6366f1)', fontWeight: 600 }}>browse</span></div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Drag a file here, or <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>browse</span></div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>PDF, JPG or PNG · max 5 MB</div>
           </div>
         )}
@@ -98,7 +98,7 @@ export function FileDropzone({
       {uploading && (
         <div style={{ marginTop: 8 }}>
           <div style={{ height: 6, background: 'var(--bg-muted)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: 'var(--color-accent, #6366f1)', borderRadius: 99, transition: 'width 0.2s' }} />
+            <div style={{ height: '100%', width: `${progress}%`, background: 'var(--color-primary)', borderRadius: 99, transition: 'width 0.2s' }} />
           </div>
           <div aria-live="polite" style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>Uploading… {progress}%</div>
         </div>

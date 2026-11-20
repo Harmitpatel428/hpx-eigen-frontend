@@ -10,7 +10,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   ACTIVE:     { bg: 'rgba(16,185,129,0.1)',  color: '#059669' },
   SUSPENDED:  { bg: 'rgba(239,68,68,0.1)',   color: '#dc2626' },
   TERMINATED: { bg: 'rgba(107,114,128,0.1)', color: '#6b7280' },
-  INVITED:    { bg: 'rgba(99,102,241,0.1)',  color: '#6366f1' },
+  INVITED:    { bg: 'rgba(37, 99, 235,0.1)',  color: '#2563eb' },
   NEW:        { bg: 'rgba(245,158,11,0.1)',  color: '#d97706' },
 };
 

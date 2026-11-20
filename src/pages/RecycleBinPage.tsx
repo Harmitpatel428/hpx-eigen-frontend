@@ -144,7 +144,7 @@ export function RecycleBinPage() {
             {filtered.map(lead => {
               const isChecked = selectedIds.has(lead.id);
               return (
-                <div key={lead.id} style={{ display: 'grid', gridTemplateColumns: '32px minmax(160px,1fr) 130px 170px 80px 110px 130px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+                <div key={lead.id} style={{ display: 'grid', gridTemplateColumns: '32px minmax(160px,1fr) 130px 170px 80px 110px 130px', gap: 10, padding: '7px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', background: isChecked ? 'rgba(37, 99, 235,0.04)' : undefined }}>
 
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(lead.id)} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label={`Select ${lead.firstName} ${lead.lastName}`} />

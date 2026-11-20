@@ -446,7 +446,7 @@ export function LeadsPage() {
                 aria-expanded={showAssigneeDropdown}
                 aria-haspopup="listbox"
                 onClick={() => setShowAssigneeDropdown(v => !v)}
-                style={{ height: 28, padding: '0 8px', fontSize: 13, gap: 4, color: assigneeFilter ? 'var(--color-primary,#6366f1)' : 'var(--text-secondary)' }}
+                style={{ height: 28, padding: '0 8px', fontSize: 13, gap: 4, color: assigneeFilter ? 'var(--color-primary)' : 'var(--text-secondary)' }}
               >
                 <Users size={14} /> {assigneeLabel}{assigneeFilter ? '' : ' · All'} <ChevronDown size={12} style={{ opacity: 0.5 }} />
               </button>
@@ -461,7 +461,7 @@ export function LeadsPage() {
                       onMouseLeave={e => { if (assigneeFilter) (e.currentTarget.style.background = 'transparent'); }}
                     >
                       <span style={{ fontWeight: !assigneeFilter ? 600 : 400 }}>All</span>
-                      {!assigneeFilter && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                      {!assigneeFilter && <Check size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
                     </button>
                     {/* Unassigned */}
                     {assignmentSummary && assignmentSummary.unassigned > 0 && (
@@ -473,7 +473,7 @@ export function LeadsPage() {
                         <span style={{ fontWeight: assigneeFilter === 'UNASSIGNED' ? 600 : 400 }}>Unassigned</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{assignmentSummary.unassigned}</span>
-                          {assigneeFilter === 'UNASSIGNED' && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                          {assigneeFilter === 'UNASSIGNED' && <Check size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
                         </span>
                       </button>
                     )}
@@ -493,7 +493,7 @@ export function LeadsPage() {
                             <span style={{ fontWeight: assigneeFilter === roleVal ? 600 : 400 }}>All {g.roleName}</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{roleTotal}</span>
-                              {assigneeFilter === roleVal && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                              {assigneeFilter === roleVal && <Check size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
                             </span>
                           </button>
                           {g.users.map(u => {
@@ -508,7 +508,7 @@ export function LeadsPage() {
                                 <span style={{ fontWeight: assigneeFilter === uVal ? 600 : 400 }}>{name}</span>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{u.count}</span>
-                                  {assigneeFilter === uVal && <Check size={14} style={{ color: 'var(--color-primary,#6366f1)', flexShrink: 0 }} />}
+                                  {assigneeFilter === uVal && <Check size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
                                 </span>
                               </button>
                             );
@@ -529,7 +529,7 @@ export function LeadsPage() {
               aria-expanded={showFilters}
               aria-haspopup="true"
               onClick={() => setShowFilters(v => !v)}
-              style={{ height: 28, padding: '0 8px', fontSize: 13, color: activeFilterCount > 0 ? 'var(--color-primary,#6366f1)' : 'var(--text-secondary)' }}
+              style={{ height: 28, padding: '0 8px', fontSize: 13, color: activeFilterCount > 0 ? 'var(--color-primary)' : 'var(--text-secondary)' }}
             >
               <ListFilter size={14} style={{ marginRight: 4 }} /> Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
             </button>
@@ -580,7 +580,7 @@ export function LeadsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 12, background: 'var(--bg-muted)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedIds.size} selected</span>
           <div style={{ width: 1, height: 16, background: 'var(--border-medium)' }} />
-          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#6366f1' }} onClick={() => setShowAssignModal(true)}>
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#2563eb' }} onClick={() => setShowAssignModal(true)}>
             <UserCheck size={12} style={{ marginRight: 4 }} /> Assign
           </button>
           <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#dc2626' }} onClick={() => setBulkDeleteConfirm(true)}>
@@ -611,7 +611,7 @@ export function LeadsPage() {
               <button
                 onClick={() => setAssignmentFilter(f => f === 'all' ? 'assigned' : f === 'assigned' ? 'unassigned' : 'all')}
                 title={assignmentFilter === 'all' ? 'Show all' : assignmentFilter === 'assigned' ? 'Showing assigned' : 'Showing unassigned'}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'inherit', fontWeight: 'inherit', color: assignmentFilter !== 'all' ? 'var(--color-primary,#6366f1)' : 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'inherit' }}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'inherit', fontWeight: 'inherit', color: assignmentFilter !== 'all' ? 'var(--color-primary)' : 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'inherit' }}
               >
                 Assigned
                 <span style={{ fontSize: 9, opacity: assignmentFilter === 'all' ? 0.4 : 1 }}>
@@ -650,7 +650,7 @@ export function LeadsPage() {
                   ? (Date.now() - new Date(lead.lastMeaningfulActivityAt).getTime()) < 86_400_000
                   : false;
                 return (
-                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 12px', minHeight: 51, borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(99,102,241,0.04)' : undefined }}>
+                  <div key={lead.id} className="dense-row" onClick={() => setSelectedLead(lead)} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, padding: '8px 12px', minHeight: 51, borderBottom: '1px solid var(--border-light)', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isChecked ? 'rgba(37, 99, 235,0.04)' : undefined }}>
 
                     {/* Checkbox */}
                     <div style={{ display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
@@ -695,7 +695,7 @@ export function LeadsPage() {
                       {lead.owner ? (
                         canImpersonate ? (
                           <button
-                            style={{ background: 'rgba(99,102,241,0.08)', border: 'none', borderRadius: 3, padding: '1px 5px', fontSize: 12, color: impersonatingId === lead.owner.id ? 'var(--text-tertiary)' : 'var(--color-primary,#6366f1)', fontWeight: 500, cursor: impersonatingId ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', textAlign: 'left', fontFamily: 'inherit', opacity: impersonatingId && impersonatingId !== lead.owner.id ? 0.5 : 1 }}
+                            style={{ background: 'rgba(37, 99, 235,0.08)', border: 'none', borderRadius: 3, padding: '1px 5px', fontSize: 12, color: impersonatingId === lead.owner.id ? 'var(--text-tertiary)' : 'var(--color-primary)', fontWeight: 500, cursor: impersonatingId ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', textAlign: 'left', fontFamily: 'inherit', opacity: impersonatingId && impersonatingId !== lead.owner.id ? 0.5 : 1 }}
                             title="View as this user"
                             aria-label={`Enter account of ${[lead.owner.firstName, lead.owner.lastName].filter(Boolean).join(' ')}`}
                             disabled={!!impersonatingId}

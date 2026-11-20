@@ -55,7 +55,7 @@ import { LeadWaChannelsModal } from '../components/leads/LeadWaChannelsModal';
 // ============================================================================
 
 const DOC_STATUS_META: Record<DocDocumentStatus, { label: string; color: string; bg: string; dot: string }> = {
-  REQUESTED:          { label: 'Requested',          color: '#6366f1', bg: 'rgba(99,102,241,0.1)',  dot: '#6366f1' },
+  REQUESTED:          { label: 'Requested',          color: '#2563eb', bg: 'rgba(37, 99, 235,0.1)',  dot: '#2563eb' },
   PENDING_COLLECTION: { label: 'Collection Pending', color: '#d97706', bg: 'rgba(245,158,11,0.1)', dot: '#d97706' },
   RECEIVED:           { label: 'Received',           color: '#2563eb', bg: 'rgba(37,99,235,0.1)',  dot: '#2563eb' },
   UNDER_VERIFICATION: { label: 'Under Verification', color: '#475569', bg: 'rgba(71, 85, 105,0.1)', dot: '#475569' },
@@ -185,7 +185,7 @@ function StatusChip({ status }: { status: DocDocumentStatus }) {
 
 // ─── Progress bar (used in detail panel only) ─────────────────────────────────
 function ProgressBar({ pct, ready }: { pct: number; ready: boolean }) {
-  const color = ready ? '#059669' : pct >= 80 ? '#d97706' : '#6366f1';
+  const color = ready ? '#059669' : pct >= 80 ? '#d97706' : '#2563eb';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ flex: 1, height: 6, background: 'var(--bg-muted)', borderRadius: 99, overflow: 'hidden' }}>
@@ -2281,7 +2281,7 @@ export function DocumentationPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 12, background: 'var(--bg-muted)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedIds.size} selected</span>
           <div style={{ width: 1, height: 16, background: 'var(--border-medium)' }} />
-          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#6366f1' }} onClick={() => setShowAssignModal(true)}>
+          <button className="btn-ghost" style={{ height: 26, padding: '0 10px', fontSize: 12, color: '#2563eb' }} onClick={() => setShowAssignModal(true)}>
             <UserCheck size={12} style={{ marginRight: 4 }} /> Assign
           </button>
           <div style={{ flex: 1 }} />

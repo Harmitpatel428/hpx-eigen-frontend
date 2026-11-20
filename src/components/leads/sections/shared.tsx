@@ -169,7 +169,7 @@ const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #334155, #475569)',
   'linear-gradient(135deg, #064e3b, #059669)',
   'linear-gradient(135deg, #7c2d12, #ea580c)',
-  'linear-gradient(135deg, #1e1b4b, #6366f1)',
+  'linear-gradient(135deg, #1e1b4b, #2563eb)',
   'linear-gradient(135deg, #134e4a, #14b8a6)',
   'linear-gradient(135deg, #1e293b, #64748b)',
   'linear-gradient(135deg, #0f172a, #475569)',

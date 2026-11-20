@@ -323,7 +323,7 @@ function ContactsManager({ leadId, onContactsChanged }: ContactsManagerProps) {
           isPending={addMutation.isPending}
         />
       ) : (
-        <button type="button" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6366f1', fontWeight: 500, background: 'none', border: '1px dashed #c7d2fe', borderRadius: '0.375rem', padding: '5px 10px', cursor: 'pointer', width: '100%', justifyContent: 'center', marginTop: contacts.length > 0 ? 4 : 0 }}>
+        <button type="button" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#2563eb', fontWeight: 500, background: 'none', border: '1px dashed #bfdbfe', borderRadius: '0.375rem', padding: '5px 10px', cursor: 'pointer', width: '100%', justifyContent: 'center', marginTop: contacts.length > 0 ? 4 : 0 }}>
           <Plus size={12} /> Add Contact
         </button>
       )}
@@ -702,7 +702,7 @@ export const LeadModal = memo(function LeadModal({ mode, lead, onClose, onSucces
                   </Field>
                 </div>
               ))}
-              <button type="button" onClick={() => setShowFieldBuilder(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6366f1', fontWeight: 500, background: 'none', border: '1px dashed #c7d2fe', borderRadius: '0.375rem', padding: '5px 10px', cursor: 'pointer', width: '100%', justifyContent: 'center', marginTop: customFields.length > 0 ? 4 : 0 }}>
+              <button type="button" onClick={() => setShowFieldBuilder(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#2563eb', fontWeight: 500, background: 'none', border: '1px dashed #bfdbfe', borderRadius: '0.375rem', padding: '5px 10px', cursor: 'pointer', width: '100%', justifyContent: 'center', marginTop: customFields.length > 0 ? 4 : 0 }}>
                 <Plus size={12} /> Add Custom Field
               </button>
             </div>

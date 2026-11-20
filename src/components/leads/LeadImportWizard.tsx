@@ -159,7 +159,7 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
                     onClick={() => fileInputRef.current?.click()}
-                    style={{ border: `2px dashed ${isDragging ? '#6366f1' : '#e2e8f0'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', cursor: 'pointer', background: isDragging ? 'rgba(99,102,241,0.04)' : '#fafafa', transition: 'all 0.15s', marginBottom: '1rem' }}
+                    style={{ border: `2px dashed ${isDragging ? '#2563eb' : '#e2e8f0'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', cursor: 'pointer', background: isDragging ? 'rgba(37, 99, 235,0.04)' : '#fafafa', transition: 'all 0.15s', marginBottom: '1rem' }}
                     role="button"
                     aria-label="Click or drag to upload CSV file"
                   >
@@ -172,7 +172,7 @@ export function LeadImportWizard({ onClose, fieldDefs }: Props) {
                   <button
                     type="button"
                     onClick={() => setPasteMode(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}
                   >
                     <FileText size={13} /> Paste from Excel / Google Sheets instead
                   </button>
