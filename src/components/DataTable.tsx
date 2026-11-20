@@ -42,15 +42,15 @@ export const DataTable = React.memo(<T,>({
 }: DataTableProps<T>) => {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white">
-        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-slate-900" />
+      <div className="flex items-center justify-center h-64 bg-[var(--bg-app)]">
+        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[var(--text-primary)]" />
       </div>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white">
+      <div className="bg-[var(--bg-app)]">
         <EmptyState title={emptyTitle}>{emptyMessage}</EmptyState>
       </div>
     );
