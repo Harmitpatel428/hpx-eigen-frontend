@@ -248,7 +248,7 @@ ul, ol { list-style: none; }
   border-radius: var(--radius-full); /* Apple/Linear pill style */
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
   user-select: none;
 }
 .btn:active { transform: scale(0.97); }
@@ -263,7 +263,7 @@ ul, ol { list-style: none; }
 .btn-ghost { color: var(--text-secondary); }
 .btn-ghost:hover { background-color: var(--bg-subtle); color: var(--text-primary); }
 
-.btn-icon { padding: 0; width: 36px; height: 36px; color: var(--text-secondary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); }
+.btn-icon { padding: 0; width: 36px; height: 36px; color: var(--text-secondary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; transition: background-color var(--transition-fast), color var(--transition-fast); }
 .btn-icon:hover { background-color: var(--bg-subtle); color: var(--text-primary); }
 
 /* Compact dense-row status chip (Leads list "Work Completed" badge / "Mark Waiting"
@@ -275,7 +275,7 @@ ul, ol { list-style: none; }
   border: 1px solid transparent; border-radius: var(--radius-full);
   font-size: 11px; font-weight: var(--font-medium); font-family: inherit;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  cursor: pointer; transition: all var(--transition-fast);
+  cursor: pointer; transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 .status-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .status-chip:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -291,7 +291,7 @@ ul, ol { list-style: none; }
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-sm);
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .input:focus { background-color: var(--bg-app); border-color: var(--color-accent); outline: none; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08); }
 .input::placeholder { color: var(--text-tertiary); }
@@ -699,7 +699,7 @@ ul, ol { list-style: none; }
   color: var(--text-tertiary);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 .app-toast__dismiss:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .app-toast__dismiss:focus-visible { outline: 2px solid var(--color-info); outline-offset: 1px; }
