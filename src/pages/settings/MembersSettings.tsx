@@ -291,6 +291,8 @@ export function MembersSettings() {
   const { permissions, user: currentUser } = useAuth();
   const canManageUsers = permissions.can('user:manage');
   const canManageRoles = permissions.can('role:manage');
+  // Strictly-admin marker — NOT user:manage, which delegated managers may hold.
+  const canResetPassword = permissions.can('user:password:reset');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [showInvite, setShowInvite] = useState(false);
@@ -403,8 +405,8 @@ export function MembersSettings() {
                     <Shield size={12} /> Role
                   </button>
                 )}
-                {/* Admin-only; hidden on self (admins change their own password in account settings). Backend enforces both. */}
-                {canManageUsers && currentUser?.id !== user.id && (
+                {/* Strictly-admin (user:password:reset), hidden on self (admins change their own password in account settings). Backend enforces both. */}
+                {canResetPassword && currentUser?.id !== user.id && (
                   <button
                     onClick={() => setPwTarget(user)}
                     title="Set a new password for this member"
