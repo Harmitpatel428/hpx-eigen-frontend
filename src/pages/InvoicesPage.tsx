@@ -87,10 +87,10 @@ export function InvoicesPage() {
   };
 
   const columns: Column<Invoice>[] = [
-    { key: 'invoiceNumber', label: 'Invoice No.', render: (val, inv) => <span className="font-medium text-slate-900">{val || String(inv.id).slice(0, 8)}</span> },
+    { key: 'invoiceNumber', label: 'Invoice No.', render: (val, inv) => <span className="font-medium text-[var(--text-primary)]">{val || String(inv.id).slice(0, 8)}</span> },
     { key: 'invoiceDate', label: 'Date', render: (val) => val ? formatDate(String(val)) : '-' },
-    { key: 'amount', label: 'Subtotal', align: 'right', render: (val) => <span className="text-slate-500">{formatINR(Number(val))}</span> },
-    { key: 'totalAmount', label: 'Total Amount', align: 'right', render: (val) => <span className="font-semibold text-slate-900">{formatINR(Number(val))}</span> },
+    { key: 'amount', label: 'Subtotal', align: 'right', render: (val) => <span className="text-[var(--text-tertiary)]">{formatINR(Number(val))}</span> },
+    { key: 'totalAmount', label: 'Total Amount', align: 'right', render: (val) => <span className="font-semibold text-[var(--text-primary)]">{formatINR(Number(val))}</span> },
     { 
       key: 'status', 
       label: 'Status',
@@ -102,10 +102,10 @@ export function InvoicesPage() {
         
         return (
           <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isSuccess ? 'bg-green-100 text-green-700 border border-green-200' :
-            isPartial ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-            isWarning ? 'bg-slate-100 text-slate-700 border border-slate-200' :
-            'bg-red-100 text-red-700 border border-red-200'
+            isSuccess ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]' :
+            isPartial ? 'bg-[var(--color-info-tint)] text-[var(--color-info)]' :
+            isWarning ? 'bg-[var(--bg-muted)] text-[var(--text-secondary)]' :
+            'bg-[var(--color-danger-tint)] text-[var(--color-danger)]'
           }`}>
             {status.replace('_', ' ')}
           </span>
@@ -119,24 +119,24 @@ export function InvoicesPage() {
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold text-slate-900">Invoices</h1>
-          <p className="text-sm text-slate-500">Manage and track customer invoices</p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Invoices</h1>
+          <p className="text-sm text-[var(--text-tertiary)]">Manage and track customer invoices</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm" onClick={() => setIsModalOpen(true)}>
+          <button className="flex items-center gap-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-[var(--text-inverse)] px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm" onClick={() => setIsModalOpen(true)}>
             <Plus size={16} /> New Invoice
           </button>
         </div>
       </div>
 
       {invoicesData?.data && invoicesData.data.length === 0 && !isLoading ? (
-        <div className="flex flex-col items-center justify-center py-24 bg-white rounded-xl border border-slate-200 border-dashed">
-          <FileText size={48} className="text-slate-300 mb-4" />
-          <h2 className="text-lg font-semibold text-slate-900 mb-1">No invoices found</h2>
-          <p className="text-sm text-slate-500">Create a new invoice to get started.</p>
+        <div className="flex flex-col items-center justify-center py-24 bg-[var(--surface-overlay)] rounded-xl border border-[var(--border-light)] border-dashed">
+          <FileText size={48} className="text-[var(--text-tertiary)] mb-4" />
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-1">No invoices found</h2>
+          <p className="text-sm text-[var(--text-tertiary)]">Create a new invoice to get started.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-[var(--surface-overlay)] rounded-xl border border-[var(--border-light)] shadow-sm overflow-hidden">
           <DataTable
             data={invoicesData?.data || []}
             columns={columns}
@@ -145,7 +145,7 @@ export function InvoicesPage() {
             rowActions={(invoice) => (
               <Suspense fallback={
                 <span className="inline-flex items-center justify-center p-1.5">
-                  <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-[var(--border-medium)] border-t-[var(--text-primary)] rounded-full animate-spin" />
                 </span>
               }>
                 <InvoiceDownloadLink invoice={invoice} />
@@ -156,11 +156,11 @@ export function InvoicesPage() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-              <h2 className="text-lg font-semibold text-slate-900">Create New Invoice</h2>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-[var(--surface-overlay)] w-full max-w-2xl rounded-2xl shadow-2xl border border-[var(--border-light)] overflow-hidden my-8">
+            <div className="px-6 py-5 border-b border-[var(--border-light)] flex justify-between items-center bg-[var(--surface-overlay)] sticky top-0 z-10">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Create New Invoice</h2>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 -mr-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-muted)] rounded-lg transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -170,15 +170,15 @@ export function InvoicesPage() {
                 
                 {/* 1. Customer Selection */}
                 <section>
-                  <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2"><User size={16} className="text-slate-400"/> Customer Details</h3>
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2"><User size={16} className="text-[var(--text-tertiary)]"/> Customer Details</h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Select Opportunity</label>
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Select Opportunity</label>
 
                       <div className="relative">
                         <select 
                           {...formMethods.register("opportunityId")} 
-                          className="w-full bg-white border border-slate-300 rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm disabled:bg-slate-50 disabled:text-slate-500"
+                          className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2.5 pl-3.5 pr-10 text-sm text-[var(--text-primary)] appearance-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] transition-all shadow-sm disabled:bg-[var(--bg-subtle)] disabled:text-[var(--text-tertiary)]"
                           disabled={opportunities.length === 0}
                         >
                           <option value="">{oppsLoading ? "Loading opportunities..." : "Select Opportunity..."}</option>
@@ -186,22 +186,22 @@ export function InvoicesPage() {
                             return <option key={opp.id} value={opp.id}>{opp.title || opp.name}</option>;
                           })}
                         </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--text-tertiary)]">
                           <ChevronDown size={16} />
                         </div>
                       </div>
                       {!oppsLoading && opportunities.length === 0 && (
-                        <p className="text-xs text-red-500 mt-1 font-medium">No opportunities found. Please create an opportunity in the CRM first.</p>
+                        <p className="text-xs text-[var(--color-danger)] mt-1 font-medium">No opportunities found. Please create an opportunity in the CRM first.</p>
                       )}
-                      {formMethods.formState.errors.opportunityId && <p className="text-xs text-red-500 mt-1.5 font-medium">{formMethods.formState.errors.opportunityId.message}</p>}
+                      {formMethods.formState.errors.opportunityId && <p className="text-xs text-[var(--color-danger)] mt-1.5 font-medium">{formMethods.formState.errors.opportunityId.message}</p>}
                     </div>
 
                     {selectedOpp && (
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 flex flex-col gap-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                      <div className="bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-lg p-5 flex flex-col gap-4">
+                        <div className="flex items-center justify-between border-b border-[var(--border-light)] pb-3">
                           <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-slate-900">{selectedOpp.title}</span>
-                            <span className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                            <span className="text-sm font-semibold text-[var(--text-primary)]">{selectedOpp.title}</span>
+                            <span className="text-xs text-[var(--text-tertiary)] flex items-center gap-1 mt-1">
                               <IndianRupee size={12}/> {formatINR(Number(selectedOpp.value))} • {selectedOpp.stage.replace('_', ' ')}
                             </span>
                           </div>
@@ -209,15 +209,15 @@ export function InvoicesPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2 text-xs text-slate-600">
-                              <User size={14} className="text-slate-400" />
-                              <span className="font-medium text-slate-900">
+                            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                              <User size={14} className="text-[var(--text-tertiary)]" />
+                              <span className="font-medium text-[var(--text-primary)]">
                                 {selectedOpp.contact ? `${selectedOpp.contact.firstName} ${selectedOpp.contact.lastName}` : `${selectedOpp.lead?.firstName} ${selectedOpp.lead?.lastName}`}
                               </span>
                             </div>
                             {(selectedOpp.lead?.company || selectedOpp.contact?.company) && (
-                              <div className="flex items-center gap-2 text-xs text-slate-600">
-                                <Building size={14} className="text-slate-400" />
+                              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                <Building size={14} className="text-[var(--text-tertiary)]" />
                                 <span>{selectedOpp.lead?.company || selectedOpp.contact?.company}</span>
                               </div>
                             )}
@@ -225,14 +225,14 @@ export function InvoicesPage() {
                           
                           <div className="flex flex-col gap-2">
                             {(selectedOpp.contact?.email || selectedOpp.lead?.email) && (
-                              <div className="flex items-center gap-2 text-xs text-slate-600">
-                                <Mail size={14} className="text-slate-400" />
+                              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                <Mail size={14} className="text-[var(--text-tertiary)]" />
                                 <span>{selectedOpp.contact?.email || selectedOpp.lead?.email}</span>
                               </div>
                             )}
                             {(selectedOpp.contact?.phone || selectedOpp.lead?.phone) && (
-                              <div className="flex items-center gap-2 text-xs text-slate-600">
-                                <Phone size={14} className="text-slate-400" />
+                              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                <Phone size={14} className="text-[var(--text-tertiary)]" />
                                 <span>{selectedOpp.contact?.phone || selectedOpp.lead?.phone}</span>
                               </div>
                             )}
@@ -243,76 +243,76 @@ export function InvoicesPage() {
                   </div>
                 </section>
 
-                <hr className="border-slate-100" />
+                <hr className="border-[var(--border-light)]" />
 
                 {/* 2. Invoice Details */}
                 <section>
-                  <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2"><FileText size={16} className="text-slate-400"/> Invoice Information</h3>
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2"><FileText size={16} className="text-[var(--text-tertiary)]"/> Invoice Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Invoice Number <span className="text-slate-400 font-normal">(Auto if empty)</span></label>
-                      <input type="text" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 shadow-sm" {...formMethods.register('invoiceNumber')} placeholder="INV-..." />
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Invoice Number <span className="text-[var(--text-tertiary)] font-normal">(Auto if empty)</span></label>
+                      <input type="text" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] shadow-sm" {...formMethods.register('invoiceNumber')} placeholder="INV-..." />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Status</label>
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Status</label>
                       <div className="relative">
-                        <select className="w-full bg-white border border-slate-300 rounded-lg py-2 pl-3.5 pr-10 text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('status')}>
+                        <select className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 pl-3.5 pr-10 text-sm text-[var(--text-primary)] appearance-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('status')}>
                           <option value="DRAFT">Draft</option>
                           <option value="SENT">Sent</option>
                           <option value="PAID">Paid</option>
                         </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--text-tertiary)]">
                           <ChevronDown size={16} />
                         </div>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Invoice Date</label>
-                      <input type="date" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('invoiceDate')} />
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Invoice Date</label>
+                      <input type="date" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('invoiceDate')} />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Due Date</label>
-                      <input type="date" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('dueDate')} />
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Due Date</label>
+                      <input type="date" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('dueDate')} />
                     </div>
                   </div>
                 </section>
 
-                <hr className="border-slate-100" />
+                <hr className="border-[var(--border-light)]" />
 
                 {/* 3. Financials */}
                 <section>
-                  <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2"><IndianRupee size={16} className="text-slate-400"/> Financials</h3>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2"><IndianRupee size={16} className="text-[var(--text-tertiary)]"/> Financials</h3>
+                  <div className="bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-xl p-5 space-y-4">
                     
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5">Subtotal Amount (₹)</label>
-                        <input type="number" step="0.01" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('amount', { valueAsNumber: true })} />
-                        {formMethods.formState.errors.amount && <p className="text-xs text-red-500 mt-1">{formMethods.formState.errors.amount.message}</p>}
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Subtotal Amount (₹)</label>
+                        <input type="number" step="0.01" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('amount', { valueAsNumber: true })} />
+                        {formMethods.formState.errors.amount && <p className="text-xs text-[var(--color-danger)] mt-1">{formMethods.formState.errors.amount.message}</p>}
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5">Discount (₹)</label>
-                        <input type="number" step="0.01" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('discount', { valueAsNumber: true })} />
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Discount (₹)</label>
+                        <input type="number" step="0.01" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('discount', { valueAsNumber: true })} />
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5">Tax (%)</label>
-                        <input type="number" step="0.01" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('taxPercentage', { valueAsNumber: true })} />
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Tax (%)</label>
+                        <input type="number" step="0.01" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('taxPercentage', { valueAsNumber: true })} />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5">Other Charges (₹)</label>
-                        <input type="number" step="0.01" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('otherCharges', { valueAsNumber: true })} />
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Other Charges (₹)</label>
+                        <input type="number" step="0.01" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('otherCharges', { valueAsNumber: true })} />
                       </div>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-slate-200">
-                      <div className="flex justify-between items-center text-sm text-slate-600 mb-2">
+                    <div className="pt-4 mt-4 border-t border-[var(--border-light)]">
+                      <div className="flex justify-between items-center text-sm text-[var(--text-secondary)] mb-2">
                         <span>Tax Amount:</span>
                         <span className="font-medium">₹ {taxAmount.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between items-center text-base font-bold text-slate-900">
+                      <div className="flex justify-between items-center text-base font-bold text-[var(--text-primary)]">
                         <span>Total Amount:</span>
                         <span>₹ {totalAmount.toFixed(2)}</span>
                       </div>
@@ -325,21 +325,21 @@ export function InvoicesPage() {
                 <section>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Payment Terms</label>
-                      <input type="text" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('paymentTerms')} placeholder="e.g. Net 30" />
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Payment Terms</label>
+                      <input type="text" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('paymentTerms')} placeholder="e.g. Net 30" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">Internal Notes</label>
-                      <input type="text" className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-sm" {...formMethods.register('internalNotes')} placeholder="Private notes" />
+                      <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Internal Notes</label>
+                      <input type="text" className="w-full bg-[var(--surface-overlay)] border border-[var(--border-medium)] rounded-lg py-2 px-3.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm" {...formMethods.register('internalNotes')} placeholder="Private notes" />
                     </div>
                   </div>
                 </section>
 
               </div>
 
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 rounded-b-2xl">
-                <button type="button" className="px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled={createMut.isPending}>
+              <div className="px-6 py-4 bg-[var(--bg-subtle)] border-t border-[var(--border-light)] flex justify-end gap-3 rounded-b-2xl">
+                <button type="button" className="px-4 py-2.5 rounded-lg text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-primary)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="px-5 py-2.5 rounded-lg text-sm font-semibold text-[var(--text-inverse)] bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled={createMut.isPending}>
                   {createMut.isPending ? 'Saving...' : 'Save Invoice'}
                 </button>
               </div>
