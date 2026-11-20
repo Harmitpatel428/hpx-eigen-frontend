@@ -65,7 +65,7 @@ export function PipelineAnalyticsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
           
           {/* Top Level Metrics (Massive Typography) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-8)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-8)' }}>
             <div>
               <div className="type-ui" style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <Target size={14} /> Open Pipeline
@@ -107,12 +107,12 @@ export function PipelineAnalyticsPage() {
           {/* Velocity Breakdown */}
           <div>
             <h2 className="type-h2" style={{ marginBottom: 'var(--space-8)' }}>Stage Velocity Breakdown</h2>
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-3)' }}>
               {STAGES.map((stage, idx) => {
                 const count = opportunities.filter(o => o.stage === stage).length;
                 const val   = opportunities.filter(o => o.stage === stage).reduce((s,o) => s + parseFloat(o.value||'0'), 0);
                 return (
-                  <div key={stage} className="surface" style={{ flex: 1, padding: 'var(--space-6)', display: 'flex', flexDirection: 'column' }}>
+                  <div key={stage} className="surface" style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column' }}>
                     <div className="type-micro" style={{ marginBottom: 'var(--space-6)', color: 'var(--text-secondary)' }}>{idx + 1}. {STAGE_LABELS[stage]}</div>
                     <div className="type-h1" style={{ marginBottom: 'var(--space-1)' }}>{avgDaysInStage(opportunities, stage)}</div>
                     <div className="type-ui" style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--space-8)' }}>Avg. duration</div>
