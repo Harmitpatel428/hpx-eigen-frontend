@@ -279,7 +279,7 @@ ul, ol { list-style: none; }
 }
 .status-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .status-chip:disabled { opacity: 0.4; cursor: not-allowed; }
-.status-chip-waiting { background: rgba(168, 85, 247, 0.1); color: #475569; }
+.status-chip-waiting { background: rgba(71, 85, 105, 0.1); color: #475569; }
 
 /* ─── INPUTS ─── */
 .input {

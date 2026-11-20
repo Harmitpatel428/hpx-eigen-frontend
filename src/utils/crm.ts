@@ -151,7 +151,7 @@ export function statusColor(status: string): string {
     Disqualified: 'bg-red-500',
     Converted: 'bg-slate-500',
     'PROSPECTING': 'bg-blue-500',
-    'QUALIFICATION': 'bg-indigo-500',
+    'QUALIFICATION': 'bg-cyan-500',
     'PROPOSAL': 'bg-slate-500',
     'NEGOTIATION': 'bg-orange-500',
     'CLOSED_WON': 'bg-green-500',
