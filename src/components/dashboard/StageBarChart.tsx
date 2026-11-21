@@ -66,7 +66,7 @@ export const StageBarChart: React.FC<StageBarChartProps> = ({
           {rows.map((r) => (
             <Cell key={r.label} fill={r.value === maxValue ? 'var(--color-info)' : 'var(--text-tertiary)'} />
           ))}
-          <LabelList dataKey="value" position="right" formatter={(v: number) => formatValue(v)} style={{ fill: 'var(--text-secondary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }} />
+          <LabelList dataKey="value" position="right" formatter={(v) => formatValue(Number(v))} style={{ fill: 'var(--text-secondary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
