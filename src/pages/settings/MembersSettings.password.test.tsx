@@ -161,4 +161,19 @@ describe('RED TEAM — Change Password target wiring', () => {
     await waitFor(() => expect(screen.getByText('Forbidden')).toBeTruthy());
     expect(screen.queryByText(/Password updated/i)).toBeNull();
   });
+
+  it('Enter in the confirm field submits ONE mutation for the selected member', async () => {
+    renderMembers();
+    await screen.findByText('bob@test.local');
+
+    const user = await openPasswordModalFor('bob@test.local');
+    await fillPasswords(user, STRONG);
+
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[type="password"]');
+    await user.type(inputs[1], '{Enter}');
+
+    await waitFor(() => expect(userService.setMemberPassword).toHaveBeenCalledTimes(1));
+    expect(userService.setMemberPassword).toHaveBeenCalledWith('member-b', STRONG);
+    expect(userService.setMemberPassword).not.toHaveBeenCalledWith(ADMIN_ID, expect.anything());
+  });
 });
