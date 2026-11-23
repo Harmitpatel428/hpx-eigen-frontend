@@ -28,6 +28,8 @@ import type {
   DocStorageType, DocPreset, HandoffReturnReason,
   CaseDocument, DocFileStatus, DocSourceChannel,
 } from '../types';
+import { DocActivitiesPanel } from '../components/documentation/DocActivitiesPanel';
+import { DocFollowUpControl } from '../components/documentation/DocFollowUpControl';
 import { HANDOFF_RETURN_REASON_LABELS, PROCESS_RETURN_REASON_LABELS } from '../types';
 import { FileDropzone } from '../components/documents/FileDropzone';
 import { mandateService, uploadToPresigned } from '../services/mandate.service';
@@ -1041,6 +1043,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
     qc.invalidateQueries({ queryKey: ['incoming-handoffs'] });
   }, [qc, caseId]);
 
+  // Documentation follow-up control (Sales-style popover → DocActivity) lives on the Overview tab.
+  const canEditActivities = permissions.can('doc:edit');
+
   // The pending-documents list is per-case and hidden by default: collapse it when the open case changes.
   useEffect(() => { setShowPending(false); }, [caseId]);
 
@@ -1271,8 +1276,8 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           </div>
         )}
 
-        {/* Case ID */}
-        <div style={{ marginTop: 'var(--space-1)', paddingLeft: 'var(--space-8)', marginBottom: 'var(--space-4)' }}>
+        {/* Case ID + follow-up control (inline) */}
+        <div style={{ marginTop: 'var(--space-1)', paddingLeft: 'var(--space-8)', marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           {docCase.caseNumber ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <span style={{ fontFamily: 'monospace', fontSize: 'var(--text-micro)', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-tertiary)' }}>
@@ -1293,6 +1298,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               </button>
             )
           )}
+          <DocFollowUpControl caseId={caseId} canEdit={canEditActivities} activities={docCase.docActivities ?? []} />
         </div>
 
         {/* Tabs */}
@@ -1784,6 +1790,21 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </button>
               </div>
 
+              {/* Follow-up notes (from DocActivity.metadata.notes) — same surface as case notes */}
+              {(docCase.docActivities ?? [])
+                .filter(a => typeof (a.metadata as { notes?: unknown })?.notes === 'string' && ((a.metadata as { notes: string }).notes).trim())
+                .map(a => (
+                  <div key={`fa-${a.id}`} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#d97706' }}>Follow-up</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{relativeTime(a.scheduledAt ?? a.createdAt)}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: 8, whiteSpace: 'pre-wrap' }}>
+                      {(a.metadata as { notes: string }).notes}
+                    </div>
+                  </div>
+                ))}
+
               {/* Existing notes */}
               {(docCase.caseNotes ?? []).map(note => (
                 <div key={note.id} style={{ marginBottom: 12 }}>
@@ -2074,6 +2095,7 @@ export function DocumentationPage() {
   const [acceptingId, setAcceptingId]     = useState<string | null>(null);
   const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set()); // doc-case ids (main table only)
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [view, setView] = useState<'cases' | 'activities'>('cases');
 
   // 400ms debounce — matches Leads page
   useEffect(() => {
@@ -2224,6 +2246,23 @@ export function DocumentationPage() {
         </button>
       </div>
 
+      {/* Cases vs Activities view toggle */}
+      <div role="tablist" aria-label="Documentation view" style={{ display: 'flex', gap: 4, marginBottom: 'var(--space-3)' }}>
+        {(['cases', 'activities'] as const).map(v => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
+            style={{
+              height: 28, padding: '0 14px', fontSize: 13, fontWeight: view === v ? 600 : 450,
+              background: view === v ? 'var(--bg-muted)' : 'transparent',
+              color: view === v ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              border: '1px solid var(--border-medium)', borderRadius: 6, cursor: 'pointer',
+            }}>
+            {v === 'cases' ? 'Cases' : 'Activities'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'activities' ? <DocActivitiesPanel onOpenCase={setSelectedCaseId} /> : (
+      <>
       {/* Filter pills — replaces KPI strip + tab view toggle */}
       <div style={{
         display: 'flex', gap: 6, padding: '6px', marginBottom: 'var(--space-4)',
@@ -2380,6 +2419,9 @@ export function DocumentationPage() {
             ))
           )}
         </>
+      )}
+
+      </>
       )}
 
       {/* Case detail panel */}

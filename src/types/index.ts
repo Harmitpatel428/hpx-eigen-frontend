@@ -690,6 +690,28 @@ export interface DocCasePolicyAssignment {
   components: SelectedPolicyComponent[];
 }
 
+export type DocActivityType = 'FOLLOW_UP' | 'CALL' | 'MEETING' | 'DOC_REQUESTED' | 'NOTE' | 'OTHER';
+export type DocActivityState = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface DocActivity {
+  id: string;
+  tenantId: string;
+  caseId: string;
+  actorUserId: string | null;
+  type: DocActivityType;
+  state: DocActivityState;
+  subject: string;
+  metadata: Record<string, unknown>;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  // Present on the global GET /documentation/activities list (thin case + lead projection).
+  case?: { id: string; caseNumber: string | null; leadId: string; lead?: { id: string; company: string | null; firstName: string | null; lastName: string | null } };
+  actor?: { id: string; firstName: string | null; lastName: string | null } | null;
+}
+
 export interface DocCase {
   id: string;
   tenantId: string;
@@ -759,6 +781,7 @@ export interface DocCase {
   uploadedDocuments?: CaseDocument[];
   events?: DocCaseEvent[];
   caseNotes?: DocCaseNote[];
+  docActivities?: DocActivity[];
   overrides?: DocManagerOverride[];
   policyAssignments?: DocCasePolicyAssignment[];
   _count?: { documents: number };

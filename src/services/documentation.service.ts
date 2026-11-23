@@ -3,6 +3,7 @@ import type {
   DocCase, DocPreset, DocDashboardKPIs, DocDocumentStatus,
   DocNoteType, DocStorageType, DocPresetCategory,
   DocFileStatus, DocSourceChannel,
+  DocActivity, DocActivityType,
 } from '../types';
 import type { CaseFieldConditionOperator } from '../types/caseConfig';
 
@@ -248,4 +249,39 @@ export const documentationService = {
   deleteFile: async (documentId: string): Promise<void> => {
     await api.delete(`/api/v1/documentation/files/${documentId}`);
   },
+
+  // ─── ACTIVITIES (Documentation-only; isolated from Sales LeadActivity) ─────
+  listActivities: async (filter: DocActivityFilter = 'ALL', page = 1, pageSize = 50) => {
+    const res = await api.get(`/api/v1/documentation/activities?filter=${filter}&page=${page}&pageSize=${pageSize}`);
+    return unwrapList<DocActivity>(res);
+  },
+
+  createActivity: async (caseId: string, payload: CreateDocActivityPayload): Promise<DocActivity> => {
+    const res = await api.post(`/api/v1/documentation/cases/${caseId}/activities`, payload);
+    return unwrap<DocActivity>(res);
+  },
+
+  updateActivity: async (id: string, payload: { scheduledAt?: string; notes?: string }): Promise<DocActivity> => {
+    const res = await api.patch(`/api/v1/documentation/activities/${id}`, payload);
+    return unwrap<DocActivity>(res);
+  },
+
+  completeActivity: async (id: string, opts?: { nextFollowUp?: string; note?: string }): Promise<DocActivity> => {
+    const res = await api.patch(`/api/v1/documentation/activities/${id}/complete`, opts ?? {});
+    return unwrap<DocActivity>(res);
+  },
+
+  bulkCompleteActivities: async (ids: string[]): Promise<{ count: number }> => {
+    const res = await api.post('/api/v1/documentation/activities/bulk-complete', { ids });
+    return res.data as { count: number };
+  },
 };
+
+export type DocActivityFilter = 'ALL' | 'DUE_TODAY' | 'UPCOMING' | 'OVERDUE' | 'MINE';
+
+export interface CreateDocActivityPayload {
+  type: DocActivityType;
+  subject: string;
+  scheduledAt?: string;
+  metadata?: Record<string, unknown>;
+}
