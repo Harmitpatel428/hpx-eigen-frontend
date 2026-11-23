@@ -1544,7 +1544,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Documentation Progress</span>
-                  <span style={{ fontSize: 22, fontWeight: 800, color: docCase.isReady ? '#059669' : 'var(--text-primary)' }}>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: docCase.isReady ? '#059669' : 'var(--text-primary)' }}>
                     {docProgress.percent}%
                   </span>
                 </div>
@@ -1557,7 +1557,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     { label: 'Rejected', val: docProgress.rejected, color: '#dc2626' },
                   ].map(s => (
                     <div key={s.label}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>{s.label}</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: s.color ?? 'var(--text-primary)' }}>{s.val}</div>
                     </div>
                   ))}
@@ -1570,7 +1570,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     aria-controls="doc-pending-list"
                     style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: docProgress.pending > 0 ? 'pointer' : 'default' }}
                   >
-                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                       Pending
                       {docProgress.pending > 0 && (
                         <ChevronRight size={11} style={{ transform: showPending ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -1596,7 +1596,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Documents</span>
                   <span style={{
-                    fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 6,
                     color: pendingCount > 0 ? '#d97706' : '#059669',
                     background: pendingCount > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(5,150,105,0.1)',
                   }}>
@@ -1650,7 +1650,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               {/* General documents (not tied to a requirement) — includes R8 orphans */}
               {generalFiles.length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>General documents</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>General documents</div>
                   {generalFiles.map(f => (
                     <DocumentFileRow key={f.id} file={f} canManageFile={canManageFile}
                       onView={() => onViewFile(f.id)} onDelete={() => onDeleteFile(f.id)} />
@@ -1678,7 +1678,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                         borderRadius: '50%', background: 'var(--color-accent)', border: '2px solid var(--bg-app)',
                       }} />
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
-                        {ev.eventType.replace(/_/g, ' ')}
+                        {ev.eventType.charAt(0) + ev.eventType.slice(1).toLowerCase().replace(/_/g, ' ')}
                       </div>
                       {ev.fromStatus && ev.toStatus && (
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1704,11 +1704,11 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               {/* Portal contact card */}
               {docCase.lead?.phone && (
                 <div style={{
-                  marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+                  marginBottom: 16, padding: '12px 16px', borderRadius: 12,
                   border: '1px solid #fde68a', background: 'rgba(251,191,36,0.06)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#92400e' }}>
                       Portal contact
                     </span>
                   </div>
@@ -1733,11 +1733,11 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 border: '1px solid var(--border-light)', background: 'var(--bg-subtle)',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)' }}>
                     Portal activation
                   </span>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 6,
                     background: docCase.portalEnabled && docCase.portalActivatedAt ? 'rgba(5,150,105,0.1)' : 'rgba(156,163,175,0.1)',
                     color: docCase.portalEnabled && docCase.portalActivatedAt ? '#059669' : '#9ca3af',
                   }}>
@@ -1754,7 +1754,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               </div>
 
               {/* Note composer */}
-              <div className="surface" style={{ padding: 14, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
+              <div className="surface" style={{ padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   {(['INTERNAL', 'CUSTOMER'] as DocNoteType[]).map(nt => (
                     <button key={nt} onClick={() => setNoteType(nt)} style={{
@@ -1779,9 +1779,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 />
                 <button
                   style={{
-                    height: 32, borderRadius: 999, paddingInline: 16, border: 'none',
+                    height: 32, borderRadius: 8, paddingInline: 16, border: 'none',
                     background: noteType === 'CUSTOMER' ? '#111827' : 'var(--color-accent)',
-                    color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
                   onClick={() => noteMutation.mutate()}
                   disabled={!noteInput.trim() || noteMutation.isPending}
@@ -1796,7 +1796,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 .map(a => (
                   <div key={`fa-${a.id}`} style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#d97706' }}>Follow-up</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: '#d97706' }}>Follow-up</span>
                       <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{relativeTime(a.scheduledAt ?? a.createdAt)}</span>
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: 8, whiteSpace: 'pre-wrap' }}>
@@ -1811,9 +1811,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        fontSize: 10, fontWeight: 600,
                         color: note.noteType === 'CUSTOMER' ? '#111827' : note.noteType === 'INTERNAL' ? '#475569' : '#2563eb',
-                      }}>{note.noteType === 'CUSTOMER' ? 'Client-visible' : note.noteType}</span>
+                      }}>{note.noteType === 'CUSTOMER' ? 'Client-visible' : note.noteType === 'INTERNAL' ? 'Internal' : note.noteType}</span>
                       {note.clientVisible && (
                         <Eye size={11} style={{ color: '#6b7280' }} />
                       )}
