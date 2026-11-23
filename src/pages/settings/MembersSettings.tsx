@@ -226,7 +226,9 @@ function ChangePasswordModal({ user, onClose }: { user: TenantUser; onClose: () 
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }} />
+      {/* Backdrop does not dismiss while the reset is in flight — closing mid-request would
+          discard the success/failure feedback for a write that still completes. */}
+      <div onClick={() => { if (!mutation.isPending) onClose(); }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }} />
       <div style={{ position: 'relative', background: 'var(--bg-app, #fff)', borderRadius: 16, padding: 28, width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', border: '1px solid var(--border-medium)' }}>
         <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Change Password</h2>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>{user.email}</p>
