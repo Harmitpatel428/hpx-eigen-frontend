@@ -896,6 +896,39 @@ function CloseWithoutDocsDialog({
   );
 }
 
+const OVERRIDE_REASON_MIN = 3;
+
+export function ManagerOverrideDialog({
+  onClose, onConfirm, submitting, error,
+}: { onClose: () => void; onConfirm: (reason: string) => void; submitting: boolean; error?: string | null }) {
+  const [reason, setReason] = useState('');
+  const trimmed = reason.trim();
+  const valid = trimmed.length >= OVERRIDE_REASON_MIN;
+  return (
+    <Modal isOpen onClose={onClose} title="Manager Override" size="sm">
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <label htmlFor="override-reason" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+          Reason <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(required)</span>
+        </label>
+        <textarea id="override-reason" className="input" rows={4} style={{ width: '100%', resize: 'vertical' }}
+          value={reason} onChange={e => setReason(e.target.value)}
+          placeholder="Why is this case being overridden to ready?" />
+      </div>
+      {error && (
+        <div role="alert" style={{ marginBottom: 'var(--space-4)', padding: '8px 12px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', fontSize: 12, color: '#dc2626' }}>
+          {error}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" disabled={!valid || submitting} onClick={() => onConfirm(trimmed)}>
+          {submitting ? 'Submitting…' : 'Confirm Override'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Transfer to Process dialog ──────────────────────────────────────────────
 const TRANSFER_REMARKS_MAX = 2000;
 
@@ -987,6 +1020,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
   const [storageDocId, setStorageDocId] = useState<string | null>(null);
   const [showReturn, setShowReturn] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   // Contacts-tab lead actions — reuse the Leads-page modals; the host owns them.
@@ -1365,10 +1399,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 )}
                 {!docCase.isReady && docCase.status === 'ACTIVE' && (
                   <button className="btn" style={{ fontSize: 12, border: '1px solid var(--border-medium)', background: 'none', color: 'var(--text-secondary)', gap: 6, display: 'flex', alignItems: 'center' }}
-                    onClick={() => {
-                      const reason = window.prompt('Manager override reason (required):');
-                      if (reason?.trim()) overrideMutation.mutate(reason.trim());
-                    }}
+                    onClick={() => { overrideMutation.reset(); setShowOverrideDialog(true); }}
                     disabled={overrideMutation.isPending}
                   >
                     <Shield size={14} />
@@ -1718,12 +1749,6 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   <div style={{ fontSize: 11, color: '#92400e', lineHeight: 1.45 }}>
                     Changing the portal number requires manager or admin approval. Sessions are revoked on change.
                   </div>
-                  <button style={{
-                    marginTop: 8, fontSize: 11, fontWeight: 600, color: '#475569',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  }}>
-                    Request contact change…
-                  </button>
                 </div>
               )}
 
@@ -1851,6 +1876,14 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
           onClose={() => setShowCloseDialog(false)}
           onConfirm={(reason) => closeMutation.mutate(reason)}
           submitting={closeMutation.isPending}
+        />
+      )}
+      {showOverrideDialog && (
+        <ManagerOverrideDialog
+          onClose={() => setShowOverrideDialog(false)}
+          onConfirm={(reason) => overrideMutation.mutate(reason, { onSuccess: () => setShowOverrideDialog(false) })}
+          submitting={overrideMutation.isPending}
+          error={overrideMutation.isError ? 'Manager override failed. Please try again.' : null}
         />
       )}
       {showTransfer && (
