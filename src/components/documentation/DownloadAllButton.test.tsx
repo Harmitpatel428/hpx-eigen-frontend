@@ -24,7 +24,16 @@ afterEach(() => vi.restoreAllMocks());
 describe('DownloadAllButton', () => {
   it('is disabled when there are no documents', () => {
     render(<DownloadAllButton caseId="c1" docCount={0} />);
-    expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(true);
+    const btn = screen.getByRole('button') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.title).toBe('No files uploaded yet');
+  });
+
+  it('is enabled with no empty-state tooltip when files exist', () => {
+    render(<DownloadAllButton caseId="c1" docCount={2} />);
+    const btn = screen.getByRole('button') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.title).toBe('');
   });
 
   it('streams the ZIP, saves a blob, and toasts success — then returns to idle', async () => {

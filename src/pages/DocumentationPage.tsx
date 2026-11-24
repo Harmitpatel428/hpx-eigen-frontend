@@ -1610,7 +1610,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     customerName={docCase.lead.company || personName}
                   />
                   {canViewDoc && (
-                    <DownloadAllButton caseId={caseId} docCount={(docCase.documents ?? []).length} />
+                    <DownloadAllButton caseId={caseId} docCount={docCase.downloadableFileCount ?? 0} />
                   )}
                   {canUploadDoc && (
                     <button className="btn btn-ghost" style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}

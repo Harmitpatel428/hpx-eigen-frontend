@@ -779,6 +779,7 @@ export interface DocCase {
   preset: { id: string; name: string; category: DocPresetCategory; color: string | null; icon: string | null } | null;
   documents?: DocCaseDocument[];
   uploadedDocuments?: CaseDocument[];
+  downloadableFileCount?: number;
   events?: DocCaseEvent[];
   caseNotes?: DocCaseNote[];
   docActivities?: DocActivity[];

@@ -72,6 +72,7 @@ export function DownloadAllButton({ caseId, docCount }: { caseId: string; docCou
       type="button"
       className="btn btn-ghost"
       disabled={docCount === 0 || busy}
+      title={docCount === 0 ? 'No files uploaded yet' : undefined}
       onClick={run}
       style={{ height: 28, paddingInline: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
     >
