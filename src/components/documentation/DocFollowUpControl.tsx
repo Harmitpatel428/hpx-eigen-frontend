@@ -71,9 +71,9 @@ export function DocFollowUpControl({ caseId, canEdit, activities }: {
           disabled={!canEdit}
           style={{
             display: 'flex', alignItems: 'center', gap: 4, cursor: canEdit ? 'pointer' : 'default',
-            padding: '3px 9px', borderRadius: 5, border: '1px solid var(--border-medium)',
+            padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-medium)',
             background: 'var(--bg-app)', color: 'var(--text-secondary)',
-            fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+            fontSize: 11, fontWeight: 600,
             opacity: canEdit ? 1 : 0.6,
           }}
         >
@@ -84,10 +84,10 @@ export function DocFollowUpControl({ caseId, canEdit, activities }: {
           <div style={{
             position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 200,
             background: 'var(--bg-app)', border: '1px solid var(--border-medium)',
-            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 230, overflow: 'hidden',
+            borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 230, overflow: 'hidden',
           }}>
             <div style={{ padding: '10px 12px 12px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Follow-up Date</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Follow-up date</div>
               <input
                 type="date"
                 autoFocus
@@ -96,7 +96,7 @@ export function DocFollowUpControl({ caseId, canEdit, activities }: {
                 onChange={e => setDate(e.target.value)}
                 style={{ width: '100%', fontSize: 12, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border-medium)', background: 'var(--bg-app)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
               />
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', margin: '10px 0 6px' }}>Notes <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', margin: '12px 0 8px' }}>Notes <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></div>
               <textarea
                 value={notes}
                 rows={2}
@@ -106,11 +106,11 @@ export function DocFollowUpControl({ caseId, canEdit, activities }: {
               />
               <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => { setOpen(false); setDate(''); setNotes(''); }}
-                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border-medium)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                   Back
                 </button>
                 <button type="button" disabled={!date || save.isPending} onClick={() => date && save.mutate()}
-                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, border: 'none', background: '#0f172a', color: '#fff', cursor: date ? 'pointer' : 'not-allowed', opacity: date ? 1 : 0.5 }}>
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', background: '#0f172a', color: '#fff', cursor: date ? 'pointer' : 'not-allowed', opacity: date ? 1 : 0.5 }}>
                   {save.isPending ? 'Saving…' : 'Save'}
                 </button>
               </div>
@@ -121,7 +121,7 @@ export function DocFollowUpControl({ caseId, canEdit, activities }: {
 
       {next && (
         <span title={typeof next.metadata?.notes === 'string' ? (next.metadata.notes as string) : 'Next follow-up'} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 5,
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6,
           background: overdue ? 'rgba(220,38,38,0.1)' : 'rgba(245,158,11,0.1)',
           color: overdue ? '#dc2626' : '#d97706', fontSize: 10, fontWeight: 600,
         }}>

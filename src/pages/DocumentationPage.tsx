@@ -1439,7 +1439,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                       {docCase.processReturnReasonCode && ` — ${PROCESS_RETURN_REASON_LABELS[docCase.processReturnReasonCode] ?? docCase.processReturnReasonCode}`}
                     </span>
                     {(docCase.processReturnCount ?? 0) > 0 && (
-                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
+                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, opacity: 0.7 }}>
                         returned {docCase.processReturnCount}×
                       </span>
                     )}
@@ -1475,7 +1475,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                     </span>
                   )}
                   {docCase.returnCount > 0 && (
-                    <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, opacity: 0.7 }}>
                       returned {docCase.returnCount}×
                     </span>
                   )}
