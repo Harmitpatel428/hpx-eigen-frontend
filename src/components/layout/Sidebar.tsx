@@ -6,7 +6,6 @@ import { HpxMark } from '../brand/HpxLogo';
 import {
   LayoutDashboard,
   GitBranch,
-  Activity,
   FileText,
   CreditCard,
   Settings,
@@ -20,7 +19,6 @@ import {
 const baseNavigation: { name: string; href: string; icon: typeof LayoutDashboard; permission?: string }[] = [
   { name: 'Overview',     href: '/overview',      icon: LayoutDashboard },
   { name: 'Pipeline',     href: '/pipeline',       icon: GitBranch       },
-  { name: 'Activities',   href: '/activities',     icon: Activity        },
   { name: 'Invoices',     href: '/invoices',       icon: FileText        },
   { name: 'Payments',     href: '/payments',       icon: CreditCard      },
   // Top-level, after Payments: the client-facing portal lookup. Permission-gated; the per-case staff preview

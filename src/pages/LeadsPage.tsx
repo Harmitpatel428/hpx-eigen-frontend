@@ -26,6 +26,7 @@ import { LeadImportWizard } from '../components/leads/LeadImportWizard';
 import { LeadAssignModal } from '../components/leads/LeadAssignModal';
 import { DeleteConfirm } from '../components/leads/DeleteConfirm';
 import { StageFilterPills, STAGE_COLORS } from '../components/leads/StageFilterPills';
+import { ActivitiesPage } from './ActivitiesPage';
 import { WaitingAuthorityBadge } from '../components/leads/WaitingAuthorityBadge';
 import { exportCSV } from '../utils/csv';
 import { mergeLeadOwner } from '../utils/crm';
@@ -402,16 +403,22 @@ export function LeadsPage() {
   const normalisedCaseId = normaliseCaseIdInput(caseIdInput);
   const isCaseIdValid = isValidCaseId(normalisedCaseId);
 
+  const [view, setView] = useState<'leads' | 'activities'>('leads');
+
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ padding: '4px 12px' }}>
         <div>
-          <h1 className="type-title">Leads</h1>
+          <h1 className="type-title">{view === 'activities' ? 'Activities' : 'Leads'}</h1>
+          {view === 'leads' && (
           <p className="type-body">
             {isLoading && allLeads.length === 0 ? 'Loading…' : hasActiveFilters ? `${totalCount} result${totalCount !== 1 ? 's' : ''}` : `${datasetTotal} total · ${newStageCount} new`}
           </p>
+          )}
         </div>
+        {/* Lead-only toolbar — hidden on the Activities tab (it carries its own controls) */}
+        {view === 'leads' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {selectedStage === 'QUALIFIED' && (
@@ -563,8 +570,26 @@ export function LeadsPage() {
             <Plus size={14} style={{ marginRight: 4 }} /> New Lead
           </button>
         </div>
+        )}
       </div>
 
+      {/* Leads vs Activities view toggle — parity with Documentation's Cases/Activities */}
+      <div role="tablist" aria-label="Sales view" style={{ display: 'flex', gap: 4, margin: '0 12px var(--space-3)' }}>
+        {(['leads', 'activities'] as const).map(v => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
+            style={{
+              height: 28, padding: '0 14px', fontSize: 13, fontWeight: view === v ? 600 : 450,
+              background: view === v ? 'var(--bg-muted)' : 'transparent',
+              color: view === v ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              border: '1px solid var(--border-medium)', borderRadius: 6, cursor: 'pointer',
+            }}>
+            {v === 'leads' ? 'Leads' : 'Activities'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'activities' ? <ActivitiesPage embedded /> : (
+      <>
       <StageFilterPills
         selectedStage={selectedStage}
         stageCounts={stageCounts}
@@ -773,6 +798,8 @@ export function LeadsPage() {
             )}
           </div>
       </div>
+      </>
+      )}
 
       {/* CONTEXT PANEL */}
       {/* Stays mounted under the Edit modal / delete confirm so closing them returns here,

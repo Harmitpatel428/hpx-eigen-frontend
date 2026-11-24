@@ -56,7 +56,7 @@ describe('ActivitiesPage sticky header', () => {
 });
 
 describe('ActivitiesPage header geometry invariant', () => {
-  const src = readFileSync(resolve(__dirname, 'ActivitiesPage.tsx'), 'utf-8');
+  const src = readFileSync(resolve(__dirname, '../components/activities/ActivitiesView.tsx'), 'utf-8');
 
   // H1/H2: count element ALWAYS renders (no conditional guard)
   it('[H1] count element is not behind a conditional render guard', () => {

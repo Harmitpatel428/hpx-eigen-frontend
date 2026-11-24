@@ -2266,17 +2266,21 @@ export function DocumentationPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
         <div>
           <h1 className="type-title" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Documentation
+            {view === 'activities' ? 'Activities' : 'Documentation'}
           </h1>
+          {view !== 'activities' && (
           <p className="type-body" style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 3 }}>
             {totalCases} total · {incomingCount} incoming
           </p>
+          )}
         </div>
+        {view !== 'activities' && (
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, height: 28, paddingInline: 12, fontSize: 13, borderRadius: 6 }}>
           <Plus size={14} />
           New Case
         </button>
+        )}
       </div>
 
       {/* Cases vs Activities view toggle */}
