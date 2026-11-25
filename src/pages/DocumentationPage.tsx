@@ -248,8 +248,8 @@ function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocC
 
       {/* Assigned user — mirrors Sales owner-name cell (no impersonation) */}
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}
-           title={[docCase.assignedUser?.firstName, docCase.assignedUser?.lastName].filter(Boolean).join(' ') || undefined}>
-        {[docCase.assignedUser?.firstName, docCase.assignedUser?.lastName].filter(Boolean).join(' ') || '—'}
+           title={[docCase.assignedUser?.firstName, docCase.assignedUser?.lastName].filter(Boolean).join(' ') || docCase.assignedUser?.emailHandle || undefined}>
+        {[docCase.assignedUser?.firstName, docCase.assignedUser?.lastName].filter(Boolean).join(' ') || docCase.assignedUser?.emailHandle || '—'}
       </div>
 
       {/* Completion % + chevron */}

@@ -77,6 +77,7 @@ const cases = [
   mk('b', 'Unassigned Co', null),
   mk('c', 'NoName Co', { id: 'u3', firstName: null, lastName: null }),
   mk('d', 'Inactive Co', { id: 'u4', firstName: 'Ex', lastName: 'Staff' }),
+  mk('e', 'Handle Co', { id: 'u5', firstName: null, lastName: null, emailHandle: 'j.doe' }),
 ];
 
 function assignedCell(company: string): string {
@@ -88,7 +89,7 @@ function assignedCell(company: string): string {
 describe('DocumentationPage — assigned user column', () => {
   it('shows the name, or an em dash when unassigned / unresolved', async () => {
     vi.mocked(documentationService.listCases).mockResolvedValue(
-      { data: cases, total: 4, page: 1, pageSize: 50 } as any,
+      { data: cases, total: 5, page: 1, pageSize: 50 } as any,
     );
     vi.mocked(documentationService.getDashboardKPIs).mockResolvedValue({
       totalCases: 0, activeCases: 0, readyCases: 0, transferredCases: 0,
@@ -116,5 +117,6 @@ describe('DocumentationPage — assigned user column', () => {
     expect(assignedCell('Unassigned Co')).toBe('—');
     expect(assignedCell('NoName Co')).toBe('—');
     expect(assignedCell('Inactive Co')).toBe('Ex Staff');
+    expect(assignedCell('Handle Co')).toBe('j.doe'); // nameless owner → email local-part, not —
   });
 });

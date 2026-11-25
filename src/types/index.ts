@@ -721,7 +721,7 @@ export interface DocCase {
   caseTypeId: string | null;
   presetVersion: number | null;
   assignedTo: string | null;
-  assignedUser?: { id: string; firstName: string | null; lastName: string | null } | null;
+  assignedUser?: { id: string; firstName: string | null; lastName: string | null; emailHandle?: string | null } | null;
   status: DocCaseStatus;
   priority: number;
   totalDocs: number;
