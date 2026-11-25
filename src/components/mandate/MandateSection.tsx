@@ -63,7 +63,10 @@ export function MandateSection({ caseId, caseStatus, leadEmail, autoOpenSend }: 
   // F2: current = first non-SUPERSEDED (list is ordered desc). When every request
   // is superseded, current is undefined and the empty/send state renders.
   const current = requests.find(r => r.status !== 'SUPERSEDED');
-  const caseOpen = ['INCOMING', 'ACTIVE'].includes(caseStatus);
+  // Statuses where mandate actions (Send / Upload) are offered. Mirrors the backend
+  // OPEN_CASE_STATUSES (hpx-eigen-s1-foundation/src/services/mandate.service.ts) — keep in
+  // sync. Terminal cases (CLOSED/CLOSED_NO_DOCS/CANCELLED) stay read-only.
+  const caseOpen = ['INCOMING', 'ACTIVE', 'DOCUMENTATION_READY'].includes(caseStatus);
 
   // Deep-link from the handoff toast ("Send mandate now") auto-opens the dialog.
   // Gated on isSuccess so this can't fire while the list is still loading (avoids

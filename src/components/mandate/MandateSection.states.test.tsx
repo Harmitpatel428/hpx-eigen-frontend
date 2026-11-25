@@ -147,4 +147,32 @@ describe('MandateSection — status-driven rendering (no empty-state flash)', ()
     expect(await screen.findByText(EMPTY_STATE_TEXT)).toBeTruthy();
     expect(screen.queryByText('Case A Mandate')).toBeNull();
   });
+
+  it('DOCUMENTATION_READY case: empty state still offers Send and Upload (Ready is open for mandates)', async () => {
+    vi.mocked(mandateService.listForCase).mockResolvedValueOnce([]);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MandateSection caseId="case-ready" caseStatus="DOCUMENTATION_READY" leadEmail="client@example.com" />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText(EMPTY_STATE_TEXT)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Send Mandate' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Upload Mandate' })).toHaveLength(2);
+  });
+
+  it('terminal case (CLOSED_NO_DOCS): read-only — no Send/Upload actions', async () => {
+    vi.mocked(mandateService.listForCase).mockResolvedValueOnce([]);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MandateSection caseId="case-closed" caseStatus="CLOSED_NO_DOCS" leadEmail="client@example.com" />
+      </QueryClientProvider>,
+    );
+    // Terminal → plain read-only line, not the dashed-box empty state with actions.
+    expect(await screen.findByText('No mandate request yet.')).toBeTruthy();
+    expect(screen.queryByText(EMPTY_STATE_TEXT)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send Mandate' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Upload Mandate' })).toBeNull();
+  });
 });
