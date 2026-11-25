@@ -850,7 +850,9 @@ export function ActivitiesView({ adapter, canEdit, onOpen, onEscape, suspendKeys
         background: 'var(--bg-app)',
         ...(stickyHeader ? { position: 'sticky', top: -32, zIndex: 10 } : {}),
       } : {
-        ...(stickyHeader ? { position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-app)', paddingTop: 8 } : {}),
+        // ponytail: -32 / paddingTop 32 clears AppLayout <main>'s 32px padding so a
+        // scrolled row can't peek in the gap above the pinned header (same as fullPage top:-32).
+        ...(stickyHeader ? { position: 'sticky', top: -32, zIndex: 10, background: 'var(--bg-app)', paddingTop: 32 } : {}),
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: fullPage ? 20 : 16 }}>
