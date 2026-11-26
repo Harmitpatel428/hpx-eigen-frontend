@@ -219,40 +219,33 @@ function ProgressBar({ pct, ready }: { pct: number; ready: boolean }) {
   );
 }
 
-// ─── Ageing / overdue meta (Feature 2) ───────────────────────────────────────
-// Reuses getHandoffAge + HANDOFF_AGE_COLORS (same chip language as SlaClock). Renders only when
-// a non-terminal case is overdue or has gone quiet (age past FRESH) — fresh/terminal rows show
-// nothing, so the list stays calm and these read as exceptions, not decoration.
-// ponytail: "status age" is approximated by time since updatedAt (last activity) — DocCase has no
-//           status-changed timestamp; swap to one if the backend ever tracks it.
-function CaseAgeMeta({ docCase }: { docCase: DocCase }) {
-  const overdue = isCaseOverdue(docCase);
-  const age = isTerminalStatus(docCase.status) ? null : getHandoffAge(docCase.updatedAt);
-  const stale = age && age !== 'FRESH';
-  if (!overdue && !stale) return null;
+// ─── Ageing / overdue (Feature 2) ────────────────────────────────────────────
+// Reuses getHandoffAge + HANDOFF_AGE_COLORS (same chip language as SlaClock). Both render only for
+// non-terminal cases (overdue = past due date in the LEAD cell; idle = no activity past FRESH in the
+// PRESET cell) — fresh/terminal rows stay clean, so these read as exceptions, not decoration.
+// ponytail: "idle" is time since updatedAt (last activity) — DocCase has no status-changed
+//           timestamp; swap to one if the backend ever tracks it.
 
+// Idle display: label + color when a non-terminal case has gone quiet past FRESH, else null.
+function caseIdle(docCase: DocCase): { label: string; color: string } | null {
+  if (isTerminalStatus(docCase.status)) return null;
+  const age = getHandoffAge(docCase.updatedAt);
+  if (age === 'FRESH') return null;
   const hrs = Math.floor((Date.now() - new Date(docCase.updatedAt).getTime()) / 3_600_000);
-  const ageLabel = hrs < 24 ? `${hrs}h` : `${Math.floor(hrs / 24)}d`;
-  const ageColor = age ? HANDOFF_AGE_COLORS[age] : '';
+  return { label: hrs < 24 ? `${hrs}h` : `${Math.floor(hrs / 24)}d`, color: HANDOFF_AGE_COLORS[age] };
+}
 
+// Overdue badge — LEAD cell. The idle chip is rendered inline in the PRESET cell.
+function CaseOverdueBadge({ docCase }: { docCase: DocCase }) {
+  if (!isCaseOverdue(docCase)) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-      {overdue && (
-        <span title={`Overdue — due ${fmtDue(docCase.dueDate!)}`} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600,
-          color: '#b91c1c', background: 'rgba(220,38,38,0.08)', padding: '1px 6px', borderRadius: 'var(--radius-full)',
-        }}>
-          <AlertTriangle size={10} /> Overdue
-        </span>
-      )}
-      {stale && (
-        <span title={`No activity for ${ageLabel}`} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600,
-          color: ageColor, background: `${ageColor}15`, padding: '1px 6px', borderRadius: 'var(--radius-full)',
-        }}>
-          <Clock size={10} /> {ageLabel}
-        </span>
-      )}
+      <span title={`Overdue — due ${fmtDue(docCase.dueDate!)}`} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600,
+        color: '#b91c1c', background: 'rgba(220,38,38,0.08)', padding: '1px 6px', borderRadius: 'var(--radius-full)',
+      }}>
+        <AlertTriangle size={10} /> Overdue
+      </span>
     </div>
   );
 }
@@ -286,18 +279,31 @@ function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocC
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {docCase.lead.firstName} {docCase.lead.lastName}
           </div>
-          <CaseAgeMeta docCase={docCase} />
+          <CaseOverdueBadge docCase={docCase} />
         </div>
       </div>
 
-      {/* Preset */}
+      {/* Preset + idle age chip */}
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-        {docCase.preset ? (
+        {docCase.preset && (
           <>
             <Layers size={11} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{docCase.preset.name}</span>
           </>
-        ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+        )}
+        {(() => {
+          const idle = caseIdle(docCase);
+          if (idle) return (
+            <span title={`Idle ${idle.label} — no case activity`} aria-label={`Idle ${idle.label} — no case activity`} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, flexShrink: 0,
+              color: idle.color, background: `${idle.color}15`, padding: '1px 6px', borderRadius: 'var(--radius-full)',
+            }}>
+              <Clock size={10} /> {idle.label}
+            </span>
+          );
+          if (!docCase.preset) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
+          return null;
+        })()}
       </div>
 
       {/* Status badge + mandate indicator */}
