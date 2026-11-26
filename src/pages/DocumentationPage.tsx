@@ -1012,7 +1012,7 @@ function ReopenCaseDialog({
 function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: string; onClose: () => void; autoOpenMandateSend?: boolean }) {
   const qc = useQueryClient();
   const { permissions, user } = useAuth();
-  const [tab, setTab]   = useState<'overview' | 'contacts' | 'documents' | 'timeline' | 'notes'>('overview');
+  const [tab, setTab]   = useState<'overview' | 'contacts' | 'mandate' | 'documents' | 'timeline' | 'notes'>(autoOpenMandateSend ? 'mandate' : 'overview');
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [noteInput, setNoteInput] = useState('');
   const [noteType, setNoteType]   = useState<DocNoteType>('INTERNAL');
@@ -1249,11 +1249,12 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
 
   const TABS = [
     'overview',
-    'contacts', 'documents', 'timeline', 'notes',
-  ] as Array<'overview' | 'contacts' | 'documents' | 'timeline' | 'notes'>;
+    'contacts', 'mandate', 'documents', 'timeline', 'notes',
+  ] as Array<'overview' | 'contacts' | 'mandate' | 'documents' | 'timeline' | 'notes'>;
   const tabLabel = (t: typeof TABS[number]) =>
     t === 'overview'  ? 'Overview'
     : t === 'contacts'  ? 'Contacts'
+    : t === 'mandate'   ? 'Mandate'
     : t === 'documents' ? `Documents (${docCase.totalDocs})`
     : t === 'timeline'  ? 'History'
     : 'Notes';
@@ -1434,6 +1435,30 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               </div>
 
+              {/* Saved policies + selected components (read from the loaded case detail) */}
+              {canConfigurePolicies && policyAssignments.length > 0 && (
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <h3 className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--space-3)' }}>Policies &amp; components</h3>
+                  <div className="surface" style={{ padding: 'var(--space-4) var(--space-6)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                    {policyAssignments.map(pa => (
+                      <div key={pa.id}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                          {pa.caseType.name}
+                          {pa.isPrimary && <span style={{ fontSize: 'var(--text-micro)', fontWeight: 600, color: 'var(--text-tertiary)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-full)', padding: '0 8px' }}>Primary</span>}
+                        </div>
+                        {pa.components.length > 0 ? (
+                          <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary)' }}>
+                            {pa.components.map(c => <li key={c.selectionId}>{c.component.name}</li>)}
+                          </ul>
+                        ) : (
+                          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>No components selected</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {canConfigurePolicies && policyAssignments.length === 0 && (
                 <p style={{ margin: '0 0 var(--space-3)', fontSize: 12, color: 'var(--text-secondary)' }}>
                   Assign policies to populate the documents list
@@ -1525,8 +1550,6 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               )}
 
-              {/* Mandate lifecycle */}
-              <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} autoOpenSend={autoOpenMandateSend} />
             </div>
           )}
         </div>
@@ -1564,6 +1587,13 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 {leadIsError ? 'This lead has been deleted.' : 'Loading contact…'}
               </div>
             )
+          )}
+        </div>
+
+        {/* ── Mandate ── */}
+        <div role="tabpanel" id="case-panel-mandate" aria-labelledby="case-tab-mandate" tabIndex={0} hidden={tab !== 'mandate'}>
+          {tab === 'mandate' && (
+            <MandateSection caseId={docCase.id} caseStatus={docCase.status} leadEmail={docCase.lead.email} autoOpenSend={autoOpenMandateSend} />
           )}
         </div>
 
