@@ -1439,19 +1439,23 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               {canConfigurePolicies && policyAssignments.length > 0 && (
                 <div style={{ marginBottom: 'var(--space-4)' }}>
                   <h3 className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--space-3)' }}>Policies &amp; components</h3>
-                  <div className="surface" style={{ padding: 'var(--space-4) var(--space-6)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                    {policyAssignments.map(pa => (
-                      <div key={pa.id}>
+                  <div className="surface" style={{ padding: 'var(--space-4) var(--space-6)', borderRadius: 'var(--radius-md)' }}>
+                    {policyAssignments.map((pa, i) => (
+                      <div key={pa.id} style={i > 0 ? { marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border-light)' } : undefined}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                           {pa.caseType.name}
                           {pa.isPrimary && <span style={{ fontSize: 'var(--text-micro)', fontWeight: 600, color: 'var(--text-tertiary)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-full)', padding: '0 8px' }}>Primary</span>}
                         </div>
                         {pa.components.length > 0 ? (
-                          <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary)' }}>
-                            {pa.components.map(c => <li key={c.selectionId}>{c.component.name}</li>)}
-                          </ul>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                            {pa.components.map(c => (
+                              <span key={c.selectionId} style={{ fontSize: 'var(--text-micro)', color: 'var(--text-secondary)', background: 'var(--bg-app)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)', padding: '3px 8px', whiteSpace: 'nowrap' }}>
+                                {c.component.name}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
-                          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>No components selected</div>
+                          <div style={{ marginTop: 4, fontSize: 'var(--text-micro)', color: 'var(--text-tertiary)' }}>No components selected</div>
                         )}
                       </div>
                     ))}
