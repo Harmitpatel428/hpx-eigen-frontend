@@ -1439,7 +1439,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
               {canConfigurePolicies && policyAssignments.length > 0 && (
                 <div style={{ marginBottom: 'var(--space-4)' }}>
                   <h3 className="type-ui" style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--space-3)' }}>Policies &amp; components</h3>
-                  <div className="surface" style={{ padding: 'var(--space-4) var(--space-6)', borderRadius: 'var(--radius-md)' }}>
+                  <div className="surface" style={{ padding: 'var(--space-4) var(--space-6)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-medium)' }}>
                     {policyAssignments.map((pa, i) => (
                       <div key={pa.id} style={i > 0 ? { marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border-light)' } : undefined}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
