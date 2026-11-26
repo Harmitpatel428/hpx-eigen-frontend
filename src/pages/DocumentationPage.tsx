@@ -102,6 +102,14 @@ const STORAGE_LABELS: Record<DocStorageType, string> = {
 const CASE_GRID     = '32px minmax(200px,1.6fr) minmax(150px,1fr) minmax(100px,0.75fr) minmax(110px,0.9fr) 72px';
 const INCOMING_GRID = 'minmax(200px,1.6fr) minmax(120px,0.9fr) 140px 160px';
 
+// ── Feature 2: ageing / overdue (client-side display only; backend is authority) ──
+// Same terminal set the policy gate uses (line ~1069) — cases Documentation no longer owns.
+const TERMINAL_STATUSES = ['CLOSED', 'CANCELLED', 'CLOSED_NO_DOCS', 'TRANSFERRED_TO_PROCESS', 'PENDING_PROCESS_REVIEW'];
+const isTerminalStatus = (s: string) => TERMINAL_STATUSES.includes(s);
+export const isCaseOverdue = (c: Pick<DocCase, 'dueDate' | 'status'>) =>
+  !!c.dueDate && new Date(c.dueDate) < new Date() && !isTerminalStatus(c.status);
+const fmtDue = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
 function initials(first: string, last: string) {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
@@ -198,6 +206,44 @@ function ProgressBar({ pct, ready }: { pct: number; ready: boolean }) {
   );
 }
 
+// ─── Ageing / overdue meta (Feature 2) ───────────────────────────────────────
+// Reuses getHandoffAge + HANDOFF_AGE_COLORS (same chip language as SlaClock). Renders only when
+// a non-terminal case is overdue or has gone quiet (age past FRESH) — fresh/terminal rows show
+// nothing, so the list stays calm and these read as exceptions, not decoration.
+// ponytail: "status age" is approximated by time since updatedAt (last activity) — DocCase has no
+//           status-changed timestamp; swap to one if the backend ever tracks it.
+function CaseAgeMeta({ docCase }: { docCase: DocCase }) {
+  const overdue = isCaseOverdue(docCase);
+  const age = isTerminalStatus(docCase.status) ? null : getHandoffAge(docCase.updatedAt);
+  const stale = age && age !== 'FRESH';
+  if (!overdue && !stale) return null;
+
+  const hrs = Math.floor((Date.now() - new Date(docCase.updatedAt).getTime()) / 3_600_000);
+  const ageLabel = hrs < 24 ? `${hrs}h` : `${Math.floor(hrs / 24)}d`;
+  const ageColor = age ? HANDOFF_AGE_COLORS[age] : '';
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+      {overdue && (
+        <span title={`Overdue — due ${fmtDue(docCase.dueDate!)}`} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600,
+          color: '#b91c1c', background: 'rgba(220,38,38,0.08)', padding: '1px 6px', borderRadius: 'var(--radius-full)',
+        }}>
+          <AlertTriangle size={10} /> Overdue
+        </span>
+      )}
+      {stale && (
+        <span title={`No activity for ${ageLabel}`} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600,
+          color: ageColor, background: `${ageColor}15`, padding: '1px 6px', borderRadius: 'var(--radius-full)',
+        }}>
+          <Clock size={10} /> {ageLabel}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Case row (dense, matches Leads page style) ───────────────────────────────
 function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocCase; onClick: () => void; selected: boolean; onToggleSelect: () => void }) {
   return (
@@ -227,6 +273,7 @@ function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocC
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {docCase.lead.firstName} {docCase.lead.lastName}
           </div>
+          <CaseAgeMeta docCase={docCase} />
         </div>
       </div>
 
@@ -1553,15 +1600,15 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 </div>
               )}
 
-              {/* Stale case amber strip */}
-              {docCase.status === 'ACTIVE' && docCase.dueDate && new Date(docCase.dueDate) < new Date() && (
+              {/* Overdue amber strip — any non-terminal case past its due date (Feature 2) */}
+              {isCaseOverdue(docCase) && (
                 <div style={{
                   marginBottom: 12, padding: '8px 12px', borderRadius: 8,
                   background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
                   display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#92400e',
                 }}>
                   <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
-                  Case overdue — due {new Date(docCase.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  Case overdue — due {fmtDue(docCase.dueDate!)}
                 </div>
               )}
 
@@ -2164,6 +2211,7 @@ export function DocumentationPage() {
   const { permissions } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rawSearch, setRawSearch] = useState('');
+  const [overdueFirst, setOverdueFirst] = useState(false);
   const [search, setSearch]       = useState('');
   const [statusPill, setStatusPill] = useState<string>(
     searchParams.get('status') ?? ''
@@ -2201,7 +2249,17 @@ export function DocumentationPage() {
     staleTime: 30_000,
     enabled:   !isIncoming,
   });
-  const cases = useMemo<DocCase[]>(() => casesResponse?.data ?? [], [casesResponse]);
+  const cases = useMemo<DocCase[]>(() => {
+    const list = casesResponse?.data ?? [];
+    if (!overdueFirst) return list;
+    // Overdue cases first (soonest due leads), everything else keeps the server's order.
+    return [...list].sort((a, b) => {
+      const ao = isCaseOverdue(a), bo = isCaseOverdue(b);
+      if (ao !== bo) return ao ? -1 : 1;
+      if (ao && bo) return new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime();
+      return 0;
+    });
+  }, [casesResponse, overdueFirst]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -2396,6 +2454,23 @@ export function DocumentationPage() {
             aria-label="Search documentation cases"
           />
         </div>
+        {!isIncoming && (
+          <button
+            type="button"
+            onClick={() => setOverdueFirst(v => !v)}
+            aria-pressed={overdueFirst}
+            title="Sort overdue cases to the top"
+            style={{
+              height: 28, padding: '0 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 'var(--radius-md)',
+              color: overdueFirst ? '#b91c1c' : 'var(--text-tertiary)',
+              background: overdueFirst ? 'rgba(220,38,38,0.06)' : 'var(--bg-app)',
+              border: `1px solid ${overdueFirst ? 'rgba(220,38,38,0.3)' : 'var(--border-medium)'}`,
+            }}
+          >
+            <AlertTriangle size={12} /> Overdue first
+          </button>
+        )}
       </div>
 
       {/* BULK ACTIONS TOOLBAR (cases table only) */}
