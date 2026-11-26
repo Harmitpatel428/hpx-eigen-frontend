@@ -1580,6 +1580,7 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   contactEmail={resolvedContact.email}
                   locationStr={contactLocation}
                   copyContactText={buildContactCopyText(fullLead, caseContacts)}
+                  showWhatsApp
                 />
                 {caseContacts.length > 0 && (
                   <>
