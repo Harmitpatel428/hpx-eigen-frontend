@@ -1478,11 +1478,19 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                 />
               )}
 
-              {/* Missing / Rejected alert */}
+              {/* Missing / Rejected — same notice pattern as Returned/Stale below (icon + border + one line) */}
               {(missingMandatory.length > 0 || rejected.length > 0) && (
-                <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(220,38,38,0.06)', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
-                  {missingMandatory.length > 0 && <div><strong>{missingMandatory.length}</strong> mandatory document(s) missing</div>}
-                  {rejected.length > 0 && <div><strong>{rejected.length}</strong> document(s) rejected</div>}
+                <div role="status" style={{
+                  marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                  background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.22)', color: '#b91c1c',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <AlertTriangle size={13} style={{ color: '#dc2626', flexShrink: 0 }} />
+                  <span>
+                    {missingMandatory.length > 0 && <><strong>{missingMandatory.length}</strong> mandatory document{missingMandatory.length !== 1 ? 's' : ''} missing</>}
+                    {missingMandatory.length > 0 && rejected.length > 0 && ' · '}
+                    {rejected.length > 0 && <><strong>{rejected.length}</strong> rejected</>}
+                  </span>
                 </div>
               )}
 
@@ -1528,6 +1536,9 @@ function CaseDetailPanel({ caseId, onClose, autoOpenMandateSend }: { caseId: str
                   display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
                   color: HANDOFF_STATE_COLORS[docCase.handoffState],
                 }}>
+                  {docCase.handoffState === 'ACCEPTED'
+                    ? <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
+                    : <AlertTriangle size={13} style={{ flexShrink: 0 }} />}
                   <span style={{ fontWeight: 600 }}>{HANDOFF_STATE_LABELS[docCase.handoffState]}</span>
                   {docCase.returnReasonCode && (
                     <span style={{ color: 'var(--text-secondary)' }}>
