@@ -110,6 +110,19 @@ export const isCaseOverdue = (c: Pick<DocCase, 'dueDate' | 'status'>) =>
   !!c.dueDate && new Date(c.dueDate) < new Date() && !isTerminalStatus(c.status);
 const fmtDue = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
+// ── Feature 1: saved views (no UserPreferences table exists → localStorage, strictly
+//    scoped per tenant+user so nothing bleeds across accounts on a shared workstation) ──
+export interface DocSavedView { name: string; status: string; mine: boolean; sort: boolean }
+export const savedViewsKey = (tenantId: string, userId: string) =>
+  `doc:saved-views:${tenantId || 'na'}:${userId || 'na'}`;
+function loadSavedViews(key: string): DocSavedView[] {
+  try { const v = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : []; }
+  catch { return []; }
+}
+function storeSavedViews(key: string, views: DocSavedView[]): void {
+  try { localStorage.setItem(key, JSON.stringify(views)); } catch { /* storage blocked — views are a convenience */ }
+}
+
 function initials(first: string, last: string) {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
@@ -2208,10 +2221,17 @@ const PILL_DEFS: { key: string; label: string; color: string; bg: string }[] = [
 
 export function DocumentationPage() {
   const qc = useQueryClient();
-  const { permissions } = useAuth();
+  const { permissions, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const viewsKey = savedViewsKey(
+    (user as any)?.tenantId || (typeof localStorage !== 'undefined' ? localStorage.getItem('tenantId') : '') || '',
+    user?.id || '',
+  );
   const [rawSearch, setRawSearch] = useState('');
-  const [overdueFirst, setOverdueFirst] = useState(false);
+  const [overdueFirst, setOverdueFirst] = useState(searchParams.get('sort') === 'overdue');
+  const [mine, setMine] = useState(searchParams.get('mine') === 'true');
+  const [savedViews, setSavedViews] = useState<DocSavedView[]>(() => loadSavedViews(viewsKey));
+  const [activeView, setActiveView] = useState(searchParams.get('view') ?? '');
   const [search, setSearch]       = useState('');
   const [statusPill, setStatusPill] = useState<string>(
     searchParams.get('status') ?? ''
@@ -2230,20 +2250,52 @@ export function DocumentationPage() {
     return () => clearTimeout(t);
   }, [rawSearch]);
 
+  // Re-read saved views once the user (hence the tenant+user scoped key) is known.
+  useEffect(() => { setSavedViews(loadSavedViews(viewsKey)); }, [viewsKey]);
+
+  // Deep-linked case: drop ?caseId after it's captured, but keep the filter params.
   useEffect(() => {
     if (selectedCaseId && searchParams.has('caseId')) {
-      setSearchParams({}, { replace: true });
+      setSearchParams(prev => { const n = new URLSearchParams(prev); n.delete('caseId'); return n; }, { replace: true });
     }
   }, [selectedCaseId]);
+
+  // Mirror the active filters into the URL so a view is bookmarkable / shareable.
+  useEffect(() => {
+    setSearchParams(prev => {
+      const n = new URLSearchParams(prev);
+      statusPill   ? n.set('status', statusPill) : n.delete('status');
+      mine         ? n.set('mine', 'true')       : n.delete('mine');
+      overdueFirst ? n.set('sort', 'overdue')    : n.delete('sort');
+      activeView   ? n.set('view', activeView)   : n.delete('view');
+      return n;
+    }, { replace: true });
+  }, [statusPill, mine, overdueFirst, activeView]);
+
+  const applyView = useCallback((v: DocSavedView | null) => {
+    if (!v) { setStatusPill(''); setMine(false); setOverdueFirst(false); setActiveView(''); return; }
+    setStatusPill(v.status); setMine(v.mine); setOverdueFirst(v.sort); setActiveView(v.name);
+  }, []);
+  const saveCurrentView = useCallback(() => {
+    const name = window.prompt('Save this view as:')?.trim();
+    if (!name) return;
+    const next = [...savedViews.filter(x => x.name !== name), { name, status: statusPill, mine, sort: overdueFirst }];
+    setSavedViews(next); storeSavedViews(viewsKey, next); setActiveView(name);
+  }, [savedViews, statusPill, mine, overdueFirst, viewsKey]);
+  const deleteActiveView = useCallback(() => {
+    const next = savedViews.filter(x => x.name !== activeView);
+    setSavedViews(next); storeSavedViews(viewsKey, next); applyView(null);
+  }, [savedViews, activeView, viewsKey, applyView]);
 
   const isIncoming = statusPill === 'INCOMING';
 
   // Cases list
   const { data: casesResponse, isLoading: casesLoading } = useQuery({
-    queryKey:  ['doc-cases', { search, status: isIncoming ? undefined : statusPill || undefined }],
+    queryKey:  ['doc-cases', { search, status: isIncoming ? undefined : statusPill || undefined, mine }],
     queryFn:   () => documentationService.listCases({
       search:   search || undefined,
       status:   isIncoming ? undefined : statusPill || undefined,
+      mine:     mine || undefined,
       pageSize: 50,
     }),
     staleTime: 30_000,
@@ -2416,7 +2468,7 @@ export function DocumentationPage() {
             <button
               key={pill.key}
               type="button"
-              onClick={() => setStatusPill(active ? '' : pill.key)}
+              onClick={() => { setStatusPill(active ? '' : pill.key); setActiveView(''); }}
               aria-pressed={active}
               className={`stage-pill${active ? ' stage-pill--active' : ''}`}
               style={active ? { color: pill.color, background: pill.bg, borderColor: pill.color } : undefined}
@@ -2457,7 +2509,24 @@ export function DocumentationPage() {
         {!isIncoming && (
           <button
             type="button"
-            onClick={() => setOverdueFirst(v => !v)}
+            onClick={() => { setMine(v => !v); setActiveView(''); }}
+            aria-pressed={mine}
+            title="Show only cases assigned to me"
+            style={{
+              height: 28, padding: '0 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 'var(--radius-md)',
+              color: mine ? '#2563eb' : 'var(--text-tertiary)',
+              background: mine ? 'rgba(37,99,235,0.06)' : 'var(--bg-app)',
+              border: `1px solid ${mine ? 'rgba(37,99,235,0.35)' : 'var(--border-medium)'}`,
+            }}
+          >
+            <UserCheck size={12} /> My Queue
+          </button>
+        )}
+        {!isIncoming && (
+          <button
+            type="button"
+            onClick={() => { setOverdueFirst(v => !v); setActiveView(''); }}
             aria-pressed={overdueFirst}
             title="Sort overdue cases to the top"
             style={{
@@ -2470,6 +2539,41 @@ export function DocumentationPage() {
           >
             <AlertTriangle size={12} /> Overdue first
           </button>
+        )}
+        {!isIncoming && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <select
+              aria-label="Saved views"
+              value={activeView}
+              onChange={e => applyView(e.target.value ? (savedViews.find(v => v.name === e.target.value) ?? null) : null)}
+              className="input"
+              style={{ height: 28, fontSize: 12, padding: '0 8px', maxWidth: 180 }}
+            >
+              <option value="">All Cases</option>
+              {savedViews.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={saveCurrentView}
+              title="Save the current filters & sort as a view"
+              className="btn-ghost"
+              style={{ height: 28, padding: '0 10px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)' }}
+            >
+              Save view
+            </button>
+            {activeView && (
+              <button
+                type="button"
+                onClick={deleteActiveView}
+                title={`Delete saved view "${activeView}"`}
+                aria-label={`Delete saved view ${activeView}`}
+                className="btn-ghost"
+                style={{ height: 28, width: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)' }}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
