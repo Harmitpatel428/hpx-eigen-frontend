@@ -13,7 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Search, Plus, Clock, AlertTriangle, CheckCircle2,
-  ChevronRight, X, ArrowRight, FileText, Layers,
+  ChevronRight, X, ArrowRight, FileText,
   Shield, RefreshCw, ExternalLink,
   FolderOpen, Inbox, Eye,
   Building2, MapPin, User, Phone, Mail,
@@ -283,17 +283,12 @@ function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocC
         </div>
       </div>
 
-      {/* Preset + idle age chip */}
+      {/* Last update — idle age chip, else — to keep row height */}
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-        {docCase.preset && (
-          <>
-            <Layers size={11} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{docCase.preset.name}</span>
-          </>
-        )}
         {(() => {
           const idle = caseIdle(docCase);
-          if (idle) return (
+          if (!idle) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
+          return (
             <span title={`Idle ${idle.label} — no case activity`} aria-label={`Idle ${idle.label} — no case activity`} style={{
               display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, flexShrink: 0,
               color: idle.color, background: `${idle.color}15`, padding: '1px 6px', borderRadius: 'var(--radius-full)',
@@ -301,8 +296,6 @@ function CaseRow({ docCase, onClick, selected, onToggleSelect }: { docCase: DocC
               <Clock size={10} /> {idle.label}
             </span>
           );
-          if (!docCase.preset) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
-          return null;
         })()}
       </div>
 
@@ -2612,7 +2605,7 @@ export function DocumentationPage() {
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: '#0f172a', cursor: 'pointer' }} aria-label="Select all cases" />
             </div>
-            {['Lead', 'Preset', 'Status', 'Assigned', '%'].map(h => (
+            {['Lead', 'Last Update', 'Status', 'Assigned', '%'].map(h => (
               <div key={h} style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-tertiary)' }}>
                 {h}
               </div>
