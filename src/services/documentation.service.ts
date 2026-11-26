@@ -97,7 +97,6 @@ export interface ListCasesParams {
   fieldFilters?: CaseFieldFilter[];
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
-  mine?: boolean;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -146,7 +145,6 @@ export const documentationService = {
     if (params.fieldFilters?.length) qs.set('fieldFilters', JSON.stringify(params.fieldFilters));
     if (params.sortBy)              qs.set('sortBy', params.sortBy);
     if (params.sortDir)             qs.set('sortDir', params.sortDir);
-    if (params.mine)                qs.set('mine', 'true');
     const res = await api.get(`/api/v1/documentation/cases?${qs}`);
     return unwrapList<DocCase>(res);
   },
