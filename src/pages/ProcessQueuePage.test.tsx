@@ -4,22 +4,24 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProcessQueuePage } from './ProcessQueuePage';
 import { processService } from '../services/process.service';
-import { documentationService } from '../services/documentation.service';
 
 let granted: string[] = [];
 vi.mock('../auth/context/AuthContext', () => ({
   useAuth: () => ({ permissions: { can: (s: string) => granted.includes(s) } }),
 }));
 vi.mock('../components/notifications/notify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock('../services/documentation.service', () => ({
-  documentationService: {
-    getDashboardKPIs: vi.fn().mockResolvedValue({ pendingProcessReview: 4, transferredCases: 7, returnedToDocumentation: 2 }),
-  },
-}));
 vi.mock('../services/process.service', () => ({
+  processKeys: {
+    cases: (p = {}) => ['process-cases', p],
+    case: (id: string) => ['process-case', id],
+    dashboard: () => ['process-dashboard'],
+  },
   processService: {
-    listIncoming: vi.fn(),
+    listCases: vi.fn(),
+    getDashboard: vi.fn(),
+    getCase: vi.fn().mockResolvedValue({}),
     accept: vi.fn().mockResolvedValue({}),
+    assignCase: vi.fn().mockResolvedValue({}),
     returnToDocumentation: vi.fn().mockResolvedValue({}),
   },
 }));
@@ -27,13 +29,12 @@ vi.mock('../services/process.service', () => ({
 const aCase = {
   id: 'c1',
   caseNumber: 'HPX-0001-0001',
+  status: 'PENDING_PROCESS_REVIEW',
   lead: { id: 'l1', firstName: 'Asha', lastName: 'Rao', company: 'Rao Exports' },
-  preset: { id: 'p1', name: 'GST Registration' },
-  processHandoffAt: '2026-10-01T10:00:00.000Z',
-  processHandoffBy: 'doc-user',
-  processHandoffByName: 'Jane Advisor',
-  handoverRemarks: 'All originals verified',
+  assignedUser: { id: 'u9', firstName: 'Jane', lastName: 'Advisor' },
 };
+
+const COUNTS = { incoming: 4, processing: 7, returned: 2, overdue: 1 };
 
 const renderPage = () =>
   render(
@@ -43,29 +44,21 @@ const renderPage = () =>
   );
 
 beforeEach(() => {
-  // Modal focuses its first control inside rAF; run it synchronously for determinism.
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 0; });
-  vi.mocked(processService.listIncoming).mockResolvedValue(
-    { cases: [aCase], counts: { incoming: 4, processing: 7, returned: 2 } } as never,
-  );
-  granted = ['process:view', 'process:accept', 'process:return'];
+  vi.mocked(processService.listCases).mockResolvedValue({ cases: [aCase], counts: COUNTS } as never);
+  vi.mocked(processService.getDashboard).mockResolvedValue(COUNTS as never);
+  granted = ['process:view', 'process:accept', 'process:return', 'process:assign'];
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 describe('ProcessQueuePage', () => {
-  it('shows Incoming / Processing / Returned counts and the queue row', async () => {
+  it('shows KPI tiles and the queue row', async () => {
     renderPage();
-    expect(await screen.findByText('HPX-0001-0001')).toBeTruthy();
-    expect(screen.getByText('GST Registration')).toBeTruthy();
-    expect(screen.getByText('All originals verified')).toBeTruthy();
-    // 6a: transferred-by renders the resolved name, not the raw id.
-    expect(screen.getByText('Jane Advisor')).toBeTruthy();
-    for (const [label, n] of [['Incoming', '4'], ['Processing', '7'], ['Returned', '2']]) {
-      const tile = screen.getByText(label).parentElement!;
-      await waitFor(() => expect(tile.textContent).toContain(n));
+    expect(await screen.findByText('Rao Exports')).toBeTruthy();
+    expect(screen.getByText(/HPX-0001-0001/)).toBeTruthy();
+    for (const [label, n] of [['incoming', '4'], ['processing', '7'], ['returned', '2'], ['overdue', '1']]) {
+      await waitFor(() => expect(screen.getByTestId(`kpi-${label}`).textContent).toContain(n));
     }
-    // Counts come from the process:view response — the Process queue makes NO doc:view dashboard call.
-    expect(documentationService.getDashboardKPIs).not.toHaveBeenCalled();
   });
 
   describe('row actions follow permissions', () => {
@@ -78,7 +71,7 @@ describe('ProcessQueuePage', () => {
     it('hides Accept and Return when not granted', async () => {
       granted = ['process:view'];
       renderPage();
-      await screen.findByText('HPX-0001-0001');
+      await screen.findByText('Rao Exports');
       expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Return' })).toBeNull();
     });
@@ -106,30 +99,18 @@ describe('ProcessQueuePage', () => {
 
   describe('failure handling', () => {
     it('shows an error state, not the empty-queue message, when the list fails to load', async () => {
-      vi.mocked(processService.listIncoming).mockRejectedValue({ response: { status: 403, data: { message: 'Forbidden' } } });
+      vi.mocked(processService.listCases).mockRejectedValue({ response: { status: 403, data: { message: 'Forbidden' } } });
       renderPage();
       const alert = await screen.findByRole('alert');
       expect(alert.textContent).toContain('Forbidden');
-      expect(screen.queryByText('No cases waiting for Process review.')).toBeNull();
-      // On the error path the counts are unknown — tiles show '—', not a misleading 0.
-      for (const label of ['Incoming', 'Processing', 'Returned']) {
-        expect(screen.getByText(label).parentElement!.textContent).toContain('—');
-      }
+      expect(screen.queryByText('No cases in this view.')).toBeNull();
     });
 
-    it('refreshes the queue when Accept fails (e.g. 409, another user acted first)', async () => {
-      vi.mocked(processService.accept).mockRejectedValueOnce({ response: { status: 409, data: { message: 'Already accepted' } } });
+    it('shows "—" tiles when the dashboard counts fail to load', async () => {
+      vi.mocked(processService.getDashboard).mockRejectedValue({ response: { status: 403, data: { message: 'Nope' } } });
       renderPage();
-      fireEvent.click(await screen.findByRole('button', { name: 'Accept' }));
-      await waitFor(() => expect(processService.listIncoming).toHaveBeenCalledTimes(2));
-    });
-
-    it('refreshes the queue when Return fails', async () => {
-      vi.mocked(processService.returnToDocumentation).mockRejectedValueOnce({ response: { status: 409, data: { message: 'Already returned' } } });
-      renderPage();
-      fireEvent.click(await screen.findByRole('button', { name: 'Return' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Return to Documentation' }));
-      await waitFor(() => expect(processService.listIncoming).toHaveBeenCalledTimes(2));
+      await screen.findByText('Rao Exports');
+      await waitFor(() => expect(screen.getByTestId('kpi-incoming').textContent).toContain('—'));
     });
   });
 

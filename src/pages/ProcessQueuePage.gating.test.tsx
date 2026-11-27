@@ -8,9 +8,16 @@ import * as AuthContextModule from '../auth/context/AuthContext';
 import { PermissionServiceImpl } from '../auth/services/PermissionServiceImpl';
 import { ProcessQueuePage } from './ProcessQueuePage';
 
-vi.mock('../services/process.service', () => ({ processService: { listIncoming: vi.fn().mockResolvedValue([]) } }));
-vi.mock('../services/documentation.service', () => ({
-  documentationService: { getDashboardKPIs: vi.fn().mockResolvedValue({}) },
+vi.mock('../services/process.service', () => ({
+  processKeys: {
+    cases: (p = {}) => ['process-cases', p],
+    case: (id: string) => ['process-case', id],
+    dashboard: () => ['process-dashboard'],
+  },
+  processService: {
+    listCases: vi.fn().mockResolvedValue({ cases: [], counts: { incoming: 0, processing: 0, returned: 0, overdue: 0 } }),
+    getDashboard: vi.fn().mockResolvedValue({ incoming: 0, processing: 0, returned: 0, overdue: 0 }),
+  },
 }));
 
 const mockAuth = (manifest: Record<string, string>) => {
